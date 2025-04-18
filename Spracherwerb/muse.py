@@ -1,0 +1,679 @@
+import datetime
+import os
+import random
+import time
+import traceback
+from typing import Optional, List, Callable
+
+from extensions.llm import LLM, LLMResponseException, LLMResult
+from extensions.soup_utils import WebConnectionException
+from extensions.wiki_opensearch_api import WikiOpenSearchAPI
+from Spracherwerb.blacklist import BlacklistException, blacklist
+from Spracherwerb.muse_memory import MuseMemory
+from Spracherwerb.prompter import Prompter
+from Spracherwerb.schedules_manager import SchedulesManager
+from Spracherwerb.voice import Voice
+from utils.config import config
+from utils.globals import Topic
+from utils.translations import I18N
+from utils.utils import Utils
+
+_ = I18N._
+
+
+class Muse:
+    SYSTEM_LANGUAGE_NAME_IN_ENGLISH = Utils.get_english_language_name(Utils.get_default_user_language())
+    enable_preparation = config.muse_config["enable_preparation"]
+    preparation_starts_minutes_from_end = float(config.muse_config["preparation_starts_minutes_from_end"])
+    preparation_starts_after_seconds_sleep = int(config.muse_config["preparation_starts_after_seconds_sleep"])
+
+    def __init__(self, args, run_context):
+        self.args = args
+        self._run_context = run_context
+        if not args.placeholder:
+            assert self.library_data is not None # The DJ should have access to the music library.
+            assert self._run_context is not None
+
+        self.llm = LLM(model_name=config.llm_model_name)
+        
+        initial_voice = self._schedule.voice
+        persona = self.memory.get_persona_manager().get_persona(initial_voice)
+        
+        if persona:
+            self.memory.get_persona_manager().set_current_persona(persona.voice_name)
+            self.voice = Voice(persona.voice_name, run_context=self._run_context)
+        else:
+            self.voice = Voice(initial_voice, run_context=self._run_context)
+            
+        self.prompter = Prompter()
+        self.wiki_search = WikiOpenSearchAPI()
+        self.has_started_prep = False
+        self.preparation_id = None # TODO pass a prep ID along with the speech request so things can be deleted before spoke if necessary.
+        self.is_cancelled_prep = False
+        self.post_id = "post"
+        self.prior_id = "prior"
+        self.get_playlist_callback = None
+        self._last_checked_schedules = None
+
+    def get_library_data(self):
+        if self.library_data is None:
+            raise Exception("No music library data available")
+        return self.library_data
+
+    def get_spot_profile(self, previous_track=None, track=None, last_track_failed=False, skip_track=False,
+                         old_grouping=None, new_grouping=None, grouping_type=None, get_upcoming_tracks_callback=None):
+        return self.memory.get_spot_profile(previous_track, track, last_track_failed, skip_track,
+                                            old_grouping, new_grouping, grouping_type, get_upcoming_tracks_callback)
+
+    def set_get_playlist_callback(self, get_playlist_callback):
+        self.get_playlist_callback = get_playlist_callback
+
+    def get_playlist(self):
+        if self.get_playlist_callback is None:
+            raise Exception("Playlist callback was not initialized!")
+        return self.get_playlist_callback()
+
+    def get_current_persona(self):
+        return self.memory.get_persona_manager().get_current_persona()
+
+    def get_locale(self):
+        persona = self.get_current_persona()
+        if persona is not None:
+            return persona.language_code
+        return I18N.locale
+
+    def say_at_some_point(self, text, spot_profile, topic):
+        save_mp3 = topic is not None and topic.value in config.save_tts_output_topics
+        topic_str = "" if topic is None else topic.translate().replace(" ", "_")
+        if spot_profile.immediate:
+            self.say(text, topic=topic_str, save_mp3=save_mp3)
+        else:
+            self.prepare_to_say(text, topic=topic_str, save_mp3=save_mp3)
+
+    def say(self, text, topic="", save_mp3=False, locale=None):
+        locale = locale if locale is not None else self.get_locale()
+        self.voice.say(text=text, topic=topic, save_mp3=save_mp3, locale=locale)
+
+    def prepare_to_say(self, text, topic="", save_mp3=False, locale=None):
+        locale = locale if locale is not None else self.get_locale()
+        self.voice.prepare_to_say(text=text, topic=topic, save_mp3=save_mp3, locale=locale)
+
+    def ready_to_prepare(self, cumulative_sleep_seconds, ms_remaining):
+        return Muse.enable_preparation \
+            and cumulative_sleep_seconds > Muse.preparation_starts_after_seconds_sleep \
+            and not self.has_started_prep \
+            and ms_remaining < int(Muse.preparation_starts_minutes_from_end * 60 * 1000)
+
+    def prepare(self, spot_profile, update_ui_callbacks=None):
+        self.has_started_prep = True
+        self.set_topic(spot_profile)
+        if update_ui_callbacks is not None:
+            if update_ui_callbacks.update_next_up_callback is not None:
+                update_ui_callbacks.update_next_up_callback(spot_profile.get_upcoming_track_title())
+            if update_ui_callbacks.update_prior_track_callback is not None:
+                update_ui_callbacks.update_prior_track_callback(spot_profile.get_previous_track_title())
+            if update_ui_callbacks.update_spot_profile_topics_text is not None:
+                update_ui_callbacks.update_spot_profile_topics_text(spot_profile.get_topic_text())
+        if spot_profile.is_going_to_say_something():
+            Utils.log_debug(f"Preparing muse:\n{spot_profile}")
+            if spot_profile.say_good_day:
+                self.say_good_day()
+                spot_profile.was_spoken = True
+            if not spot_profile.skip_previous_track_remark:
+                self.maybe_prep_dj_post(spot_profile)
+            self.maybe_prep_dj_prior(spot_profile)
+            self.memory.tracks_since_last_spoke = 0
+        else:
+            self.memory.tracks_since_last_spoke += 1
+        spot_profile.set_preparation_time()
+        spot_profile.is_prepared = True
+
+    def cancel_preparation(self, spot_profile, update_ui_callbacks=None):
+        Utils.log_debug(f"Canceling muse prep:\n{spot_profile}")
+        self.is_cancelled_prep = True
+        if update_ui_callbacks is not None:
+            if update_ui_callbacks.update_next_up_callback is not None:
+                update_ui_callbacks.update_next_up_callback(spot_profile.get_upcoming_track_title())
+            if update_ui_callbacks.update_prior_track_callback is not None:
+                update_ui_callbacks.update_prior_track_callback(spot_profile.get_previous_track_title())
+            if update_ui_callbacks.update_spot_profile_topics_text is not None:
+                update_ui_callbacks.update_spot_profile_topics_text(spot_profile.get_topic_text())
+
+    def maybe_dj(self, spot_profile):
+        # TODO quality info for songs
+        start = time.time()
+        self.voice.finish_speaking()
+        while not spot_profile.is_prepared:
+            time.sleep(1)
+            self.voice.finish_speaking()
+        return round(time.time() - start)
+
+    def reset(self):
+        self.has_started_prep = False
+        self.is_cancelled_prep = False
+
+    def change_voice(self, voice_name, get_upcoming_tracks_callback=None):
+        """Switch to a new DJ persona by voice name."""
+        try:
+            # Find the persona with this voice name
+            persona = self.memory.get_persona_manager().get_persona(voice_name)
+
+            if persona:
+                # Set the new persona
+                self.memory.get_persona_manager().set_current_persona(persona.voice_name)
+                self.voice = Voice(persona.voice_name, run_context=self._run_context)
+
+                try:
+                    # Determine what type of introduction to use
+                    intro_prompt, init_result = self._get_introduction_prompt(persona, get_upcoming_tracks_callback)
+
+                    if intro_prompt:
+                        context = init_result.context if init_result and init_result.context_provided else persona.get_context()
+                        intro_result = self.llm.ask(intro_prompt, context=context)
+                        if intro_result and intro_result.response:
+                            self.say(intro_result.response, locale=persona.language_code)
+                            self.memory.get_persona_manager().update_context(intro_result)
+                        else:
+                            self.say(_("Hello, I'm {0}").format(persona.name), locale=persona.language_code)
+                        persona.last_hello_time = time.time()
+                except Exception as e:
+                    Utils.log_red(f"Failed to generate introduction: {e}")
+                    self.say(_("Hello, I'm your DJ"), locale=I18N.locale)
+            else:
+                Utils.log_yellow(f"No persona found for voice {voice_name}, using default voice")
+                self.voice = Voice(voice_name, run_context=self._run_context)
+                self.say(_("Hello, I'm your DJ"), locale=I18N.locale)
+                
+        except Exception as e:
+            Utils.log_red(f"Failed to change voice to {voice_name}: {e}")
+            traceback.print_exc()
+            # Ensure we at least have a working voice
+            self.voice = Voice(voice_name, run_context=self._run_context)
+            self.say(_("Hello"), locale=I18N.locale)
+
+    def say_good_day(self):
+        hour = SchedulesManager.get_hour()
+        if hour < 5 or hour > 22:
+            return
+        Utils.log_debug("Saying good day")
+        if hour < 11:
+            self.prepare_to_say(_("Good morning"))
+        elif hour < 13:
+            self.prepare_to_say(_("Good day"))
+        elif hour < 17:
+            self.prepare_to_say(_("Good afternoon"))
+        else:
+            self.prepare_to_say(_("Good evening"))
+
+
+    def get_topic(self, previous_track, excluded_topics=[]):
+        excluded_topics = list(excluded_topics)
+        
+        # Add randomness to the time thresholds
+        weather_hours = random.uniform(20, 28)  # 20-28 hours for weather prioritization
+        news_hours = random.uniform(72, 96)    # 3-4 days for news prioritization
+        hackernews_hours = random.uniform(72, 96)  # 3-4 days for hackernews prioritization
+        playlist_context_hours = random.uniform(0, 4) 
+        min_repeat_hours = random.uniform(12, 16)   # 12-16 hours minimum repeat
+        
+        if Prompter.over_n_hours_since_last(Topic.WEATHER, n_hours=weather_hours) and not self.memory.is_recent_topics(["news", "hackernews"], n=3):
+            topic = Topic.WEATHER
+        elif Prompter.over_n_hours_since_last(Topic.NEWS, n_hours=news_hours) and not self.memory.is_recent_topics(["weather", "hackernews"], n=3):
+            topic = Topic.NEWS
+        elif Prompter.over_n_hours_since_last(Topic.HACKERNEWS, n_hours=hackernews_hours) and not self.memory.is_recent_topics(["weather", "news"], n=3):
+            topic = Topic.HACKERNEWS
+        elif (Prompter.over_n_hours_since_last(Topic.PLAYLIST_CONTEXT, n_hours=playlist_context_hours) 
+                and not self.memory.is_recent_topics(["weather", "news", "hackernews"], n=1)
+                and not self.memory.is_recent_topics(["playlist_context"], n=5)):
+            topic = Topic.PLAYLIST_CONTEXT
+        else:
+            # Add randomness to topic selection by occasionally skipping the oldest topic
+            if random.random() < 0.3:  # 30% chance to not pick the oldest topic
+                excluded_topics.append(Prompter.get_oldest_topic(excluded_topics=excluded_topics))
+            topic = Prompter.get_oldest_topic(excluded_topics=excluded_topics)
+
+        if topic not in excluded_topics:
+            if topic in [Topic.HACKERNEWS, Topic.NEWS] and Prompter.under_n_hours_since_last(topic, n_hours=min_repeat_hours):
+                excluded_topics.append(topic)
+            if previous_track is None and topic == Topic.TRACK_CONTEXT_POST:
+                excluded_topics.append(topic)
+
+        while topic in excluded_topics:
+            topic = self.get_topic(previous_track, excluded_topics=excluded_topics)
+
+        return topic
+
+    def set_topic(self, spot_profile):
+        spot_profile.topic = self.get_topic(spot_profile.previous_track)
+        spot_profile.topic_translated = spot_profile.topic.translate()
+
+    def talk_about_something(self, spot_profile):
+        self.memory.tracks_since_last_topic = 0
+
+        if (spot_profile.has_already_spoken and random.random() < 0.75) \
+                or (not spot_profile.has_already_spoken and random.random() < 0.6):
+            if not spot_profile.has_already_spoken:
+                remark = _("First let's hear about {0}").format(spot_profile.topic_translated)
+            else:
+                remark = _("But first, let's hear about {0}.").format(spot_profile.topic_translated)
+            self.say_at_some_point(remark, spot_profile, None)
+
+        topic = spot_profile.topic
+        Utils.log(f"Talking about topic: {topic.value}")
+
+        func = None
+        args = [spot_profile]
+        kwargs = {}
+
+        if topic == Topic.WEATHER:
+            func = self.talk_about_weather
+            args = [config.open_weather_city, spot_profile]
+        elif topic in [Topic.NEWS, Topic.HACKERNEWS]:
+            func = self.talk_about_news
+            args = [topic, spot_profile]
+        elif topic == Topic.JOKE:
+            func = self.tell_a_joke
+        elif topic == Topic.FACT:
+            func = self.share_a_fact
+        elif topic == Topic.TRUTH_AND_LIE:
+            func = self.play_two_truths_and_one_lie
+        elif topic == Topic.FABLE:
+            func = self.share_a_fable
+        elif topic == Topic.APHORISM:
+            func = self.share_an_aphorism
+        elif topic == Topic.POEM:
+            func = self.share_a_poem
+        elif topic == Topic.QUOTE:
+            func = self.share_a_quote
+        elif topic == Topic.TONGUE_TWISTER:
+            func = self.share_a_tongue_twister
+        elif topic == Topic.CALENDAR:
+            func = self.talk_about_the_calendar
+        elif topic == Topic.MOTIVATION:
+            func = self.share_a_motivational_message
+        elif topic == Topic.TRACK_CONTEXT_PRIOR:
+            func = self.talk_about_track_context
+            args = [spot_profile.track, spot_profile, Topic.TRACK_CONTEXT_PRIOR]
+        elif topic == Topic.TRACK_CONTEXT_POST:
+            func = self.talk_about_track_context
+            args = [spot_profile.previous_track, spot_profile, Topic.TRACK_CONTEXT_POST]
+        elif topic == Topic.PLAYLIST_CONTEXT:
+            func = self.talk_about_playlist_context
+        elif topic == Topic.RANDOM_WIKI_ARTICLE:
+            func = self.talk_about_random_wiki_article
+        elif topic == Topic.FUNNY_STORY:
+            func = self.share_a_funny_story
+        elif topic == Topic.LANGUAGE_LEARNING:
+            func = self.teach_language
+        else:
+            Utils.log_yellow(f"Unhandled topic: {topic}")
+            return
+
+        self._wrap_function(spot_profile, topic, func, args, kwargs)
+
+    def talk_about_weather(self, city="Washington", spot_profile=None):
+        weather = self.open_weather_api.get_weather_for_city(city)
+        weather_summary = self.generate_text(
+            self.get_prompt(Topic.WEATHER) + city + ":\n\n" + str(weather))
+        self.say_at_some_point(weather_summary, spot_profile, Topic.WEATHER)
+
+    def talk_about_news(self, topic=None, spot_profile=None):
+        if topic == Topic.HACKERNEWS:
+            news = self.hacker_news_souper.get_news(total=15)
+        else:
+            news = self.news_api.get_news(topic=topic)
+        news_summary = self.generate_text(
+            self.get_prompt(topic) + "\n\n" + str(news))
+        self.say_at_some_point(news_summary, spot_profile, topic)
+
+    def tell_a_joke(self, spot_profile):
+        joke = self.generate_text(self.get_prompt(Topic.JOKE))
+        self.say_at_some_point(joke, spot_profile, Topic.JOKE)
+
+    def share_a_fact(self, spot_profile):
+        fact = self.generate_text(self.get_prompt(Topic.FACT))
+        self.say_at_some_point(fact, spot_profile, Topic.FACT)
+
+    def play_two_truths_and_one_lie(self, spot_profile):
+        resp = self.generate_text(self.get_prompt(Topic.TRUTH_AND_LIE))
+        self.say_at_some_point(resp, spot_profile, Topic.TRUTH_AND_LIE)
+
+    def share_a_fable(self, spot_profile):
+        fable = self.generate_text(self.get_prompt(Topic.FABLE))
+        self.say_at_some_point(fable, spot_profile, Topic.FABLE)
+
+    def share_an_aphorism(self, spot_profile):
+        aphorism = self.generate_text(self.get_prompt(Topic.APHORISM))
+        self.say_at_some_point(aphorism, spot_profile, Topic.APHORISM)
+
+    def share_a_poem(self, spot_profile):
+        poem = self.generate_text(self.get_prompt(Topic.POEM))
+        self.say_at_some_point(poem, spot_profile, Topic.POEM)
+    
+    def share_a_quote(self, spot_profile):
+        quote = self.generate_text(self.get_prompt(Topic.QUOTE))
+        self.say_at_some_point(quote, spot_profile, Topic.QUOTE)
+
+    def share_a_tongue_twister(self, spot_profile):
+        if config.tongue_twisters_dir is None or config.tongue_twisters_dir == "":
+            raise Exception("No tongue twister directory specified")
+        Utils.log(f"Playing tongue twister from {config.tongue_twisters_dir}")
+        playback = Playback.new_playback(config.tongue_twisters_dir, self.get_library_data().data_callbacks)
+        tongue_twister_track, __, ___ = playback._playback_config.next_track()
+        if tongue_twister_track is None or not os.path.exists(tongue_twister_track.filepath):
+            raise Exception(f"Invalid tongue twister file: {tongue_twister_track}")
+        Prompter.update_history(spot_profile.topic)
+        self.voice.add_speech_file_to_queue(tongue_twister_track.filepath)
+
+    def talk_about_the_calendar(self, spot_profile):
+        # TODO talk about tomorrow as well, or the upcoming week
+        today = datetime.datetime.today()
+        prompt = self.get_prompt(Topic.CALENDAR)
+        prompt = prompt.replace("{DATE}", today.strftime("%A %B %d %Y"))
+        prompt = prompt.replace("{TIME}", today.strftime("%H:%M"))
+        calendar = self.generate_text(prompt)
+        self.say_at_some_point(calendar, spot_profile, Topic.CALENDAR)
+
+    def share_a_motivational_message(self, spot_profile):
+        motivation = self.generate_text(self.get_prompt(Topic.MOTIVATION))
+        self.say_at_some_point(motivation, spot_profile, Topic.MOTIVATION)
+
+    def talk_about_track_context(self, track, spot_profile, topic):
+        if spot_profile.track is None or spot_profile.topic is None or topic is None:
+            raise Exception("No track or topic specified")
+        prompt = self.get_prompt(topic)
+        prompt = prompt.format(TRACK_DETAILS=track.get_track_details())
+        track_context = self.generate_text(prompt)
+        self.say_at_some_point(track_context, spot_profile, None)
+
+    def talk_about_playlist_context(self, spot_profile):
+        # Counts are higher for upcoming tracks to bias the response towards what to expect next.
+        previous_tracks = spot_profile.get_previous_tracks(count=random.randint(1, 5))
+        upcoming_tracks = spot_profile.get_upcoming_tracks(count=random.randint(3, 8))
+        prompt = self.get_prompt(Topic.PLAYLIST_CONTEXT)
+        prompt = prompt.format(PREVIOUS_TRACKS="\n".join([f" - {t.get_track_details()}{' [already mentioned]' if was_spoken else ''}" for t, was_spoken in previous_tracks]),
+                               UPCOMING_TRACKS="\n".join([f" - {t.get_track_details()}{' [already mentioned]' if was_spoken else ''}" for t, was_spoken in upcoming_tracks]))
+        playlist_context = self.generate_text(prompt)
+        self.say_at_some_point(playlist_context, spot_profile, Topic.PLAYLIST_CONTEXT)
+
+    def talk_about_random_wiki_article(self, spot_profile):
+        article_blacklisted = True
+        blacklisted_words_found = set()
+        count = 0
+        while article_blacklisted:
+            article = self.wiki_search.random_wiki()
+            if article is None or not article.is_valid():
+                raise Exception("No valid wiki article found")
+            article_text = str(article)[:2000]
+            blacklist_words = blacklist.test_all(article_text)
+            blacklisted_words_found.update(blacklist_words)
+            article_blacklisted = len(blacklist_words) > 0
+            if count > 10:
+                raise Exception(f"No valid wiki article found after 10 tries. Blacklisted words: {blacklisted_words_found}")
+            count += 1
+        prompt = self.get_prompt(Topic.RANDOM_WIKI_ARTICLE)
+        prompt = prompt.format(ARTICLE=str(article)[:2000])
+        summary = self.generate_text(prompt)
+        self.say_at_some_point(summary, spot_profile, Topic.RANDOM_WIKI_ARTICLE)
+
+    def share_a_funny_story(self, spot_profile):
+        funny_story = self.generate_text(self.get_prompt(Topic.FUNNY_STORY))
+        self.say_at_some_point(funny_story, spot_profile, Topic.FUNNY_STORY)
+
+    def teach_language(self, spot_profile):
+        prompt = self.get_prompt(Topic.LANGUAGE_LEARNING)
+        prompt = prompt.format(
+            LANGUAGE=config.muse_language_learning_language,
+            LEVEL=config.muse_language_learning_language_level.strip() if config.muse_language_learning_language_level and config.muse_language_learning_language_level.strip() else "basic"
+        )
+        language_response = self.generate_text(prompt)
+        self.say_at_some_point(language_response, spot_profile, Topic.LANGUAGE_LEARNING)
+
+    def start_extensions_thread(self, initial_sleep=True, overwrite_cache=False):
+        self.get_library_data().start_extensions_thread(initial_sleep=initial_sleep, overwrite_cache=overwrite_cache, voice=self.voice)
+
+    def should_use_two_call_approach(self) -> bool:
+        """Determine if we should use the two-call translation approach for added variety."""
+        return random.random() < 0.1  # 10% chance to use two-call approach
+
+    def get_prompt(self, topic):
+        prompt = self.prompter.get_prompt_update_history(topic)
+        if not self.args.use_system_language_for_all_topics:
+            return prompt
+        
+        # Get the current persona's language code
+        persona = self.get_current_persona()
+        language_code = persona.language_code if persona else Utils.get_default_user_language()
+        language = Utils.get_english_language_name(language_code) if persona else Muse.SYSTEM_LANGUAGE_NAME_IN_ENGLISH
+        
+        # Special case for language learning
+        if topic == Topic.LANGUAGE_LEARNING:
+            # Don't replace the whole prompt, it would be trying to teach the same language the prompt is already in.
+            if persona and language == config.muse_language_learning_language:
+                return prompt
+            language_code = Utils.get_default_user_language()
+        
+        # If language is English or not supported, use English
+        if language_code == "en" or language_code not in ["de", "es", "fr", "it"]:
+            Utils.log_yellow(f"No translation available for language {language_code} topic {topic}, using English")
+            return prompt
+        
+        try:
+            # Use two-call approach occasionally for added variety
+            if self.should_use_two_call_approach():
+                translation_prompt = self.prompter.get_translation_prompt(language_code, language, prompt)
+                prompt = self.generate_text(translation_prompt, json_key="prompt")
+            else:
+                prompt = self.prompter.get_prompt_with_language(topic, language_code)
+        except Exception as e:
+            Utils.log(f"Failed to translate prompt for topic {topic} into language {language_code} with error: {e}")
+        return prompt
+
+    def generate_text(self, prompt, json_key=None, include_time_context=True):
+        """Generate text using the current DJ persona's context."""
+        # Get the current persona's context and system prompt
+        context, system_prompt = self.memory.get_persona_manager().get_context_and_system_prompt()
+        language_code = self.get_current_persona().language_code
+        
+        # If we have no persona/context, use language-specific default prompt
+        if not system_prompt:
+            Utils.log_yellow("No system prompt available, using default prompt")
+            language_code = Utils.get_default_user_language()
+            system_prompt = self.prompter.get_prompt("default_system_prompt", language_code)
+        
+        if include_time_context:
+            # Get current time information
+            now = datetime.datetime.now()
+            
+            # Add time context to the prompt
+            time_context = self.prompter.get_prompt("time_context", language_code).format(
+                time=now.strftime("%I:%M %p"),
+                day=I18N.day_of_the_week(now.weekday()),
+                date=now.strftime("%B %d, %Y")
+            )
+            prompt = prompt + "\n" + time_context
+        
+        prompt_text_to_test = prompt
+        variant_part_marker = "----"
+        if variant_part_marker in prompt_text_to_test:
+            prompt_text_to_test = prompt_text_to_test[prompt_text_to_test.index(variant_part_marker):]
+            prompt_text_to_test = prompt_text_to_test[prompt_text_to_test.index("\n") + 1:]
+        blacklisted_items_in_prompt = blacklist.test_all(prompt_text_to_test)
+        
+        # Use the context and system prompt in the LLM call
+        result = self.llm.ask(prompt, json_key=json_key, context=context, system_prompt=system_prompt)
+        text = result.response if result else ""
+        
+        # Update context with the new context from the response
+        self.memory.get_persona_manager().update_context(result)
+        
+        generations = []
+        all_blacklist_items = set()
+        blacklist_items = blacklist.test_all(text, excluded_items=blacklisted_items_in_prompt)
+        attempts = 0
+        while len(blacklist_items) > 0:
+            blacklist_items_str = ", ".join(sorted([str(i) for i in all_blacklist_items]))
+            Utils.log("Hit blacklisted items: " + blacklist_items_str)
+            Utils.log("Text: " + text)
+            all_blacklist_items.update(set(blacklist_items))
+            result = self.llm.ask(prompt, json_key=json_key, context=context, system_prompt=system_prompt)
+            text = result.response if result else ""
+            generations.append(text)
+            blacklist_items = blacklist.test_all(text, excluded_items=blacklisted_items_in_prompt)
+            attempts += 1
+            if attempts > 10:
+                blacklist_items_str = ", ".join(sorted([str(i) for i in all_blacklist_items]))
+                texts_str = "\n".join(generations)
+                raise BlacklistException(f"Failed to generate text - blacklist items found: {blacklist_items_str}\n{texts_str}")
+        return text
+
+    def _wrap_function(self, spot_profile, topic, func, _args=[], _kwargs={}):
+        try:
+            return func(*_args, **_kwargs)
+        except WebConnectionException as e:
+            Utils.log_red(e)
+            self.say_at_some_point(_("We're having some technical difficulties in accessing our source for {0}. We'll try again later").format(topic),
+                                   spot_profile, None)
+        except LLMResponseException as e:
+            Utils.log_red(e)
+            self.say_at_some_point(_("It seems our writer for {0} is unexpectedly away at the moment. Did we forget to pay his salary again?").format(topic),
+                                   spot_profile, None)
+        except BlacklistException as e:
+            Utils.log_red(e)
+            self.say_at_some_point(_("We've found problems with all of our {0} ideas. Please try again later.").format(topic),
+                                   spot_profile, None)
+        except Exception as e:
+            Utils.log_red(e)
+            traceback.print_exc()
+            self.say_at_some_point(_("Something went wrong. We'll try to fix it soon."), spot_profile, None)
+
+    def _get_introduction_prompt(self, persona: Optional[DJPersona],
+                                 get_upcoming_tracks_callback: Optional[Callable[[int], List[MediaTrack]]] = None
+                                ) -> tuple[Optional[str], Optional[LLMResult]]:
+        """Determine what type of introduction to use based on timing of last interactions, initialize the persona, and return the prompt.
+        
+        Args:
+            persona: The DJ persona to use for the introduction
+            get_upcoming_tracks_callback: Optional callback to get upcoming tracks
+            
+        Returns:
+            tuple[Optional[str], Optional[LLMResult]]: A tuple containing:
+                - The formatted introduction prompt (or None if no introduction needed)
+                - The LLM result from persona initialization
+        """
+        if not persona:
+            return None, None
+
+        # NOTE the below needs to happen before "persona_init" prompt because
+        # `persona.update_context` will set the last signoff time
+        intro_type = self._determine_intro_type(time.time(), persona)
+        if intro_type is None:
+            return None, None
+
+        # Get current time information
+        now = datetime.datetime.now()
+        day = I18N.day_of_the_week(now.weekday())
+        date = now.strftime("%B %d, %Y")
+
+        # Get language information
+        language_code = persona.language_code
+        language_name = persona.language
+        
+        # Get the persona initialization prompt and format it
+        persona_prompt = self.prompter.get_prompt("persona_init", language_code)
+        persona_prompt = persona_prompt.format(
+            name=persona.name,
+            sex=persona.get_s(),
+            tone=persona.tone,
+            characteristics=", ".join(persona.characteristics),
+            system_prompt=persona.system_prompt,
+            time=now.strftime("%I:%M %p"),
+            day=day,
+            date=date,
+            language_code=language_code,
+            language_name=language_name,
+        )
+        
+        # Make an initial call to seed the context, using the old context
+        result = self.llm.ask(persona_prompt, context=persona.get_context())
+        if result:
+            if result.context:
+                self.memory.get_persona_manager().update_context(result)
+        else:
+            Utils.log_yellow(f"Result was None for {persona.name} initial persona prompt, possibly due to user skip.")
+            return None, None
+
+        # Get starting tracks if callback is provided
+        starting_tracks_str = ""
+        if get_upcoming_tracks_callback:
+            try:
+                # Get a random number of upcoming tracks (between 3 and 8)
+                upcoming_tracks = get_upcoming_tracks_callback(random.randint(3, 8))
+                if upcoming_tracks:
+                    upcoming_tracks_str = "\n".join([f" - {t.get_track_details()}" for t in upcoming_tracks])
+                Utils.log(f"Starting intro with tracks:\n{upcoming_tracks_str}")
+                starting_tracks_str = _("Starting tracks:") + "\n" + upcoming_tracks_str
+            except Exception as e:
+                Utils.log(f"Error getting upcoming tracks: {e}")
+
+        # Get the appropriate introduction prompt
+        intro_prompt = self.prompter.get_prompt(f"persona_{intro_type}", language_code)
+        format_args = {
+            "name": persona.name,
+            "time": now.strftime("%I:%M %p"),
+            "day": day,
+            "date": date,
+            "language_code": language_code,
+            "language_name": language_name,
+            "starting_tracks": starting_tracks_str,
+        }
+        if intro_type == "reintro":
+            last_tuned_in_str = self._get_last_tuned_in_str(persona)
+            format_args["last_signoff"] = last_tuned_in_str
+        intro_prompt = intro_prompt.format(**format_args)
+        return intro_prompt, result
+
+    def _determine_intro_type(self, now_time: float, persona: DJPersona) -> str:
+        last_hello = persona.last_hello_time or 0
+        last_signoff = persona.last_signoff_time or 0
+
+        # If neither hello nor signoff has been said recently, or it's been a long time
+        if last_hello == 0 or last_signoff == 0 or (now_time - last_hello > 6 * 3600 and now_time - last_signoff > 6 * 3600):
+            Utils.log_debug("intro case 1: last_hello: {0}, last_signoff: {1}, now_time: {2}".format(last_hello, last_signoff, now_time))
+            return "intro"  
+        
+        # Check if the time difference spans across sleeping hours
+        last_signoff_dt = datetime.datetime.fromtimestamp(last_signoff)
+        now_dt = datetime.datetime.fromtimestamp(now_time)
+        
+        # If the time difference is less than 12 hours but greater than 4 hours and 
+        # spans across sleeping hours (11 PM to 6 AM), treat it as a long absence
+        if ((4 * 3600) < (now_time - last_signoff) < (12 * 3600) and 
+                ((last_signoff_dt.hour >= 23 or last_signoff_dt.hour < 6) and
+                 (now_dt.hour > 4 and now_dt.hour < 10))):
+            Utils.log_debug("intro case 2: last_hello: {0}, last_signoff: {1}, now_time: {2}".format(last_hello, last_signoff, now_time))
+            return "intro"
+            
+        # If hello hasn't been said recently but signoff was recent (1-6 hours ago)
+        elif now_time - last_hello > 2 * 3600 and 1 * 3600 < now_time - last_signoff <= 6 * 3600:
+            Utils.log_debug("reintro: last_hello: {0}, last_signoff: {1}, now_time: {2}".format(last_hello, last_signoff, now_time))
+            return "reintro"
+        else:
+            # If both hello and signoff were recent, don't say anything
+            Utils.log_debug("no intro: last_hello: {0}, last_signoff: {1}, now_time: {2}".format(last_hello, last_signoff, now_time))
+            return None
+
+    def _get_last_tuned_in_str(self, persona: DJPersona) -> str:
+        """Get a human-readable string describing when the listener last tuned in.
+        
+        Returns:
+            str: A translated string like "The listener last tuned in 2 hours ago"
+        """
+        if persona.last_signoff_time:
+            time_diff = time.time() - persona.last_signoff_time
+            num_units, unit = I18N.time_ago(time_diff)
+            return _("The listener last tuned in {0} {1} ago").format(num_units, unit)
+        return None
+
+
+

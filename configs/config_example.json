@@ -1,0 +1,290 @@
+{
+    "directories": [
+        "{HOME}\\audio"
+    ],
+    "muse_config": {
+        "enable_preparation": true,
+        "preparation_starts_minutes_from_end": 2,
+        "preparation_starts_after_seconds_sleep": 10,
+        "chance_speak_after_track": 0.2,
+        "chance_speak_before_track": 0.3,
+        "topic_discussion_chance_factor": 0.10,
+        "min_seconds_between_spots": 500
+    },
+    "save_tts_output_topics": [
+        "aphorism",
+        "fable",
+        "fact",
+        "funny_story",
+        "language_learning",
+        "poem",
+        "quote",
+        "random_wiki_article"
+    ],
+    "prompts_directory": "prompts",
+    "tongue_twisters_dir": "",
+    "artists_file": "artists_example.json",
+    "composers_file": "composers_example.json",
+    "forms_file": "forms_example.json",
+    "genres_file": "genres_example.json",
+    "instruments_file": "instruments_example.json",
+    "blacklist_file": "blacklist_example.json",
+    "enable_dynamic_volume": true,
+    "play_videos_in_separate_window": false,
+    "playlist_recently_played_check_count": 1000,
+    "enable_long_track_splitting": false,
+    "long_track_splitting_time_cutoff_minutes": 20,
+    "max_search_results": 200,
+    "max_recent_searches": 200,
+    "foreground_color": "white",
+    "background_color": "#2596BE",
+    "open_weather_api_key": "<KEY>",
+    "open_weather_city": "Washington",
+    "news_api_key": "<KEY>",
+    "news_api_source_trustworthiness": {
+        "bbc-news": 0.5
+    },
+    "muse_language_learning_language": "German",
+    "muse_language_learning_language_level": "intermediate",
+    "coqui_tts_location": "{HOME}\\TTS-dev",
+    "dj_personas": [
+        {
+            "name": "Royston",
+            "voice_name": "Royston Min",
+            "s": "M",
+            "tone": "warm and engaging",
+            "characteristics": [
+                "classical music expert",
+                "well-read and cultured",
+                "gentle sense of humor",
+                "appreciates musical history"
+            ],
+            "system_prompt": "You are Royston, a sophisticated DJ with deep knowledge of classical music and cultural history. Your speaking style is warm and engaging, with a gentle sense of humor. You love connecting music to historical events and cultural movements. When discussing tracks, you often reference composers' lives, musical periods, and historical context. Your tone is welcoming but refined, making complex musical concepts accessible to all listeners.",
+            "language": "English",
+            "language_code": "en"
+        },
+        {
+            "name": "Sofia",
+            "voice_name": "Sofia Hellen",
+            "s": "F",
+            "tone": "energetic and passionate",
+            "characteristics": [
+                "contemporary music enthusiast",
+                "trend-aware",
+                "upbeat and dynamic",
+                "connects music to modern culture"
+            ],
+            "system_prompt": "You are Sofia, a vibrant and passionate DJ who brings energy to every track. Your style is modern and dynamic, with a keen eye for contemporary music trends and cultural connections. You excel at making listeners feel the emotional impact of music and often draw parallels between songs and current events or popular culture. Your enthusiasm is infectious, and you have a talent for making every song feel like an exciting discovery.",
+            "language": "English",
+            "language_code": "en"
+        },
+        {
+            "name": "Ludvig",
+            "voice_name": "Ludvig Milivoj",
+            "s": "M",
+            "tone": "nachdenklich und analytisch",
+            "characteristics": [
+                "Spezialist für Barockmusik",
+                "technische Kenntnisse",
+                "philosophischer Ansatz",
+                "schätzt musikalische Komplexität"
+            ],
+            "system_prompt": "Sie sind Ludvig, ein nachdenklicher und analytischer DJ mit fundiertem Fachwissen über Barockmusik. Dein Stil ist intellektuell und doch zugänglich, du erforschst oft die technischen Aspekte der Musik, während du eine fesselnde Erzählung aufrechterhältst. Du verfolgst einen philosophischen Ansatz in Bezug auf Musik und verbindest Lieder häufig mit allgemeineren Themen der menschlichen Erfahrung. Ihre Kommentare sind reich an musikalischer Terminologie, aber immer so erklärt, dass sie das Hörerlebnis eher bereichern als überwältigen.",
+            "language": "German",
+            "language_code": "de"
+        }
+    ],
+    "dj_persona_refresh_context": false,
+    "text_cleaner_ruleset": [
+        {
+            "pattern": "° ?F",
+            "replacement": {
+                "en": " degrees Fahrenheit",
+                "de": " Grad Fahrenheit"
+            },
+            "simple_replacement": false
+        },
+        {
+            "pattern":  "° ?C",
+            "replacement": {
+                "en": " degrees Fahrenheit",
+                "de": " Grad Fahrenheit"
+            },
+            "simple_replacement": false
+        },
+        {
+            "pattern": "BWV\\.?([ -])?",
+            "replacement": "Bach-Werke-Verzeichnis ",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "HWV\\.?([ -])?",
+            "replacement": "Händel-Werke-Verzeichnis ",
+            "simple_replacement": false
+        },
+        {
+            "pattern": " KV?(\\.)? ?([0-9])",
+            "replacement": " Köchel \\2",
+            "simple_replacement": false
+        },
+        {
+            "pattern": " RV\\.? ?([0-9])",
+            "replacement": " Ryom Verzeichnis \\1",
+            "simple_replacement": false
+        },
+        {
+            "pattern": " Vol\\.? ?([0-9IVXLM])",
+            "replacement": " Volume \\1",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(IIII|iiii|IV|iv)(\\.)?( |$)",
+            "replacement": "\\1Four \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(III|iii)(\\.)?( |$)",
+            "replacement": "\\1Three \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(II|ii)(\\.)?( |$)",
+            "replacement": "\\1Two \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(I|i)(\\.)( |$)",
+            "replacement": "\\1One \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)V(\\.)?( |$)",
+            "replacement": "\\1Five \\3",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(VI|vi)(\\.)?( |$)",
+            "replacement": "\\1Six \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(VII|vii)(\\.)?( |$)",
+            "replacement": "\\1Seven \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(VIII|viii)(\\.)?( |$)",
+            "replacement": "\\1Eight \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(IX|ix)(\\.)?( |$)",
+            "replacement": "\\1Nine \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(X|x)(\\.)?( |$)",
+            "replacement": "\\1Ten \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XI|xi)(\\.)?( |$)",
+            "replacement": "\\1Eleven \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XII|xii)(\\.)?( |$)",
+            "replacement": "\\1Twelve \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XIII|Xiii)(\\.)?( |$)",
+            "replacement": "\\1Thirteen \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XIV|xiv)(\\.)?( |$)",
+            "replacement": "\\1Fourteen \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XV|xv)(\\.)?( |$)",
+            "replacement": "\\1Fifteen \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XVI|xvi)(\\.)?( |$)",
+            "replacement": "\\1Sixteen \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XVII|xvii)(\\.)?( |$)",
+            "replacement": "\\1Seventeen \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XVIII|xviii)(\\.)?( |$)",
+            "replacement": "\\1Eighteen \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XIX|xix)(\\.)?( |$)",
+            "replacement": "\\1Nineteen \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XX|xx)(\\.)?( |$)",
+            "replacement": "\\1Twenty \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XXI|xxi)(\\.)?( |$)",
+            "replacement": "\\1Twenty-one \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XXII|ii)(\\.)?( |$)",
+            "replacement": "\\1Twenty-two \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XXIII|xxiii)(\\.)?( |$)",
+            "replacement": "\\1Twenty-three \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XXIV|xxiv)(\\.)?( |$)",
+            "replacement": "\\1Twenty-four \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XXV|xxv)(\\.)?( |$)",
+            "replacement": "\\1Twenty-five \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XXVI|xxvi)(\\.)?( |$)",
+            "replacement": "\\1Twenty-six \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XXVII|xxvii)(\\.)?( |$)",
+            "replacement": "\\1Twenty-seven \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XXVIII|xxviii)(\\.)?( |$)",
+            "replacement": "\\1Twenty-eight \\4",
+            "simple_replacement": false
+        },
+        {
+            "pattern": "( |^)(XXIX|xxix)(\\.)?( |$)",
+            "replacement": "\\1Twenty-nine \\4",
+            "simple_replacement": false
+        }
+    ],
+    "coqui_tts_model": ["tts_models/multilingual/multi-dataset/xtts_v2", "Royston Min", "en"],
+    "llm_model_name": "deepseek-r1:14b",
+    "max_chunk_tokens": 200,
+    "enable_library_extender": false
+}
