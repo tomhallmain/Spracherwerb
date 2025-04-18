@@ -3,7 +3,7 @@ import os
 
 from utils.utils import Utils
 
-_locale = Utils.get_default_user_language()
+_locale = "en" #Utils.get_default_user_language()
 
 class I18N:
     localedir = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), 'locale')

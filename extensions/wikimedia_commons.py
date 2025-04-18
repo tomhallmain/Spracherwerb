@@ -38,8 +38,9 @@ class WikimediaCommons:
     CACHE_FILE = CACHE_DIR / "media.json"
     CACHE_DURATION = 86400  # 24 hours in seconds
     
-    def __init__(self):
-        """Initialize the Wikimedia Commons client with caching."""
+    def __init__(self, api_key: Optional[str] = None):
+        """Initialize the Wikimedia Commons client with optional API key and caching."""
+        self.api_key = api_key
         self.media: Dict[str, List[MediaItem]] = {}
         self._load_cache()
     
@@ -105,6 +106,9 @@ class WikimediaCommons:
                 "cllimit": "max",
                 "lllimit": "max"
             }
+            
+            if self.api_key:
+                params["api_key"] = self.api_key
             
             if language:
                 params["lllang"] = language

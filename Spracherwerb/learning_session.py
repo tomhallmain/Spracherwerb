@@ -4,7 +4,7 @@ import logging
 
 from .session_config import SessionConfig
 from .learning_engine import LearningEngine
-from .session_context import SessionState, UserAction
+from .session_context import SessionContext, UserAction
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class LearningSession:
         callbacks: Optional[Dict[str, Callable]] = None
     ):
         self.config = session_config
-        self.state = SessionState(
+        self.state = SessionContext(
             start_time=time.time(),
             activities_completed=[],
             vocabulary_learned=[],

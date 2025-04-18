@@ -1,13 +1,14 @@
 import os
+import random
 import re
 import shutil
 import subprocess
 import unicodedata
 from pathlib import Path
 from typing import Optional, Tuple, Dict
+
 from utils.temp_dir import TempDir
 from utils.utils import Utils
-import random
 
 class FFmpegHandler:
     """Handler for all FFmpeg operations with filename sanitization."""

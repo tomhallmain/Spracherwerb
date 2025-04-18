@@ -7,14 +7,14 @@ from utils.config import config
 from utils.utils import Utils
 from utils.translations import I18N
 from .session_config import SessionConfig, SessionType, DifficultyLevel
-from .session_context import SessionState, UserAction
+from .session_context import SessionContext, UserAction
 from .learning_session import LearningSession
 
 _ = I18N._
 logger = logging.getLogger(__name__)
 
 
-class SessionStateEnum(Enum):
+class SessionContextEnum(Enum):
     """Possible states of a language learning session"""
     NOT_STARTED = auto()
     IN_PROGRESS = auto()

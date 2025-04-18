@@ -1,4 +1,9 @@
-"""Module for interacting with Mozilla's Common Voice dataset."""
+"""Module for interacting with Mozilla's Common Voice dataset.
+
+NOTE: This extension is currently non-functional as the Common Voice API appears to be undocumented
+and potentially no longer publicly accessible. This extension should be considered for removal
+or replacement with an alternative voice sample service.
+"""
 
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
@@ -29,17 +34,23 @@ class VoiceSample:
 
 
 class CommonVoice:
-    """Handles interactions with the Common Voice dataset."""
+    """Handles interactions with Mozilla's Common Voice database."""
     
-    BASE_URL = "https://commonvoice.mozilla.org/api/v1"
+    BASE_URL = "https://commonvoice.mozilla.org/api/v2"
     CACHE_DIR = Path("cache/common_voice")
     CACHE_FILE = CACHE_DIR / "samples.json"
     CACHE_DURATION = 86400  # 24 hours in seconds
     
     def __init__(self):
         """Initialize the Common Voice client with caching."""
-        self.samples: Dict[str, List[VoiceSample]] = {}
+        self.samples: Dict[str, VoiceSample] = {}
         self._load_cache()
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "Spracherwerb/1.0"
+        })
     
     def _load_cache(self):
         """Load cached voice samples from disk."""
@@ -77,31 +88,25 @@ class CommonVoice:
         return (time.time() - max(s.last_accessed for s in samples)) < self.CACHE_DURATION
     
     def get_available_languages(self) -> List[str]:
-        """Get a list of available languages in Common Voice."""
+        """Get a list of available languages."""
         try:
-            response = requests.get(f"{self.BASE_URL}/languages")
+            response = self.session.get(f"{self.BASE_URL}/languages")
             response.raise_for_status()
             data = response.json()
-            return [lang["code"] for lang in data]
+            return [lang["code"] for lang in data.get("data", [])]
         except Exception as e:
             Utils.log_red(f"Error getting available languages: {e}")
             return []
     
     def get_voice_samples(
         self,
-        language: str,
+        language: str = "en-US",
         limit: int = 10,
         min_duration: float = 1.0,
         max_duration: float = 10.0,
         min_votes: int = 3
     ) -> List[VoiceSample]:
-        """Get voice samples for a specific language."""
-        cache_key = language
-        
-        # Check cache first
-        if cache_key in self.samples and self._is_cache_valid(self.samples[cache_key]):
-            return self.samples[cache_key][:limit]
-        
+        """Get voice samples matching the given criteria."""
         try:
             params = {
                 "language": language,
@@ -111,34 +116,40 @@ class CommonVoice:
                 "min_votes": min_votes
             }
             
-            response = requests.get(f"{self.BASE_URL}/samples", params=params)
+            response = self.session.get(f"{self.BASE_URL}/samples", params=params)
             response.raise_for_status()
             data = response.json()
+            print(data)
             
-            samples = []
-            for item in data.get("items", []):
-                sample = VoiceSample(
-                    id=item["id"],
-                    text=item["text"],
-                    language=item["language"],
-                    accent=item.get("accent"),
-                    age=item.get("age"),
-                    gender=item.get("gender"),
-                    duration=float(item["duration"]),
-                    audio_url=item["audio_url"],
-                    votes=item.get("votes", {}),
-                    last_accessed=time.time()
-                )
-                samples.append(sample)
+            results = []
+            for sample_data in data.get("data", []):
+                sample = self._parse_sample_data(sample_data)
+                self.samples[sample.id] = sample
+                results.append(sample)
             
-            self.samples[cache_key] = samples
             self._save_cache()
-            
-            return samples
+            return results
             
         except Exception as e:
             Utils.log_red(f"Error getting Common Voice samples for {language}: {e}")
             return []
+    
+    def _parse_sample_data(self, data: Dict) -> VoiceSample:
+        """Parse sample data from API response."""
+        return VoiceSample(
+            id=data["id"],
+            text=data["text"],
+            language=data["language"],
+            accent=data.get("accent"),
+            age=data.get("age"),
+            gender=data.get("gender"),
+            duration=float(data["duration"]),
+            audio_url=data["audio_url"],
+            votes={
+                "up": data.get("votes_up", 0),
+                "down": data.get("votes_down", 0)
+            }
+        )
     
     def get_samples_by_accent(
         self,
@@ -181,28 +192,21 @@ class CommonVoice:
             Utils.log_red(f"Error downloading sample {sample.id}: {e}")
             return None
     
-    def get_sample_statistics(self, language: str) -> Dict[str, Any]:
-        """Get statistics about voice samples for a language."""
-        samples = self.get_voice_samples(language, limit=1000)  # Get more samples for stats
-        
-        if not samples:
-            return {}
-        
-        stats = {
-            "total_samples": len(samples),
-            "total_duration": sum(s.duration for s in samples),
-            "average_duration": sum(s.duration for s in samples) / len(samples),
-            "accents": {},
-            "genders": {},
-            "age_groups": {}
-        }
-        
-        for sample in samples:
-            if sample.accent:
-                stats["accents"][sample.accent] = stats["accents"].get(sample.accent, 0) + 1
-            if sample.gender:
-                stats["genders"][sample.gender] = stats["genders"].get(sample.gender, 0) + 1
-            if sample.age:
-                stats["age_groups"][sample.age] = stats["age_groups"].get(sample.age, 0) + 1
-        
-        return stats 
+    def get_sample_statistics(self, language: str = "en-US") -> Dict[str, Any]:
+        """Get statistics about available samples for a language."""
+        try:
+            response = self.session.get(f"{self.BASE_URL}/languages/{language}/statistics")
+            response.raise_for_status()
+            data = response.json()
+            
+            return {
+                "total_samples": data.get("total_samples", 0),
+                "total_duration": data.get("total_duration", 0),
+                "average_duration": data.get("average_duration", 0),
+                "accents": data.get("accents", {}),
+                "genders": data.get("genders", {}),
+                "age_groups": data.get("age_groups", {})
+            }
+        except Exception as e:
+            Utils.log_red(f"Error getting statistics for {language}: {e}")
+            return {} 

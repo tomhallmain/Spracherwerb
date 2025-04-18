@@ -12,12 +12,19 @@ from utils.config import config
 from utils.job_queue import JobQueue
 from utils.utils import Utils
 
-try:
-    sys.path.insert(0, config.coqui_tts_location)
-    from TTS.api import TTS
-    # Utils.remove_extra_handlers()
-except ImportError:
-    raise Exception("Failed to import Coqui TTS. Ensure the code is downloaded and the \"coqui_tts_location\" value is set in the config.")
+# Check if TTS is disabled
+if config.disable_tts:
+    Utils.log_yellow("TTS is disabled in config. Skipping TTS initialization.")
+    tts_available = False
+else:
+    try:
+        Utils.log(f"Importing Coqui TTS...")
+        sys.path.insert(0, config.coqui_tts_location)
+        from TTS.api import TTS
+        tts_available = True
+    except ImportError:
+        Utils.log_red("Failed to import Coqui TTS. Ensure the code is downloaded and the \"coqui_tts_location\" value is set in the config.")
+        tts_available = False
 
 import vlc
 

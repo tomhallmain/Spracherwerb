@@ -2,13 +2,13 @@ import datetime
 import traceback
 
 from utils.utils import Utils
+from utils.config import config
 
 tts_runner_imported = False
 
 try:
-    Utils.log(f"Importing tts_runner...")
-    from tts.tts_runner import TextToSpeechRunner
-    tts_runner_imported = True
+    from tts.tts_runner import TextToSpeechRunner, tts_available
+    tts_runner_imported = True and tts_available and not config.disable_tts
 except Exception as e:
     Utils.log_red(e)
     Utils.log_yellow("Failed to import tts_runner.")
@@ -17,7 +17,7 @@ class Voice:
     MULTI_MODEL = "tts_models/multilingual/multi-dataset/xtts_v2"
 
     def __init__(self, coqui_named_voice="Royston Min", run_context=None):
-        self.can_speak = tts_runner_imported
+        self.can_speak = tts_runner_imported and not config.disable_tts
         self._coqui_named_voice = coqui_named_voice
         self.model_args = (Voice.MULTI_MODEL, self._coqui_named_voice, "en")
         self.run_context = run_context
@@ -29,6 +29,10 @@ class Voice:
                                            run_context=self.run_context)
         else:
             self._tts = None
+            if config.disable_tts:
+                Utils.log_yellow("TTS is disabled in config. Voice functionality will be limited.")
+            else:
+                Utils.log_yellow("TTS is not available. Voice functionality will be limited.")
 
     def say(self, text="", topic="", save_mp3=False, locale=None):
         # Say immediately

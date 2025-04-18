@@ -2,10 +2,9 @@ from typing import Optional, Dict, Any, List
 import time
 import logging
 
-from utils.config import config
-from utils.voice import Voice
+from .voice import Voice
 from .prompter import Prompter
-from .session_context import SessionState, UserAction
+from .session_context import SessionContext, UserAction
 from .session_config import SessionConfig, SessionType, DifficultyLevel
 
 logger = logging.getLogger(__name__)
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 class LearningEngine:
     """Core engine that handles learning activities, voice interactions, and prompt management"""
     
-    def __init__(self, session_config: SessionConfig, session_state: SessionState):
+    def __init__(self, session_config: SessionConfig, session_state: SessionContext):
         self.config = session_config
         self.state = session_state
         self.voice = Voice()

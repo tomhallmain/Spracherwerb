@@ -1,23 +1,32 @@
 """Integration tests for the OpenSubtitles extension."""
 
 import pytest
-from pathlib import Path
-import json
 from extensions.opensubtitles import OpenSubtitles, Subtitle
+from utils.config import config
 
 class TestOpenSubtitles:
     """Integration test suite for the OpenSubtitles extension."""
 
-    def test_initialization(self):
+    @pytest.fixture
+    def config(self):
+        """Load test configuration."""
+        return config
+
+    @pytest.fixture
+    def opensubtitles(self, config):
+        """Create OpenSubtitles instance with API key from config."""
+        api_key = config.api_keys.get("opensubtitles")
+        if not api_key:
+            pytest.skip("OpenSubtitles API key not configured")
+        return OpenSubtitles(api_key)
+
+    def test_initialization(self, opensubtitles):
         """Test that the OpenSubtitles instance initializes correctly."""
-        opensubtitles = OpenSubtitles()
         assert opensubtitles is not None
         assert isinstance(opensubtitles, OpenSubtitles)
 
-    def test_search_subtitles(self):
+    def test_search_subtitles(self, opensubtitles):
         """Test that subtitle search works correctly."""
-        opensubtitles = OpenSubtitles()
-        
         # Test search with basic parameters
         subtitles = opensubtitles.search_subtitles(
             query="The Matrix",
@@ -54,10 +63,8 @@ class TestOpenSubtitles:
         assert isinstance(subtitles, list)
         assert len(subtitles) <= 5
 
-    def test_get_subtitle(self):
+    def test_get_subtitle(self, opensubtitles):
         """Test that specific subtitle retrieval works correctly."""
-        opensubtitles = OpenSubtitles()
-        
         # Get a subtitle ID from a search
         subtitles = opensubtitles.search_subtitles(
             query="The Matrix",
@@ -77,10 +84,8 @@ class TestOpenSubtitles:
             assert subtitle.fps > 0
             assert subtitle.content is not None
 
-    def test_get_available_languages(self):
+    def test_get_available_languages(self, opensubtitles):
         """Test that available languages are returned correctly."""
-        opensubtitles = OpenSubtitles()
-        
         languages = opensubtitles.get_available_languages()
         assert isinstance(languages, list)
         assert len(languages) > 0
@@ -88,10 +93,8 @@ class TestOpenSubtitles:
         assert "en" in languages
         assert "de" in languages
 
-    def test_cache_handling(self, temp_cache_dir):
+    def test_cache_handling(self, opensubtitles, temp_cache_dir):
         """Test that cache handling works correctly."""
-        opensubtitles = OpenSubtitles()
-        
         # Set up cache directory
         opensubtitles.CACHE_DIR = temp_cache_dir
         opensubtitles.CACHE_FILE = temp_cache_dir / "opensubtitles_cache.json"
@@ -115,10 +118,8 @@ class TestOpenSubtitles:
         # Test cache validation
         assert opensubtitles._is_cache_valid(subtitles[0])
 
-    def test_error_handling(self):
+    def test_error_handling(self, opensubtitles):
         """Test that error handling works correctly."""
-        opensubtitles = OpenSubtitles()
-        
         # Test invalid subtitle ID
         subtitle = opensubtitles.get_subtitle("invalid_id")
         assert subtitle is None

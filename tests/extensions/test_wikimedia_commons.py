@@ -1,23 +1,32 @@
 """Integration tests for the Wikimedia Commons extension."""
 
 import pytest
-from pathlib import Path
-import json
 from extensions.wikimedia_commons import WikimediaCommons, MediaItem
+from utils.config import config
 
 class TestWikimediaCommons:
     """Integration test suite for the Wikimedia Commons extension."""
 
-    def test_initialization(self):
+    @pytest.fixture
+    def config(self):
+        """Load test configuration."""
+        return config
+
+    @pytest.fixture
+    def wikimedia(self, config):
+        """Create WikimediaCommons instance with API key from config."""
+        api_key = config.api_keys.get("wikimedia")
+        if not api_key:
+            pytest.skip("Wikimedia Commons API key not configured")
+        return WikimediaCommons(api_key)
+
+    def test_initialization(self, wikimedia):
         """Test that the Wikimedia Commons instance initializes correctly."""
-        wikimedia = WikimediaCommons()
         assert wikimedia is not None
         assert isinstance(wikimedia, WikimediaCommons)
 
-    def test_search_media(self):
+    def test_search_media(self, wikimedia):
         """Test that media search works correctly."""
-        wikimedia = WikimediaCommons()
-        
         # Test search with basic parameters
         items = wikimedia.search_media(
             query="cat",
@@ -52,10 +61,8 @@ class TestWikimediaCommons:
         assert len(items) <= 5
         assert all(item.mime_type.startswith("image/") for item in items)
 
-    def test_get_media_by_category(self):
+    def test_get_media_by_category(self, wikimedia):
         """Test that category-based media retrieval works correctly."""
-        wikimedia = WikimediaCommons()
-        
         # Test basic category retrieval
         items = wikimedia.get_media_by_category(
             category="Cats",
@@ -86,10 +93,8 @@ class TestWikimediaCommons:
         assert len(items) <= 5
         assert all(item.mime_type.startswith("image/") for item in items)
 
-    def test_download_media(self, temp_cache_dir):
+    def test_download_media(self, wikimedia, temp_cache_dir):
         """Test that media download works correctly."""
-        wikimedia = WikimediaCommons()
-        
         # Get a media item to download
         items = wikimedia.search_media(
             query="cat",
@@ -102,10 +107,8 @@ class TestWikimediaCommons:
             assert output_path.exists()
             assert output_path.parent == temp_cache_dir
 
-    def test_get_media_statistics(self):
+    def test_get_media_statistics(self, wikimedia):
         """Test that media statistics retrieval works correctly."""
-        wikimedia = WikimediaCommons()
-        
         stats = wikimedia.get_media_statistics("cat")
         assert isinstance(stats, dict)
         assert "total_items" in stats
@@ -119,10 +122,8 @@ class TestWikimediaCommons:
         assert isinstance(stats["licenses"], dict)
         assert isinstance(stats["categories"], dict)
 
-    def test_cache_handling(self, temp_cache_dir):
+    def test_cache_handling(self, wikimedia, temp_cache_dir):
         """Test that cache handling works correctly."""
-        wikimedia = WikimediaCommons()
-        
         # Set up cache directory
         wikimedia.CACHE_DIR = temp_cache_dir
         wikimedia.CACHE_FILE = temp_cache_dir / "media.json"
@@ -145,10 +146,8 @@ class TestWikimediaCommons:
         # Test cache validation
         assert wikimedia._is_cache_valid(items)
 
-    def test_error_handling(self):
+    def test_error_handling(self, wikimedia):
         """Test that error handling works correctly."""
-        wikimedia = WikimediaCommons()
-        
         # Test invalid query
         items = wikimedia.search_media(
             query="",

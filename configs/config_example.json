@@ -16,8 +16,18 @@
     "enable_visual_learning": true,
     "enable_pronunciation_practice": true,
     
+    "learning_config": {
+        "chance_feedback_after_response": 0.7,
+        "max_retries": 3,
+        "min_confidence_threshold": 0.6,
+        "review_interval_days": 7,
+        "max_new_words_per_session": 20,
+        "max_grammar_points_per_session": 5
+    },
+    
     "llm_model_name": "deepseek-r1:14b",
     "coqui_tts_location": "{HOME}\\TTS-dev",
+    "disable_tts": false,
     "coqui_tts_model": ["tts_models/multilingual/multi-dataset/xtts_v2", "Royston Min", "en"],
     "max_chunk_tokens": 200,
     
@@ -232,5 +242,17 @@
         "grammar",
         "cultural_context",
         "situational_dialogue"
-    ]
+    ],
+    
+    "blacklist_file": "{HOME}/Spracherwerb/library_data/data/blacklist_example.json",
+    
+    "api_keys": {
+        "forvo": null,
+        "stable_diffusion": null,
+        "wikimedia": null,
+        "languagetool": null,
+        "opensubtitles": null,
+        "common_voice": null
+    },
+    "ignore_missing_api_keys": false
 }

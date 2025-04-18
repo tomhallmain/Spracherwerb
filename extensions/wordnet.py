@@ -26,6 +26,41 @@ class WordInfo:
     holonyms: List[str]
     last_accessed: Optional[float] = None
 
+    def get_cleaned_synonyms(self) -> List[str]:
+        """Return synonyms with synset format stripped."""
+        return [s.split('.')[0] for s in self.synonyms]
+
+    def get_cleaned_antonyms(self) -> List[str]:
+        """Return antonyms with synset format stripped."""
+        return [a.split('.')[0] for a in self.antonyms]
+
+    def get_cleaned_hypernyms(self) -> List[str]:
+        """Return hypernyms with synset format stripped."""
+        return [h.split('.')[0] for h in self.hypernyms]
+
+    def get_cleaned_hyponyms(self) -> List[str]:
+        """Return hyponyms with synset format stripped."""
+        return [h.split('.')[0] for h in self.hyponyms]
+
+    def get_cleaned_meronyms(self) -> List[str]:
+        """Return meronyms with synset format stripped."""
+        return [m.split('.')[0] for m in self.meronyms]
+
+    def get_cleaned_holonyms(self) -> List[str]:
+        """Return holonyms with synset format stripped."""
+        return [h.split('.')[0] for h in self.holonyms]
+
+    def get_cleaned_relations(self) -> Dict[str, List[str]]:
+        """Return all relations with synset format stripped."""
+        return {
+            'synonyms': self.get_cleaned_synonyms(),
+            'antonyms': self.get_cleaned_antonyms(),
+            'hypernyms': self.get_cleaned_hypernyms(),
+            'hyponyms': self.get_cleaned_hyponyms(),
+            'meronyms': self.get_cleaned_meronyms(),
+            'holonyms': self.get_cleaned_holonyms()
+        }
+
 
 class WordNet:
     """Handles interactions with WordNet's lexical database."""
@@ -39,7 +74,7 @@ class WordNet:
         self.words: Dict[str, WordInfo] = {}
         self._load_cache()
     
-    def _load_cache(self):
+    def _load_cache(self) -> Dict[str, Any]:
         """Load cached word data from disk."""
         try:
             if self.CACHE_FILE.exists():
@@ -49,9 +84,12 @@ class WordNet:
                         word: WordInfo(**word_data)
                         for word, word_data in data.items()
                     }
+                    return data
+            return {}
         except Exception as e:
             Utils.log_red(f"Error loading WordNet cache: {e}")
             self.words = {}
+            return {}
     
     def _save_cache(self):
         """Save word data to cache file."""
@@ -141,35 +179,83 @@ class WordNet:
             Utils.log_red(f"Error getting WordNet info for {word}: {e}")
             return None
     
-    def get_synonyms(self, word: str) -> List[str]:
-        """Get synonyms for a word."""
+    def get_synonyms(self, word: str, cleaned: bool = True) -> List[str]:
+        """Get synonyms for a word.
+        
+        Args:
+            word: The word to get synonyms for
+            cleaned: If True, returns cleaned versions (without synset format)
+                   If False, returns raw versions (with synset format)
+        """
         word_info = self.get_word_info(word)
-        return word_info.synonyms if word_info else []
+        if not word_info:
+            return []
+        return word_info.get_cleaned_synonyms() if cleaned else word_info.synonyms
     
-    def get_antonyms(self, word: str) -> List[str]:
-        """Get antonyms for a word."""
+    def get_antonyms(self, word: str, cleaned: bool = True) -> List[str]:
+        """Get antonyms for a word.
+        
+        Args:
+            word: The word to get antonyms for
+            cleaned: If True, returns cleaned versions (without synset format)
+                   If False, returns raw versions (with synset format)
+        """
         word_info = self.get_word_info(word)
-        return word_info.antonyms if word_info else []
+        if not word_info:
+            return []
+        return word_info.get_cleaned_antonyms() if cleaned else word_info.antonyms
     
-    def get_hypernyms(self, word: str) -> List[str]:
-        """Get hypernyms (more general terms) for a word."""
+    def get_hypernyms(self, word: str, cleaned: bool = True) -> List[str]:
+        """Get hypernyms (more general terms) for a word.
+        
+        Args:
+            word: The word to get hypernyms for
+            cleaned: If True, returns cleaned versions (without synset format)
+                   If False, returns raw versions (with synset format)
+        """
         word_info = self.get_word_info(word)
-        return word_info.hypernyms if word_info else []
+        if not word_info:
+            return []
+        return word_info.get_cleaned_hypernyms() if cleaned else word_info.hypernyms
     
-    def get_hyponyms(self, word: str) -> List[str]:
-        """Get hyponyms (more specific terms) for a word."""
+    def get_hyponyms(self, word: str, cleaned: bool = True) -> List[str]:
+        """Get hyponyms (more specific terms) for a word.
+        
+        Args:
+            word: The word to get hyponyms for
+            cleaned: If True, returns cleaned versions (without synset format)
+                   If False, returns raw versions (with synset format)
+        """
         word_info = self.get_word_info(word)
-        return word_info.hyponyms if word_info else []
+        if not word_info:
+            return []
+        return word_info.get_cleaned_hyponyms() if cleaned else word_info.hyponyms
     
-    def get_meronyms(self, word: str) -> List[str]:
-        """Get meronyms (parts) for a word."""
+    def get_meronyms(self, word: str, cleaned: bool = True) -> List[str]:
+        """Get meronyms (parts) for a word.
+        
+        Args:
+            word: The word to get meronyms for
+            cleaned: If True, returns cleaned versions (without synset format)
+                   If False, returns raw versions (with synset format)
+        """
         word_info = self.get_word_info(word)
-        return word_info.meronyms if word_info else []
+        if not word_info:
+            return []
+        return word_info.get_cleaned_meronyms() if cleaned else word_info.meronyms
     
-    def get_holonyms(self, word: str) -> List[str]:
-        """Get holonyms (wholes) for a word."""
+    def get_holonyms(self, word: str, cleaned: bool = True) -> List[str]:
+        """Get holonyms (wholes) for a word.
+        
+        Args:
+            word: The word to get holonyms for
+            cleaned: If True, returns cleaned versions (without synset format)
+                   If False, returns raw versions (with synset format)
+        """
         word_info = self.get_word_info(word)
-        return word_info.holonyms if word_info else []
+        if not word_info:
+            return []
+        return word_info.get_cleaned_holonyms() if cleaned else word_info.holonyms
     
     def get_word_similarity(self, word1: str, word2: str) -> float:
         """Get similarity score between two words."""
@@ -197,8 +283,15 @@ class WordNet:
             Utils.log_red(f"Error calculating word similarity: {e}")
             return 0.0
     
-    def get_related_words(self, word: str, depth: int = 2) -> Set[str]:
-        """Get related words up to a certain depth."""
+    def get_related_words(self, word: str, depth: int = 2, cleaned: bool = True) -> Set[str]:
+        """Get related words up to a certain depth.
+        
+        Args:
+            word: The word to get related words for
+            depth: How many levels of relations to explore (default: 2)
+            cleaned: If True, returns cleaned versions (without synset format)
+                   If False, returns raw versions (with synset format)
+        """
         try:
             related = set()
             synsets = wn.synsets(word)
@@ -218,6 +311,11 @@ class WordNet:
             
             # Remove the original word
             related.discard(word)
+            
+            # Clean the results if requested
+            if cleaned:
+                related = {word.split('.')[0] for word in related}
+            
             return related
             
         except Exception as e:

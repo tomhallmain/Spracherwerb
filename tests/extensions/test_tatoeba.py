@@ -20,20 +20,20 @@ class TestTatoeba:
         
         # Test search with basic parameters
         sentences = tatoeba.search_sentences(
-            language="en",
+            language="eng",
             query="hello",
             limit=5
         )
         assert isinstance(sentences, list)
         assert len(sentences) <= 5
         assert all(isinstance(sent, TatoebaSentence) for sent in sentences)
-        assert all(sent.language == "en" for sent in sentences)
+        assert all(sent.language == "eng" for sent in sentences)
         assert all(sent.text is not None for sent in sentences)
         assert all(isinstance(sent.translations, list) for sent in sentences)
 
         # Test search with length filters
         sentences = tatoeba.search_sentences(
-            language="en",
+            language="eng",
             min_length=10,
             max_length=20,
             limit=5
@@ -44,7 +44,7 @@ class TestTatoeba:
 
         # Test search with audio filter
         sentences = tatoeba.search_sentences(
-            language="en",
+            language="eng",
             has_audio=True,
             limit=5
         )
@@ -58,7 +58,7 @@ class TestTatoeba:
         
         # Get a sentence ID from a search
         sentences = tatoeba.search_sentences(
-            language="en",
+            language="eng",
             limit=1
         )
         if sentences:
@@ -76,14 +76,14 @@ class TestTatoeba:
         tatoeba = Tatoeba()
         
         # Test basic random sentence
-        sentence = tatoeba.get_random_sentence(language="en")
+        sentence = tatoeba.get_random_sentence(language="eng")
         assert isinstance(sentence, TatoebaSentence)
-        assert sentence.language == "en"
+        assert sentence.language == "eng"
         assert sentence.text is not None
 
         # Test random sentence with length filters
         sentence = tatoeba.get_random_sentence(
-            language="en",
+            language="eng",
             min_length=10,
             max_length=20
         )
@@ -92,7 +92,7 @@ class TestTatoeba:
 
         # Test random sentence with audio
         sentence = tatoeba.get_random_sentence(
-            language="en",
+            language="eng",
             has_audio=True
         )
         assert isinstance(sentence, TatoebaSentence)
@@ -106,20 +106,27 @@ class TestTatoeba:
         assert isinstance(languages, list)
         assert len(languages) > 0
         assert all(isinstance(lang, str) for lang in languages)
-        assert "en" in languages
-        assert "de" in languages
+        assert "eng" in languages
+        assert "deu" in languages
+        assert "fra" in languages
+        assert "jpn" in languages
 
     def test_cache_handling(self, temp_cache_dir):
         """Test that cache handling works correctly."""
         tatoeba = Tatoeba()
         
-        # Set up cache directory
+        # Set up cache directory and file paths
         tatoeba.CACHE_DIR = temp_cache_dir
         tatoeba.CACHE_FILE = temp_cache_dir / "tatoeba_cache.json"
+        
+        # Clear any existing cache
+        tatoeba.sentences = {}
+        if tatoeba.CACHE_FILE.exists():
+            tatoeba.CACHE_FILE.unlink()
 
         # Perform a search to populate cache
         sentences = tatoeba.search_sentences(
-            language="en",
+            language="eng",
             limit=5
         )
         assert len(sentences) > 0
@@ -128,9 +135,9 @@ class TestTatoeba:
         assert tatoeba.CACHE_FILE.exists()
 
         # Load cache and verify contents
-        cache = tatoeba._load_cache()
-        assert isinstance(cache, dict)
-        assert len(cache) > 0
+        tatoeba._load_cache()
+        assert isinstance(tatoeba.sentences, dict)
+        assert len(tatoeba.sentences) > 0
 
         # Test cache validation
         assert tatoeba._is_cache_valid(sentences[0])
@@ -153,7 +160,7 @@ class TestTatoeba:
 
         # Test invalid length filters
         sentences = tatoeba.search_sentences(
-            language="en",
+            language="eng",
             min_length=20,
             max_length=10,
             limit=5
@@ -163,7 +170,7 @@ class TestTatoeba:
 
         # Test invalid limit
         sentences = tatoeba.search_sentences(
-            language="en",
+            language="eng",
             limit=-1
         )
         assert isinstance(sentences, list)

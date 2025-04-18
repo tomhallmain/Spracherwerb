@@ -26,11 +26,22 @@ class Config:
         self.enable_pronunciation_practice = True
         self.save_tts_output_topics = []
         
+        # Learning configuration
+        self.learning_config = {
+            "chance_feedback_after_response": 0.7,
+            "max_retries": 3,
+            "min_confidence_threshold": 0.6,
+            "review_interval_days": 7,
+            "max_new_words_per_session": 20,
+            "max_grammar_points_per_session": 5
+        }
+        
         # LLM and TTS configuration
         self.llm_model_name = "deepseek-r1:14b"
+        self.coqui_tts_location = os.path.join(os.path.expanduser("~"), "TTS-dev")  # Default location
+        self.disable_tts = False  # Set to True to disable TTS functionality for testing
 
         self.text_cleaner_ruleset = []
-        self.coqui_tts_location = ""
         self.coqui_tts_model = ("tts_models/multilingual/multi-dataset/xtts_v2", "Royston Min", "en")
         self.max_chunk_tokens = 200
         
@@ -56,6 +67,20 @@ class Config:
         
         # Debug settings
         self.debug = False
+
+        # File paths
+        self.blacklist_file = os.path.join(root_dir, "data", "blacklist.json")
+
+        # API Keys
+        self.api_keys = {
+            "forvo": None,  # Forvo API key for pronunciation data
+            "stable_diffusion": None,  # Stable Diffusion API key for image generation
+            "wikimedia": None,  # Wikimedia Commons API key
+            "languagetool": None,  # LanguageTool API key
+            "opensubtitles": None,  # OpenSubtitles API key
+            "common_voice": None  # Common Voice API key
+        }
+        self.ignore_missing_api_keys = False  # Set to True to skip API-dependent tests
 
         # Load configuration from file
         configs = [f.path for f in os.scandir(Config.CONFIGS_DIR_LOC) if f.is_file() and f.path.endswith(".json")]
@@ -87,7 +112,14 @@ class Config:
             "vocabulary_difficulty",
             "grammar_difficulty",
             "ui_language",
+            "blacklist_file",
         )
+        
+        # Set API keys from config
+        if "api_keys" in self.dict:
+            for key in self.api_keys:
+                if key in self.dict["api_keys"]:
+                    self.api_keys[key] = self.dict["api_keys"][key]
         
         self.set_values(int,
             "max_chunk_tokens",
@@ -112,6 +144,8 @@ class Config:
             "play_videos_in_separate_window",
             "enable_dark_mode",
             "debug",
+            "disable_tts",
+            "ignore_missing_api_keys",
         )
         
         self.set_directories(

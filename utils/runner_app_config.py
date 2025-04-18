@@ -1,11 +1,8 @@
 from copy import deepcopy
 import json
 
-from utils.globals import Globals, PlaylistSortType
-
 class RunnerAppConfig:
     def __init__(self):
-        self.workflow_type = PlaylistSortType.RANDOM.name
         self.total = "-1"
         self.delay_time_seconds = "5"
         self.volume = 60.0

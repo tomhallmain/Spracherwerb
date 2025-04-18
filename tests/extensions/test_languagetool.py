@@ -1,23 +1,32 @@
 """Integration tests for the LanguageTool extension."""
 
 import pytest
-from pathlib import Path
-import json
 from extensions.languagetool import LanguageTool, LanguageError
+from utils.config import config
 
 class TestLanguageTool:
     """Integration test suite for the LanguageTool extension."""
 
-    def test_initialization(self):
+    @pytest.fixture
+    def config(self):
+        """Load test configuration."""
+        return config
+
+    @pytest.fixture
+    def languagetool(self, config):
+        """Create LanguageTool instance with API key from config."""
+        api_key = config.api_keys.get("languagetool")
+        if not api_key:
+            pytest.skip("LanguageTool API key not configured")
+        return LanguageTool(api_key)
+
+    def test_initialization(self, languagetool):
         """Test that the LanguageTool instance initializes correctly."""
-        languagetool = LanguageTool()
         assert languagetool is not None
         assert isinstance(languagetool, LanguageTool)
 
-    def test_check_text(self):
+    def test_check_text(self, languagetool):
         """Test that text checking works correctly."""
-        languagetool = LanguageTool()
-        
         # Test with a simple text containing errors
         text = "I has a cat. They is happy."
         errors = languagetool.check_text(
@@ -35,10 +44,8 @@ class TestLanguageTool:
         assert all(error.rule_description is not None for error in errors)
         assert all(error.rule_category is not None for error in errors)
 
-    def test_check_text_with_rules(self):
+    def test_check_text_with_rules(self, languagetool):
         """Test that text checking with specific rules works correctly."""
-        languagetool = LanguageTool()
-        
         text = "I has a cat. They is happy."
         errors = languagetool.check_text(
             text=text,
@@ -49,10 +56,8 @@ class TestLanguageTool:
         assert isinstance(errors, list)
         assert all(error.rule_id == "EN_VERB_AGREEMENT" for error in errors)
 
-    def test_get_available_languages(self):
+    def test_get_available_languages(self, languagetool):
         """Test that available languages are returned correctly."""
-        languagetool = LanguageTool()
-        
         languages = languagetool.get_available_languages()
         assert isinstance(languages, list)
         assert len(languages) > 0
@@ -60,10 +65,8 @@ class TestLanguageTool:
         assert "en" in languages
         assert "de" in languages
 
-    def test_get_available_rules(self):
+    def test_get_available_rules(self, languagetool):
         """Test that available rules are returned correctly."""
-        languagetool = LanguageTool()
-        
         rules = languagetool.get_available_rules("en")
         assert isinstance(rules, dict)
         assert "rules" in rules
@@ -71,10 +74,8 @@ class TestLanguageTool:
         assert all("id" in rule for rule in rules["rules"])
         assert all("description" in rule for rule in rules["rules"])
 
-    def test_get_rule_categories(self):
+    def test_get_rule_categories(self, languagetool):
         """Test that rule categories are returned correctly."""
-        languagetool = LanguageTool()
-        
         categories = languagetool.get_rule_categories("en")
         assert isinstance(categories, list)
         assert len(categories) > 0
@@ -82,10 +83,8 @@ class TestLanguageTool:
         assert "GRAMMAR" in categories
         assert "TYPOS" in categories
 
-    def test_get_error_statistics(self):
+    def test_get_error_statistics(self, languagetool):
         """Test that error statistics are calculated correctly."""
-        languagetool = LanguageTool()
-        
         text = "I has a cat. They is happy."
         stats = languagetool.get_error_statistics(text, "en")
         assert isinstance(stats, dict)
@@ -98,10 +97,8 @@ class TestLanguageTool:
         assert len(stats["issue_types"]) > 0
         assert len(stats["rules"]) > 0
 
-    def test_get_corrected_text(self):
+    def test_get_corrected_text(self, languagetool):
         """Test that text correction works correctly."""
-        languagetool = LanguageTool()
-        
         text = "I has a cat. They is happy."
         corrected = languagetool.get_corrected_text(text, "en")
         assert isinstance(corrected, str)
@@ -109,10 +106,8 @@ class TestLanguageTool:
         assert "I have" in corrected
         assert "They are" in corrected
 
-    def test_cache_handling(self, temp_cache_dir):
+    def test_cache_handling(self, languagetool, temp_cache_dir):
         """Test that cache handling works correctly."""
-        languagetool = LanguageTool()
-        
         # Set up cache directory
         languagetool.CACHE_DIR = temp_cache_dir
         languagetool.CACHE_FILE = temp_cache_dir / "languagetool_cache.json"
@@ -134,10 +129,8 @@ class TestLanguageTool:
         # Test cache validation
         assert languagetool._is_cache_valid(errors)
 
-    def test_error_handling(self):
+    def test_error_handling(self, languagetool):
         """Test that error handling works correctly."""
-        languagetool = LanguageTool()
-        
         # Test with empty text
         errors = languagetool.check_text("", "en")
         assert isinstance(errors, list)

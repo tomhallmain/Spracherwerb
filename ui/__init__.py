@@ -3,33 +3,25 @@
 from ui.app_actions import AppActions
 from ui.app_style import AppStyle
 from ui.base_window import BaseWindow
-from ui.composers_window import ComposersWindow
-from ui.extensions_window import ExtensionsWindow
-from ui.favorites_window import FavoritesWindow
+from ui.config_panel import ConfigPanel
+# from ui.extensions_window import ExtensionsWindow
+from ui.gutenberg_search_window import GutenbergSearchWindow
+from ui.interaction_panel import InteractionPanel
 from ui.media_frame import MediaFrame
-from ui.network_media_window import NetworkMediaWindow
-from ui.playlist_window import PlaylistWindow
-from ui.preset import Preset
-from ui.presets_window import PresetsWindow
+# from ui.preset import Preset
+# from ui.presets_window import PresetsWindow
 from ui.schedules_window import SchedulesWindow
-from ui.search_window import SearchWindow
-from ui.track_details_window import TrackDetailsWindow
-from ui.weather_window import WeatherWindow
 
 __all__ = [
     'AppActions',
     'AppStyle',
     'BaseWindow',
-    'ComposersWindow',
-    'ExtensionsWindow',
-    'FavoritesWindow',
+    'ConfigPanel',
+    # 'ExtensionsWindow',
+    'GutenbergSearchWindow',
+    'InteractionPanel',
     'MediaFrame',
-    'NetworkMediaWindow',
-    'PlaylistWindow',
-    'Preset',
-    'PresetsWindow',
+    # 'Preset',
+    # 'PresetsWindow',
     'SchedulesWindow',
-    'SearchWindow',
-    'TrackDetailsWindow',
-    'WeatherWindow',
 ] 

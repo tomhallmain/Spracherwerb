@@ -1,15 +1,31 @@
 """Shared fixtures for testing the Spracherwerb application."""
 
-import pytest
-from pathlib import Path
-import tempfile
-import shutil
 import os
 import sys
+from pathlib import Path
 
-# Add the project root to the Python path
+# Add the project root to the Python path BEFORE any other imports
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+import pytest
+import tempfile
+import shutil
+from utils.config import config
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--disable-tts",
+        action="store_true",
+        default=False,
+        help="Disable TTS functionality for testing"
+    )
+
+@pytest.fixture(autouse=True)
+def setup_tts_config(request):
+    """Automatically set TTS configuration based on command line argument"""
+    if request.config.getoption("--disable-tts"):
+        config.disable_tts = True
 
 @pytest.fixture(scope="session")
 def temp_cache_dir():

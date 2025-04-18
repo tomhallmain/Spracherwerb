@@ -20,7 +20,7 @@ class UserAction(Enum):
 
 
 @dataclass
-class SessionState:
+class SessionContext:
     """Tracks the current state of a learning session"""
     start_time: float
     activities_completed: List[Dict[str, Any]]

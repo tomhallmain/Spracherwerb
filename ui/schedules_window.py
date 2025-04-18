@@ -4,8 +4,8 @@ from tkinter import Toplevel, Frame, Label, Checkbutton, OptionMenu, StringVar, 
 import tkinter.font as fnt
 from tkinter.ttk import Entry, Button
 
-from muse.schedule import Schedule
-from muse.schedules_manager import schedules_manager
+from Spracherwerb.schedule import Schedule
+from Spracherwerb.schedules_manager import schedules_manager
 from tts.speakers import speakers
 from ui.app_style import AppStyle
 from ui.base_window import BaseWindow

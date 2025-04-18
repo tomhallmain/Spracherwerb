@@ -4,7 +4,7 @@ from utils.app_info_cache import app_info_cache
 from utils.config import config
 from utils.custom_formatter import CustomFormatter
 from utils.ffmpeg_handler import FFmpegHandler
-from utils.globals import Globals, PlaylistSortType, PlaybackMasterStrategy
+from utils.globals import Globals
 from utils.job_queue import JobQueue
 from utils.name_ops import NameOps
 from utils.runner_app_config import RunnerAppConfig
@@ -18,8 +18,6 @@ __all__ = [
     'CustomFormatter',
     'FFmpegHandler',
     'Globals',
-    'PlaylistSortType',
-    'PlaybackMasterStrategy',
     'JobQueue',
     'NameOps',
     'RunnerAppConfig',
