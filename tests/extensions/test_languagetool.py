@@ -1,4 +1,4 @@
-"""Tests for the LanguageTool extension."""
+"""Integration tests for the LanguageTool extension."""
 
 import pytest
 from pathlib import Path
@@ -6,18 +6,21 @@ import json
 from extensions.languagetool import LanguageTool, LanguageError
 
 class TestLanguageTool:
-    """Test suite for the LanguageTool extension."""
+    """Integration test suite for the LanguageTool extension."""
 
-    def test_initialization(self, mock_languagetool):
+    def test_initialization(self):
         """Test that the LanguageTool instance initializes correctly."""
-        assert mock_languagetool is not None
-        assert isinstance(mock_languagetool, LanguageTool)
+        languagetool = LanguageTool()
+        assert languagetool is not None
+        assert isinstance(languagetool, LanguageTool)
 
-    def test_check_text(self, mock_languagetool):
+    def test_check_text(self):
         """Test that text checking works correctly."""
+        languagetool = LanguageTool()
+        
         # Test with a simple text containing errors
         text = "I has a cat. They is happy."
-        errors = mock_languagetool.check_text(
+        errors = languagetool.check_text(
             text=text,
             language="en"
         )
@@ -32,10 +35,12 @@ class TestLanguageTool:
         assert all(error.rule_description is not None for error in errors)
         assert all(error.rule_category is not None for error in errors)
 
-    def test_check_text_with_rules(self, mock_languagetool):
+    def test_check_text_with_rules(self):
         """Test that text checking with specific rules works correctly."""
+        languagetool = LanguageTool()
+        
         text = "I has a cat. They is happy."
-        errors = mock_languagetool.check_text(
+        errors = languagetool.check_text(
             text=text,
             language="en",
             enabled_rules=["EN_VERB_AGREEMENT"],
@@ -44,37 +49,45 @@ class TestLanguageTool:
         assert isinstance(errors, list)
         assert all(error.rule_id == "EN_VERB_AGREEMENT" for error in errors)
 
-    def test_get_available_languages(self, mock_languagetool):
+    def test_get_available_languages(self):
         """Test that available languages are returned correctly."""
-        languages = mock_languagetool.get_available_languages()
+        languagetool = LanguageTool()
+        
+        languages = languagetool.get_available_languages()
         assert isinstance(languages, list)
         assert len(languages) > 0
         assert all(isinstance(lang, str) for lang in languages)
         assert "en" in languages
         assert "de" in languages
 
-    def test_get_available_rules(self, mock_languagetool):
+    def test_get_available_rules(self):
         """Test that available rules are returned correctly."""
-        rules = mock_languagetool.get_available_rules("en")
+        languagetool = LanguageTool()
+        
+        rules = languagetool.get_available_rules("en")
         assert isinstance(rules, dict)
         assert "rules" in rules
         assert len(rules["rules"]) > 0
         assert all("id" in rule for rule in rules["rules"])
         assert all("description" in rule for rule in rules["rules"])
 
-    def test_get_rule_categories(self, mock_languagetool):
+    def test_get_rule_categories(self):
         """Test that rule categories are returned correctly."""
-        categories = mock_languagetool.get_rule_categories("en")
+        languagetool = LanguageTool()
+        
+        categories = languagetool.get_rule_categories("en")
         assert isinstance(categories, list)
         assert len(categories) > 0
         assert all(isinstance(cat, str) for cat in categories)
         assert "GRAMMAR" in categories
         assert "TYPOS" in categories
 
-    def test_get_error_statistics(self, mock_languagetool):
+    def test_get_error_statistics(self):
         """Test that error statistics are calculated correctly."""
+        languagetool = LanguageTool()
+        
         text = "I has a cat. They is happy."
-        stats = mock_languagetool.get_error_statistics(text, "en")
+        stats = languagetool.get_error_statistics(text, "en")
         assert isinstance(stats, dict)
         assert "total_errors" in stats
         assert "categories" in stats
@@ -85,52 +98,58 @@ class TestLanguageTool:
         assert len(stats["issue_types"]) > 0
         assert len(stats["rules"]) > 0
 
-    def test_get_corrected_text(self, mock_languagetool):
+    def test_get_corrected_text(self):
         """Test that text correction works correctly."""
+        languagetool = LanguageTool()
+        
         text = "I has a cat. They is happy."
-        corrected = mock_languagetool.get_corrected_text(text, "en")
+        corrected = languagetool.get_corrected_text(text, "en")
         assert isinstance(corrected, str)
         assert corrected != text
         assert "I have" in corrected
         assert "They are" in corrected
 
-    def test_cache_handling(self, mock_languagetool, temp_cache_dir):
+    def test_cache_handling(self, temp_cache_dir):
         """Test that cache handling works correctly."""
+        languagetool = LanguageTool()
+        
         # Set up cache directory
-        mock_languagetool.CACHE_DIR = temp_cache_dir
-        mock_languagetool.CACHE_FILE = temp_cache_dir / "languagetool_cache.json"
+        languagetool.CACHE_DIR = temp_cache_dir
+        languagetool.CACHE_FILE = temp_cache_dir / "languagetool_cache.json"
 
         # Perform a check to populate cache
         text = "I has a cat."
-        errors = mock_languagetool.check_text(text, "en")
+        errors = languagetool.check_text(text, "en")
         assert len(errors) > 0
 
         # Check that cache file was created
-        assert mock_languagetool.CACHE_FILE.exists()
+        assert languagetool.CACHE_FILE.exists()
 
         # Load cache and verify contents
-        cache = mock_languagetool._load_cache()
+        cache = languagetool._load_cache()
         assert isinstance(cache, dict)
         assert text in cache
         assert len(cache[text]) > 0
 
         # Test cache validation
-        assert mock_languagetool._is_cache_valid(errors)
+        assert languagetool._is_cache_valid(errors)
 
-    def test_error_handling(self, mock_languagetool):
+    def test_error_handling(self):
         """Test that error handling works correctly."""
+        languagetool = LanguageTool()
+        
         # Test with empty text
-        errors = mock_languagetool.check_text("", "en")
+        errors = languagetool.check_text("", "en")
         assert isinstance(errors, list)
         assert len(errors) == 0
 
         # Test with invalid language
-        errors = mock_languagetool.check_text("Hello", "invalid")
+        errors = languagetool.check_text("Hello", "invalid")
         assert isinstance(errors, list)
         assert len(errors) == 0
 
         # Test with invalid rules
-        errors = mock_languagetool.check_text(
+        errors = languagetool.check_text(
             "Hello",
             "en",
             enabled_rules=["INVALID_RULE"]
