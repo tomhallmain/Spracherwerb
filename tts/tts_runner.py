@@ -255,7 +255,7 @@ class TextToSpeechRunner:
             if full_text:
                 full_text += "\n\n"
             full_text += chunk
-            self._speak(chunk, run_context=run_context)
+            self._speak(chunk)
         while self.speech_queue.job_running:
             if self.run_context and self.run_context.should_skip():
                 return
@@ -378,7 +378,7 @@ class TextToSpeechRunner:
 
     def add_speech_file_to_queue(self, filepath):
         if not self.auto_play or self.speech_queue.has_pending() or self.speech_queue.job_running:
-            self.speech_queue.add((filepath))
+            self.speech_queue.add(filepath)
         else:
             self.speech_queue.job_running = True
             Utils.start_thread(self.play_async, use_asyncio=False, args=[filepath])

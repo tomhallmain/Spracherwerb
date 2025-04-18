@@ -91,12 +91,14 @@ class LLM:
 
     def ask(self, query, json_key=None, timeout=DEFAULT_TIMEOUT, context=None, system_prompt=None, system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE):
         """Ask the LLM a question and optionally extract a JSON value."""
+        Utils.log_debug(f"LLM.ask called with query length: {len(query)}, json_key: {json_key}")
         if json_key is not None:
             return self.generate_json_get_value(query, json_key, timeout=timeout, context=context, system_prompt=system_prompt, system_prompt_drop_rate=system_prompt_drop_rate)
         return self.generate_response_async(query, timeout=timeout, context=context, system_prompt=system_prompt, system_prompt_drop_rate=system_prompt_drop_rate)
 
     def generate_response(self, query, timeout=DEFAULT_TIMEOUT, context=None, system_prompt=None, system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE):
         """Generate a response from the LLM."""
+        Utils.log_debug(f"LLM.generate_response called with query length: {len(query)}")
         query = self._sanitize_query(query)
         timeout = self._get_timeout(timeout)
         Utils.log(f"Asking LLM {self.model_name}:\n{query}")
@@ -116,6 +118,7 @@ class LLM:
         
         if context is not None:
             data["context"] = context
+            Utils.log_debug(f"Adding context to LLM request, length: {len(context)}")
             
         # Randomly decide whether to include system prompt
         if system_prompt is not None and random.random() > system_prompt_drop_rate:
@@ -130,10 +133,12 @@ class LLM:
             data=json.dumps(data).encode("utf-8"),
         )
         try:
+            Utils.log_debug("Making LLM request...")
             response = request.urlopen(req, timeout=timeout).read().decode("utf-8")
             resp_json = json.loads(response)
             result = LLMResult.from_json(resp_json, context_provided=context is not None)
             result.response = self._clean_response_for_models(result.response)
+            Utils.log_debug(f"LLM response received, length: {len(result.response)}")
             return result
         except Exception as e:
             Utils.log_red(f"Failed to generate LLM response: {e}")
@@ -141,6 +146,7 @@ class LLM:
 
     def generate_response_async(self, query, timeout=DEFAULT_TIMEOUT, context=None, system_prompt=None, system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE):
         """Generate a response from the LLM in a separate thread with cancellation support."""
+        Utils.log_debug(f"LLM.generate_response_async called with query length: {len(query)}")
         self._cancelled = False
         self._result = None
         self._exception = None
@@ -148,31 +154,41 @@ class LLM:
 
         def run_generation():
             try:
+                Utils.log_debug("Starting LLM generation in thread")
                 result = self.generate_response(query, timeout, context, system_prompt, system_prompt_drop_rate)
                 if not self._cancelled:
                     self._result = result
+                    Utils.log_debug("LLM generation completed successfully")
+                else:
+                    Utils.log_debug("LLM generation cancelled before completion")
             except Exception as e:
                 self._exception = e
-            finally:
-                self._thread = None  # Clean up thread reference when done
+                Utils.log_red(f"Exception in LLM generation thread: {e}")
 
         # Start the generation in a separate thread
         self._thread = threading.Thread(target=run_generation)
         self._thread.daemon = True  # Make it a daemon thread so it won't prevent program exit
         self._thread.start()
+        Utils.log("LLM generation thread started")
 
         # Wait for completion or cancellation
-        while self._thread.is_alive():
-            if self.run_context and self.run_context.should_skip():
-                self._cancelled = True
-                Utils.log("Cancelling LLM generation due to skip request")
-                # Give the thread a moment to clean up
-                self._thread.join(timeout=1.0)
-                if self._thread.is_alive():
-                    Utils.log("Thread did not terminate gracefully, forcing cleanup")
-                self._thread = None  # Force cleanup even if thread is still alive
-                return None
-            time.sleep(self.CHECK_INTERVAL)
+        try:
+            while self._thread and self._thread.is_alive():
+                if self.run_context and self.run_context.should_skip():
+                    Utils.log_debug("Cancelling LLM generation due to skip request")
+                    self._cancelled = True
+                    # Give the thread a moment to clean up
+                    self._thread.join(timeout=1.0)
+                    if self._thread.is_alive():
+                        Utils.log_red("Thread did not terminate gracefully, forcing cleanup")
+                    self._thread = None  # Force cleanup even if thread is still alive
+                    return None
+                time.sleep(self.CHECK_INTERVAL)
+        except Exception as e:
+            self._exception = e
+            Utils.log_red(f"Exception while monitoring LLM thread: {e}")
+        finally:
+            self._thread = None  # Clean up thread reference when done
 
         # Handle the result
         if self._exception:
@@ -210,6 +226,7 @@ class LLM:
 
     def cancel_generation(self):
         """Cancel any ongoing LLM generation."""
+        Utils.log("Cancelling LLM generation")
         if self._thread and self._thread.is_alive():
             self._cancelled = True
             self._thread.join(timeout=1.0)

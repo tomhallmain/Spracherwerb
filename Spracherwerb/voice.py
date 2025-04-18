@@ -35,6 +35,7 @@ class Voice:
         if not self.can_speak or self._tts is None:
             Utils.log_yellow("Cannot speak.")
             return
+        Utils.log(f"Saying: {text}")
         temp_tts = TextToSpeechRunner(self.model_args, filepath="muse_voice", overwrite=True, run_context=self.run_context)
         current_time_str = str(datetime.datetime.now().timestamp())
         if "." in current_time_str:
@@ -51,6 +52,7 @@ class Voice:
         if not self.can_speak or self._tts is None:
             Utils.log_yellow("Cannot speak.")
             return
+        Utils.log(f"Preparing to say: {text}")
         if save_for_last:
             self._tts.await_pending_speech_jobs(run_jobs=False)
         current_time_str = str(datetime.datetime.now().timestamp())
@@ -67,7 +69,7 @@ class Voice:
         if not self.can_speak or self._tts is None:
             Utils.log_yellow("Cannot speak.")
             return
-        self._tts.await_pending_speech_jobs(run_jobs=False)
+        self._tts.await_pending_speech_jobs()
 
     def add_speech_file_to_queue(self, filepath):
         if not self.can_speak or self._tts is None:

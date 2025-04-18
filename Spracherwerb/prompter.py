@@ -10,7 +10,7 @@ _ = I18N._
 
 
 class Prompter:
-    """Manages prompt loading, language support, and topic history for the Muse application.
+    """Manages prompt loading, language support, and learning activity history for the language learning application.
     
     The Prompter class handles three types of prompts:
     1. System prompts: Located in the root prompts directory, used for core functionality
@@ -20,25 +20,30 @@ class Prompter:
     Prompt Directory Structure:
         prompts/
         ├── en/                     # English prompts (fallback language)
-        │   ├── weather.txt
-        │   └── news.txt
+        │   ├── vocabulary.txt
+        │   ├── grammar.txt
+        │   └── conversation.txt
         ├── de/                     # German prompts
-        │   └── weather.txt
-        ├── search_artist.txt       # System prompts (root directory)
-        ├── search_genre.txt
-        └── translate_de.txt
+        │   ├── vocabulary.txt
+        │   └── grammar.txt
+        ├── system/                 # System prompts
+        │   ├── pronunciation.txt
+        │   └── translation.txt
+        └── activities/            # Activity-specific prompts
+            ├── visual_vocabulary.txt
+            └── situational_dialogues.txt
         
     Usage:
         prompter = Prompter()
         
         # Get a language-specific prompt with fallback
-        weather_prompt = prompter.get_prompt("weather", language_code="de")
+        vocab_prompt = prompter.get_prompt("vocabulary", language_code="de")
         
         # Get a system prompt
-        search_prompt = prompter.get_prompt("search_artist")
+        pronunciation_prompt = prompter.get_prompt("system/pronunciation")
         
-        # Get a prompt for a specific topic
-        news_prompt = prompter.get_prompt(Topic.NEWS, language_code="fr")
+        # Get a prompt for a specific learning activity
+        grammar_prompt = prompter.get_prompt(Topic.GRAMMAR, language_code="fr")
     
     TODO: Create migration guide for:
     - Adding new language support
@@ -59,11 +64,11 @@ class Prompter:
 
     @staticmethod
     def update_history(topic, text=""):
-        """Update the timestamp for when a topic was last discussed.
+        """Update the timestamp for when a learning activity was last practiced.
         
         Args:
-            topic (Topic): The topic being discussed
-            text (str, optional): Reserved for future use
+            topic (Topic): The learning activity being practiced
+            text (str, optional): Additional context or notes about the activity
         
         Raises:
             Exception: If topic is not a valid Topic enum
@@ -74,10 +79,10 @@ class Prompter:
 
     @staticmethod
     def time_from_last_topic(topic):
-        """Get minutes elapsed since a topic was last discussed.
+        """Get minutes elapsed since a learning activity was last practiced.
         
         Returns:
-            int: Minutes since topic was last discussed, or very large number if never discussed
+            int: Minutes since activity was last practiced, or very large number if never practiced
         """
         if not isinstance(topic, Topic):
             raise Exception(f"Invalid topic: {topic}")
@@ -89,23 +94,23 @@ class Prompter:
 
     @staticmethod
     def over_n_hours_since_last(topic, n_hours=24):
-        """Check if more than n hours have passed since topic was discussed."""
+        """Check if more than n hours have passed since activity was practiced."""
         return Prompter.time_from_last_topic(topic) > (60 * n_hours)
 
     @staticmethod
     def under_n_hours_since_last(topic, n_hours):
-        """Check if less than n hours have passed since topic was discussed."""
+        """Check if less than n hours have passed since activity was practiced."""
         return not Prompter.over_n_hours_since_last(topic, n_hours)
 
     @staticmethod
     def get_oldest_topic(excluded_topics=[]):
-        """Find the topic that hasn't been discussed for the longest time.
+        """Find the learning activity that hasn't been practiced for the longest time.
         
         Args:
-            excluded_topics (list): Topics to ignore in the search
+            excluded_topics (list): Activities to ignore in the search
             
         Returns:
-            Topic: The topic with the oldest or no discussion timestamp
+            Topic: The activity with the oldest or no practice timestamp
         """
         oldest_time = None
         for topic in Topic.__members__.values():
@@ -126,25 +131,24 @@ class Prompter:
         self.prompts_dir = config.prompts_directory
 
     def get_prompt_update_history(self, topic):
-        """Get a prompt for a topic and update its discussion history.
+        """Get a prompt for a learning activity and update its practice history.
         
-        This method is crucial for maintaining topic novelty in DJ conversations.
-        It ensures that:
-        1. Topics aren't repeated too frequently
-        2. The DJ maintains a natural flow of conversation
-        3. All topics get fair coverage over time
+        This method is crucial for maintaining balanced learning progression:
+        1. Ensures activities aren't repeated too frequently
+        2. Maintains a natural progression of learning
+        3. Ensures all learning areas get appropriate coverage
         
         The method:
-        1. Validates the topic
+        1. Validates the activity
         2. Gets the prompt topic value
-        3. Updates the topic's timestamp in history
+        3. Updates the activity's timestamp in history
         4. Returns the appropriate prompt
         
         Args:
-            topic (Topic): The topic to get a prompt for and update history
+            topic (Topic): The learning activity to get a prompt for and update history
             
         Returns:
-            str: The prompt text for the topic
+            str: The prompt text for the activity
             
         Raises:
             Exception: If topic is not a valid Topic enum
@@ -166,7 +170,7 @@ class Prompter:
         Returns:
             str: A prompt that instructs the LLM how to translate the content
         """
-        translation_prompt = self.get_prompt("translate_" + language_code)
+        translation_prompt = self.get_prompt("system/translate_" + language_code)
         translation_prompt = translation_prompt.replace("#LANGUAGE", language_name_english)
         translation_prompt = translation_prompt.replace("#PROMPT", prompt)
         return translation_prompt
@@ -175,9 +179,10 @@ class Prompter:
         """Get a prompt from the prompts directory with language support.
         
         Search order:
-        1. Language-specific directory (e.g., 'de/weather.txt')
-        2. English directory if fallback enabled (e.g., 'en/weather.txt')
-        3. Root directory (e.g., 'search_artist.txt')
+        1. Language-specific directory (e.g., 'de/vocabulary.txt')
+        2. English directory if fallback enabled (e.g., 'en/vocabulary.txt')
+        3. System directory (e.g., 'system/pronunciation.txt')
+        4. Activities directory (e.g., 'activities/visual_vocabulary.txt')
         
         Args:
             prompt_name: Name of the prompt file without extension
@@ -206,22 +211,28 @@ class Prompter:
                 with open(english_path, "r", encoding="utf-8") as f:
                     return f.read()
                     
-        # If no language-specific or English version exists, try root directory
-        prompt_path = os.path.join(self.prompts_dir, f"{prompt_name}.txt")
-        if os.path.exists(prompt_path):
-            with open(prompt_path, "r", encoding="utf-8") as f:
+        # Try system prompts directory
+        system_path = os.path.join(self.prompts_dir, "system", f"{prompt_name}.txt")
+        if os.path.exists(system_path):
+            with open(system_path, "r", encoding="utf-8") as f:
+                return f.read()
+                
+        # Try activities directory
+        activities_path = os.path.join(self.prompts_dir, "activities", f"{prompt_name}.txt")
+        if os.path.exists(activities_path):
+            with open(activities_path, "r", encoding="utf-8") as f:
                 return f.read()
                 
         raise FileNotFoundError(f"Prompt file not found: {prompt_name}.txt")
 
     def get_prompt_with_language(self, topic, language_code: str = "en") -> str:
-        """Get a prompt for a topic with language support and fallback.
+        """Get a prompt for a learning activity with language support and fallback.
         
-        This method combines topic history tracking with language-aware prompt loading.
+        This method combines activity history tracking with language-aware prompt loading.
         If a language-specific prompt doesn't exist, it will attempt translation.
         
         Args:
-            topic (Topic): The topic to get a prompt for
+            topic (Topic): The learning activity to get a prompt for
             language_code (str): Two-letter language code
             
         Returns:

@@ -5,14 +5,20 @@ import time
 import traceback
 from typing import Optional, List, Callable
 
-from extensions.llm import LLM, LLMResponseException, LLMResult
+from extensions.hacker_news_souper import HackerNewsSouper
+from extensions.news_api import NewsAPI
+from extensions.open_weather import OpenWeatherAPI
 from extensions.soup_utils import WebConnectionException
 from extensions.wiki_opensearch_api import WikiOpenSearchAPI
-from Spracherwerb.blacklist import BlacklistException, blacklist
-from Spracherwerb.muse_memory import MuseMemory
-from Spracherwerb.prompter import Prompter
-from Spracherwerb.schedules_manager import SchedulesManager
-from Spracherwerb.voice import Voice
+from extensions.llm import LLM, LLMResponseException, LLMResult
+from library_data.blacklist import blacklist, BlacklistException
+from library_data.media_track import MediaTrack
+from muse.dj_persona import DJPersona
+from muse.muse_memory import MuseMemory
+from muse.schedules_manager import SchedulesManager, ScheduledShutdownException
+from muse.playback import Playback
+from muse.prompter import Prompter
+from muse.voice import Voice
 from utils.config import config
 from utils.globals import Topic
 from utils.translations import I18N
@@ -27,13 +33,18 @@ class Muse:
     preparation_starts_minutes_from_end = float(config.muse_config["preparation_starts_minutes_from_end"])
     preparation_starts_after_seconds_sleep = int(config.muse_config["preparation_starts_after_seconds_sleep"])
 
-    def __init__(self, args, run_context):
+    def __init__(self, args, library_data, run_context):
         self.args = args
+        self.library_data = library_data
         self._run_context = run_context
         if not args.placeholder:
             assert self.library_data is not None # The DJ should have access to the music library.
             assert self._run_context is not None
 
+        self._schedule = SchedulesManager.default_schedule
+        if self._schedule is None:
+            raise Exception("Failed to establish active schedule")
+        self.memory = MuseMemory()
         self.llm = LLM(model_name=config.llm_model_name)
         
         initial_voice = self._schedule.voice
@@ -45,6 +56,9 @@ class Muse:
         else:
             self.voice = Voice(initial_voice, run_context=self._run_context)
             
+        self.open_weather_api = OpenWeatherAPI()
+        self.news_api = NewsAPI()
+        self.hacker_news_souper = HackerNewsSouper()
         self.prompter = Prompter()
         self.wiki_search = WikiOpenSearchAPI()
         self.has_started_prep = False
@@ -140,6 +154,7 @@ class Muse:
                 update_ui_callbacks.update_spot_profile_topics_text(spot_profile.get_topic_text())
 
     def maybe_dj(self, spot_profile):
+        """If the DJ is prepared and will speak, wait for the speech queue to clear, then return immediately."""
         # TODO quality info for songs
         start = time.time()
         self.voice.finish_speaking()
@@ -151,6 +166,26 @@ class Muse:
     def reset(self):
         self.has_started_prep = False
         self.is_cancelled_prep = False
+        self.check_schedules()
+
+    def check_schedules(self, get_upcoming_tracks_callback=None):
+        self.check_for_shutdowns()
+        if not self.args.muse:
+            return
+        now = datetime.datetime.now()
+        active_schedule = SchedulesManager.get_active_schedule(now)
+        if active_schedule is None:
+            raise Exception("Failed to establish active schedule")
+        if self._schedule != active_schedule or self._last_checked_schedules is None:
+            if self._last_checked_schedules is None:
+                Utils.log_yellow(f"Starting with DJ {active_schedule.voice} - until {active_schedule.next_end(now)}")
+            else:
+                Utils.log_yellow(f"Switching DJ to {active_schedule.voice} from {self._schedule.voice} - until {active_schedule.next_end(now)}")
+            self.change_voice(active_schedule.voice, get_upcoming_tracks_callback)
+        else:
+            Utils.log("No change in schedule")
+        self._schedule = active_schedule
+        self._last_checked_schedules = datetime.datetime.now()
 
     def change_voice(self, voice_name, get_upcoming_tracks_callback=None):
         """Switch to a new DJ persona by voice name."""
@@ -191,6 +226,35 @@ class Muse:
             self.voice = Voice(voice_name, run_context=self._run_context)
             self.say(_("Hello"), locale=I18N.locale)
 
+    def check_for_shutdowns(self):
+        now = datetime.datetime.now()
+        try:
+            SchedulesManager.check_for_shutdown_request(now)
+        except ScheduledShutdownException as e:
+            if self.args.muse:
+                self.sign_off(now)
+            raise e
+
+    def sign_off(self, now):
+        now_general_word = _("tonight") if (now.hour < 5 or now.hour > 19) else _("today")
+        tomorrow = SchedulesManager.get_tomorrow(now)
+        self.prepare_to_say(_("The scheduled shutdown time has arrived. That's it for {0}.").format(now_general_word))
+        tomorrow_schedule = SchedulesManager.get_active_schedule(tomorrow)
+        if tomorrow_schedule is not None:
+            if tomorrow_schedule.voice == self._schedule.voice:
+                self.prepare_to_say(_("I'll be on again tomorrow."))
+            else:
+                self.prepare_to_say(_("Tomorrow you'll hear from {0}.").format(tomorrow_schedule.voice))
+                next_weekday_for_this_voice = SchedulesManager.get_next_weekday_index_for_voice(self._schedule.voice, tomorrow)
+                if next_weekday_for_this_voice is not None:
+                    if next_weekday_for_this_voice == now.weekday():
+                        self.prepare_to_say(_("The next time I'll be on is next week, at the same time."))
+                    elif len(self._schedule.weekday_options) < 7:
+                        self.prepare_to_say(_("I'll be on again this coming {0}.").format(I18N.day_of_the_week(next_weekday_for_this_voice)))
+        self.voice.finish_speaking()
+        self.get_current_persona().set_last_signoff_time()
+        self._schedule = tomorrow_schedule
+
     def say_good_day(self):
         hour = SchedulesManager.get_hour()
         if hour < 5 or hour > 22:
@@ -205,6 +269,93 @@ class Muse:
         else:
             self.prepare_to_say(_("Good evening"))
 
+    def maybe_prep_dj_post(self, spot_profile):
+        # TODO quality info for songs
+        if spot_profile.speak_about_prior_track:
+            self.speak_about_previous_track(spot_profile)
+            spot_profile.was_spoken = True
+        if spot_profile.speak_about_prior_group:
+            self.speak_about_previous_group(spot_profile)
+            spot_profile.was_spoken = True
+
+    def speak_about_previous_track(self, spot_profile):
+        # TODO have muse mention if the track has been split in the spot.
+        # TODO make this better with new spot_profile methods to get more previous tracks
+        previous_track = spot_profile.previous_track
+        dj_remark = _("That was \"{0}\" in \"{1}\"").format(previous_track.readable_title(), previous_track.readable_album())
+        if previous_track.artist is not None and previous_track.artist!= "" and random.random() < 0.8:
+            dj_remark += _(" by \"{0}\".").format(previous_track.readable_artist())
+        else:
+            dj_remark += "."
+        if previous_track._is_extended and random.random() < 0.8:
+            if random.random() < 0.5:
+                dj_remark +=  " " + _("That was a new track. How'd you like that?")
+            else:
+                dj_remark = _("That was a new one. How'd you like it?") + " " + dj_remark
+        spot_profile.mark_track_as_spoken(previous_track)
+        self.say_at_some_point(dj_remark, spot_profile, None)
+
+    def maybe_prep_dj_prior(self, spot_profile):
+        # TODO quality info for songs
+        if spot_profile.speak_about_upcoming_group:
+            self.speak_about_upcoming_group(spot_profile)
+            spot_profile.has_already_spoken = True
+            spot_profile.was_spoken = True
+        if spot_profile.speak_about_upcoming_track:
+            self.speak_about_upcoming_track(spot_profile)
+            spot_profile.has_already_spoken = True
+            spot_profile.was_spoken = True
+        if spot_profile.talk_about_something:
+            self.talk_about_something(spot_profile)
+            spot_profile.was_spoken = True
+        else:
+            self.memory.tracks_since_last_topic += 1
+
+    def speak_about_upcoming_track(self, spot_profile):
+        # TODO have muse mention if the track has been split in the spot.
+        # TODO make this better with new spot_profile methods to get more upcoming tracks
+        track = spot_profile.track
+        if spot_profile.previous_track is None:
+            dj_remark = _("To start, we'll be playing: \"{0}\" from \"{1}\"").format(track.readable_title(), track.readable_album())
+        else:
+            dj_remark = _("Next up, we'll be playing: \"{0}\" from \"{1}\"").format(track.readable_title(), track.readable_album())
+        if track.artist is not None and track.artist!= "":
+            dj_remark += _(" by \"{0}\".").format(track.readable_artist())
+        else:
+            dj_remark += "."
+        spot_profile.mark_track_as_spoken(track)
+        if track._is_extended and random.random() < 0.8:
+            dj_remark += " " + _("This one is a new track.")
+            # extension_details = ExtensionManager.get_latest_extension_details()
+            # if extension_details is not None:
+            #     dj_remark += " " + _("I searched for: ") + extension_details.search_query
+        self.say_at_some_point(dj_remark, spot_profile, None)
+
+    def speak_about_previous_group(self, spot_profile):
+        previous_group = spot_profile.old_grouping
+        if spot_profile.previous_track is not None:
+            group_count = self.get_playlist().get_group_count(previous_group)
+            if group_count > 1:
+                if spot_profile.previous_track._is_extended:
+                    dj_remark = _("After that short interlude, we're back to our {0} shuffle.").format(
+                        spot_profile.grouping_type.get_grouping_readable_name())
+                else:
+                    dj_remark = _("We've been listening to a group of tracks from the {0} {1}").format(
+                        spot_profile.grouping_type.get_grouping_readable_name(), previous_group)
+                self.say_at_some_point(dj_remark, spot_profile, None)
+
+    def speak_about_upcoming_group(self, spot_profile):
+        new_group = spot_profile.new_grouping
+        if spot_profile.previous_track is not None and spot_profile.track is not None:
+            group_count = self.get_playlist().get_group_count(new_group)
+            if group_count > 1:
+                if spot_profile.previous_track._is_extended:
+                    dj_remark = _("We're listening to a group of tracks from the {0} {1}.").format(
+                        spot_profile.grouping_type.get_grouping_readable_name(), new_group)
+                else:
+                    dj_remark = _("We're going to start a new group of tracks from the {0} {1}.").format(
+                        spot_profile.grouping_type.get_grouping_readable_name(), new_group)
+                self.say_at_some_point(dj_remark, spot_profile, None)
 
     def get_topic(self, previous_track, excluded_topics=[]):
         excluded_topics = list(excluded_topics)

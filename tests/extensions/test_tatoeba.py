@@ -1,0 +1,157 @@
+"""Tests for the Tatoeba extension."""
+
+import pytest
+from pathlib import Path
+import json
+from extensions.tatoeba import Tatoeba, TatoebaSentence
+
+class TestTatoeba:
+    """Test suite for the Tatoeba extension."""
+
+    def test_initialization(self, mock_tatoeba):
+        """Test that the Tatoeba instance initializes correctly."""
+        assert mock_tatoeba is not None
+        assert isinstance(mock_tatoeba, Tatoeba)
+
+    def test_search_sentences(self, mock_tatoeba):
+        """Test that sentence search works correctly."""
+        # Test search with basic parameters
+        sentences = mock_tatoeba.search_sentences(
+            language="en",
+            query="hello",
+            limit=5
+        )
+        assert isinstance(sentences, list)
+        assert len(sentences) <= 5
+        assert all(isinstance(sent, TatoebaSentence) for sent in sentences)
+        assert all(sent.language == "en" for sent in sentences)
+        assert all(sent.text is not None for sent in sentences)
+        assert all(isinstance(sent.translations, list) for sent in sentences)
+
+        # Test search with length filters
+        sentences = mock_tatoeba.search_sentences(
+            language="en",
+            min_length=10,
+            max_length=20,
+            limit=5
+        )
+        assert isinstance(sentences, list)
+        assert len(sentences) <= 5
+        assert all(10 <= len(sent.text) <= 20 for sent in sentences)
+
+        # Test search with audio filter
+        sentences = mock_tatoeba.search_sentences(
+            language="en",
+            has_audio=True,
+            limit=5
+        )
+        assert isinstance(sentences, list)
+        assert len(sentences) <= 5
+        assert all(sent.audio_url is not None for sent in sentences)
+
+    def test_get_sentence(self, mock_tatoeba):
+        """Test that specific sentence retrieval works correctly."""
+        # Get a sentence ID from a search
+        sentences = mock_tatoeba.search_sentences(
+            language="en",
+            limit=1
+        )
+        if sentences:
+            sentence_id = sentences[0].id
+            sentence = mock_tatoeba.get_sentence(sentence_id)
+            assert isinstance(sentence, TatoebaSentence)
+            assert sentence.id == sentence_id
+            assert sentence.text is not None
+            assert sentence.language is not None
+            assert isinstance(sentence.translations, list)
+            assert all(isinstance(t, TatoebaSentence) for t in sentence.translations)
+
+    def test_get_random_sentence(self, mock_tatoeba):
+        """Test that random sentence retrieval works correctly."""
+        # Test basic random sentence
+        sentence = mock_tatoeba.get_random_sentence(language="en")
+        assert isinstance(sentence, TatoebaSentence)
+        assert sentence.language == "en"
+        assert sentence.text is not None
+
+        # Test random sentence with length filters
+        sentence = mock_tatoeba.get_random_sentence(
+            language="en",
+            min_length=10,
+            max_length=20
+        )
+        assert isinstance(sentence, TatoebaSentence)
+        assert 10 <= len(sentence.text) <= 20
+
+        # Test random sentence with audio
+        sentence = mock_tatoeba.get_random_sentence(
+            language="en",
+            has_audio=True
+        )
+        assert isinstance(sentence, TatoebaSentence)
+        assert sentence.audio_url is not None
+
+    def test_get_available_languages(self, mock_tatoeba):
+        """Test that available languages are returned correctly."""
+        languages = mock_tatoeba.get_available_languages()
+        assert isinstance(languages, list)
+        assert len(languages) > 0
+        assert all(isinstance(lang, str) for lang in languages)
+        assert "en" in languages
+        assert "de" in languages
+
+    def test_cache_handling(self, mock_tatoeba, temp_cache_dir):
+        """Test that cache handling works correctly."""
+        # Set up cache directory
+        mock_tatoeba.CACHE_DIR = temp_cache_dir
+        mock_tatoeba.CACHE_FILE = temp_cache_dir / "tatoeba_cache.json"
+
+        # Perform a search to populate cache
+        sentences = mock_tatoeba.search_sentences(
+            language="en",
+            limit=5
+        )
+        assert len(sentences) > 0
+
+        # Check that cache file was created
+        assert mock_tatoeba.CACHE_FILE.exists()
+
+        # Load cache and verify contents
+        cache = mock_tatoeba._load_cache()
+        assert isinstance(cache, dict)
+        assert len(cache) > 0
+
+        # Test cache validation
+        assert mock_tatoeba._is_cache_valid(sentences[0])
+
+    def test_error_handling(self, mock_tatoeba):
+        """Test that error handling works correctly."""
+        # Test invalid sentence ID
+        sentence = mock_tatoeba.get_sentence(-1)
+        assert sentence is None
+
+        # Test invalid search parameters
+        sentences = mock_tatoeba.search_sentences(
+            language="invalid",
+            limit=5
+        )
+        assert isinstance(sentences, list)
+        assert len(sentences) == 0
+
+        # Test invalid length filters
+        sentences = mock_tatoeba.search_sentences(
+            language="en",
+            min_length=20,
+            max_length=10,
+            limit=5
+        )
+        assert isinstance(sentences, list)
+        assert len(sentences) == 0
+
+        # Test invalid limit
+        sentences = mock_tatoeba.search_sentences(
+            language="en",
+            limit=-1
+        )
+        assert isinstance(sentences, list)
+        assert len(sentences) == 0 

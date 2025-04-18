@@ -3,6 +3,9 @@ from enum import Enum, auto
 from time import time
 from typing import Optional, Dict
 
+from utils import Utils
+
+
 class UserAction(Enum):
     """Enum representing different types of user actions."""
     NONE = auto()
@@ -10,7 +13,6 @@ class UserAction(Enum):
     SKIP_GROUPING = auto()
     PAUSE = auto()
     CANCEL = auto()
-    SKIP_DELAY = auto()
 
 @dataclass
 class RunContext:
@@ -27,6 +29,7 @@ class RunContext:
     skip_delay: bool = False
     skip_grouping: bool = False
     is_paused: bool = False
+    is_cancelled: bool = False
     
     # Map of interaction times for each action type
     interaction_times: Dict[UserAction, float] = field(default_factory=dict)
@@ -37,11 +40,28 @@ class RunContext:
         self.interaction_times[action] = time()
         
         # Update the corresponding state flags
-        self.skip_track = action == UserAction.SKIP_TRACK
-        self.skip_delay = action == UserAction.SKIP_DELAY
-        self.skip_grouping = action == UserAction.SKIP_GROUPING
-        self.is_paused = action == UserAction.PAUSE
-    
+        if action == UserAction.SKIP_TRACK or action == UserAction.SKIP_GROUPING:
+            if action == UserAction.SKIP_TRACK:
+                Utils.log("Skipping ahead to next track.")
+            else:
+                Utils.log("Skipping ahead to next track grouping.")
+            self.skip_track = True
+            self.skip_delay = True
+            self.skip_grouping = action == UserAction.SKIP_GROUPING
+            self.is_paused = False
+        elif action == UserAction.PAUSE:
+            Utils.log("Pausing playback.")
+            self.is_paused = True
+        elif action == UserAction.CANCEL:
+            Utils.log("Cancelling playback.")
+            self.is_cancelled = True
+            self.is_paused = False
+            self.skip_track = True
+            self.skip_grouping = False
+            self.skip_delay = True
+
+        Utils.log(f"Updated action to {action} at {self.interaction_times[action]}")
+
     def get_last_interaction_time(self, action: UserAction) -> Optional[float]:
         """Get the timestamp of the last interaction for a specific action."""
         return self.interaction_times.get(action)
@@ -61,4 +81,8 @@ class RunContext:
         Returns:
             bool: True if either skip_track or skip_grouping is True, False otherwise.
         """
-        return self.skip_track or self.skip_grouping 
+        return self.skip_track or self.skip_grouping
+    
+    def was_cancelled(self) -> bool:
+        """Check if this context was cancelled at any point."""
+        return UserAction.CANCEL in self.interaction_times

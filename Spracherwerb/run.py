@@ -4,12 +4,12 @@ import time
 import traceback
 
 from library_data.library_data import LibraryData
-from Spracherwerb.muse import Muse
-from Spracherwerb.playback import Playback
-from Spracherwerb.playback_config import PlaybackConfig
-from Spracherwerb.run_config import RunConfig
-from Spracherwerb.run_context import RunContext, UserAction
-from Spracherwerb.schedules_manager import ScheduledShutdownException
+from muse.muse import Muse
+from muse.playback import Playback
+from muse.playback_config import PlaybackConfig
+from muse.run_config import RunConfig
+from muse.run_context import RunContext, UserAction
+from muse.schedules_manager import ScheduledShutdownException
 from utils.config import config
 from utils.ffmpeg_handler import FFmpegHandler
 from utils.temp_dir import TempDir
@@ -41,12 +41,12 @@ class Run:
     def next(self):
         """Skip to the next track."""
         self._run_context.update_action(UserAction.SKIP_TRACK)
-        self.get_playback().next()
+        self.get_playback().stop()
 
     def next_grouping(self):
         """Skip to the next grouping."""
         self._run_context.update_action(UserAction.SKIP_GROUPING)
-        self.get_playback().next_grouping()
+        self.get_playback().stop()
 
     def pause(self):
         """Pause playback."""
@@ -54,8 +54,6 @@ class Run:
         self.get_playback().pause()
     
     def get_playback(self):
-        if self._playback is None:
-            raise Exception("Playback was not initalized.")
         return self._playback
 
     def get_library_data(self):
@@ -127,7 +125,7 @@ class Run:
         """Cancel all operations."""
         Utils.log("Canceling...")
         self._run_context.update_action(UserAction.CANCEL)
-        self.get_playback().next()
+        self.get_playback().stop()
 
     def open_text(self):
         song_text_filepath = self.get_playback().get_track_text_file()
@@ -153,7 +151,7 @@ class Run:
         Returns:
             bool: True if a CANCEL action exists in the run context, False otherwise
         """
-        return self._run_context.user_action == UserAction.CANCEL
+        return self._run_context.was_cancelled()
 
 
 def main(args):
