@@ -102,6 +102,11 @@ class Wiktionary:
             Utils.log(f"Using cached entry for {word}")
             return self.entries[cache_key]
         
+        # Validate language
+        if not language or not language.isalpha() or len(language) != 2:
+            Utils.log_yellow(f"Invalid language code: {language}")
+            return None
+        
         try:
             # First get the page content
             params = {
@@ -414,15 +419,26 @@ class Wiktionary:
             return []
         
         synonyms = []
+        # Look for all synonyms in spans with nyms synonym class
         syn_matches = re.finditer(
-            r'<h3><span class="mw-headline" id="Synonyms">.*?</h3>(.*?)(?=<h3>|$)',
+            r'<span class="nyms synonym">.*?<span class="Latn" lang="en"><a[^>]*>(.*?)</a></span>(?:, <span class="Latn" lang="en"><a[^>]*>(.*?)</a></span>)*',
             entry.content,
             re.DOTALL
         )
         
         for match in syn_matches:
-            syn_items = re.finditer(r'<li><a[^>]+>(.*?)</a></li>', match.group(0))
-            synonyms.extend(item.group(1) for item in syn_items)
+            # Extract all synonyms from the matched text
+            syn_text = match.group(0)
+            # Find all individual synonyms in this match
+            syn_items = re.finditer(
+                r'<span class="Latn" lang="en"><a[^>]*>(.*?)</a></span>',
+                syn_text
+            )
+            for item in syn_items:
+                synonym = item.group(1).strip()
+                if synonym and synonym not in synonyms:  # Avoid duplicates
+                    synonyms.append(synonym)
+                    Utils.log_debug(f"Found synonym: {synonym}")
         
         Utils.log(f"Found {len(synonyms)} synonyms for {word}")
         return synonyms
@@ -436,15 +452,26 @@ class Wiktionary:
             return []
         
         antonyms = []
+        # Look for all antonyms in spans with nyms antonym class
         ant_matches = re.finditer(
-            r'<h3><span class="mw-headline" id="Antonyms">.*?</h3>(.*?)(?=<h3>|$)',
+            r'<span class="nyms antonym">.*?<span class="Latn" lang="en"><a[^>]*>(.*?)</a></span>(?:, <span class="Latn" lang="en"><a[^>]*>(.*?)</a></span>)*',
             entry.content,
             re.DOTALL
         )
         
         for match in ant_matches:
-            ant_items = re.finditer(r'<li><a[^>]+>(.*?)</a></li>', match.group(0))
-            antonyms.extend(item.group(1) for item in ant_items)
+            # Extract all antonyms from the matched text
+            ant_text = match.group(0)
+            # Find all individual antonyms in this match
+            ant_items = re.finditer(
+                r'<span class="Latn" lang="en"><a[^>]*>(.*?)</a></span>',
+                ant_text
+            )
+            for item in ant_items:
+                antonym = item.group(1).strip()
+                if antonym and antonym not in antonyms:  # Avoid duplicates
+                    antonyms.append(antonym)
+                    Utils.log_debug(f"Found antonym: {antonym}")
         
         Utils.log(f"Found {len(antonyms)} antonyms for {word}")
         return antonyms 

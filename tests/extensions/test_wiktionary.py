@@ -98,7 +98,7 @@ class TestWiktionary:
     def test_cache_handling(self, temp_cache_dir):
         """Test that cache handling works correctly."""
         wiktionary = Wiktionary()
-        
+
         # Set up cache directory
         wiktionary.CACHE_DIR = temp_cache_dir
         wiktionary.CACHE_FILE = temp_cache_dir / "entries.json"
@@ -111,9 +111,9 @@ class TestWiktionary:
         assert wiktionary.CACHE_FILE.exists()
 
         # Load cache and verify contents
-        cache = wiktionary._load_cache()
-        assert isinstance(cache, dict)
-        assert len(cache) > 0
+        wiktionary._load_cache()
+        assert isinstance(wiktionary.entries, dict)
+        assert len(wiktionary.entries) > 0
 
         # Test cache validation
         assert wiktionary._is_cache_valid(entry)
