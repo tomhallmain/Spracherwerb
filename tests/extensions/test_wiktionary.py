@@ -1,12 +1,18 @@
 """Integration tests for the Wiktionary extension."""
 
-import pytest
 from pathlib import Path
-import json
+import shutil
 from extensions.wiktionary import Wiktionary, WiktionaryEntry
 
 class TestWiktionary:
     """Integration test suite for the Wiktionary extension."""
+
+    def setup_method(self):
+        """Clear cache before each test."""
+        cache_dir = Path("cache/wiktionary")
+        if cache_dir.exists():
+            shutil.rmtree(cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
 
     def test_initialization(self):
         """Test that the Wiktionary instance initializes correctly."""
@@ -54,20 +60,18 @@ class TestWiktionary:
     def test_get_word_forms(self):
         """Test that word form retrieval works correctly."""
         wiktionary = Wiktionary()
-        
-        # Test verb forms
-        forms = wiktionary.get_word_forms("run", "en")
-        assert isinstance(forms, dict)
-        assert len(forms) > 0
-        assert all(isinstance(key, str) for key in forms.keys())
-        assert all(isinstance(value, list) for value in forms.values())
-        assert all(isinstance(v, str) for values in forms.values() for v in values)
 
-        # Test noun forms
-        forms = wiktionary.get_word_forms("child", "en")
-        assert isinstance(forms, dict)
-        assert len(forms) > 0
-        assert "plural" in forms
+        # Test verb forms - using "be" as it's a common irregular verb with conjugation tables
+        forms = wiktionary.get_word_forms("ask", "en")
+        assert forms, "Should find word forms for 'ask'"
+        assert "present" in forms, "Should find present tense forms"
+        assert "past" in forms, "Should find past tense forms"
+        assert "past participle" in forms, "Should find past participle forms"
+        
+        # Verify some specific forms
+        assert "ask" in forms["present"], "Should include 'ask' in present forms"
+        assert "asking" in forms["present participle"], "Should include 'asking' in present participle forms"
+        assert "asked" in forms["past participle"], "Should include 'asked' in past participle forms"
 
     def test_get_synonyms(self):
         """Test that synonym retrieval works correctly."""

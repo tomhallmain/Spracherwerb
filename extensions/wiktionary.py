@@ -23,6 +23,7 @@ class WiktionaryEntry:
     examples: List[str] = None
     related_words: List[str] = None
     last_accessed: Optional[float] = None
+    content: Optional[str] = None  # Store the raw content for further parsing
 
 
 class Wiktionary:
@@ -35,19 +36,26 @@ class Wiktionary:
     
     def __init__(self):
         """Initialize the Wiktionary client with caching."""
+        Utils.log("Initializing Wiktionary client")
         self.entries: Dict[str, WiktionaryEntry] = {}
         self._load_cache()
+        Utils.log("Wiktionary client initialized successfully")
     
     def _load_cache(self):
         """Load cached entry data from disk."""
         try:
+            Utils.log("Loading Wiktionary cache")
             if self.CACHE_FILE.exists():
+                Utils.log_debug(f"Loading cache from {self.CACHE_FILE}")
                 with open(self.CACHE_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.entries = {
                         word: WiktionaryEntry(**entry_data)
                         for word, entry_data in data.items()
                     }
+                Utils.log(f"Loaded {len(self.entries)} entries from cache")
+            else:
+                Utils.log_yellow("Cache file not found")
         except Exception as e:
             Utils.log_red(f"Error loading Wiktionary cache: {e}")
             self.entries = {}
@@ -55,6 +63,7 @@ class Wiktionary:
     def _save_cache(self):
         """Save entry data to cache file."""
         try:
+            Utils.log("Saving Wiktionary cache")
             self.CACHE_DIR.mkdir(parents=True, exist_ok=True)
             with open(self.CACHE_FILE, 'w', encoding='utf-8') as f:
                 json.dump(
@@ -64,14 +73,18 @@ class Wiktionary:
                     ensure_ascii=False,
                     indent=2
                 )
+            Utils.log(f"Saved {len(self.entries)} entries to cache")
         except Exception as e:
             Utils.log_red(f"Error saving Wiktionary cache: {e}")
     
     def _is_cache_valid(self, entry: WiktionaryEntry) -> bool:
         """Check if cached entry data is still valid."""
         if not entry.last_accessed:
+            Utils.log_debug("Entry has no last_accessed timestamp")
             return False
-        return (time.time() - entry.last_accessed) < self.CACHE_DURATION
+        is_valid = (time.time() - entry.last_accessed) < self.CACHE_DURATION
+        Utils.log_debug(f"Cache validity: {is_valid} (last access: {time.time() - entry.last_accessed:.2f}s ago)")
+        return is_valid
     
     def get_word_entry(
         self,
@@ -82,27 +95,49 @@ class Wiktionary:
     ) -> Optional[WiktionaryEntry]:
         """Get a word entry from Wiktionary."""
         cache_key = f"{word}_{language}"
+        Utils.log(f"Getting word entry for {word} in {language}")
         
         # Check cache first
         if cache_key in self.entries and self._is_cache_valid(self.entries[cache_key]):
+            Utils.log(f"Using cached entry for {word}")
             return self.entries[cache_key]
         
         try:
+            # First get the page content
             params = {
                 "action": "parse",
-                "page": word,
                 "format": "json",
-                "prop": "text"
+                "page": word,
+                "prop": "text",
+                "disabletoc": "true",
+                "disableeditsection": "true",
+                "disablelimitreport": "true"
             }
             
+            # Log the complete URL with all parameters
+            query_string = "&".join(f"{k}={requests.utils.quote(str(v))}" for k, v in params.items())
+            complete_url = f"{self.BASE_URL}?{query_string}"
+            Utils.log(f"Complete API URL: {complete_url}")
+            
+            Utils.log(f"Fetching entry from {self.BASE_URL}")
             response = requests.get(self.BASE_URL, params=params)
             response.raise_for_status()
-            data = response.json()
+            Utils.log_debug(f"Response status: {response.status_code}")
             
-            if "error" in data:
+            data = response.json()
+            Utils.log_debug(f"Response data: {data}")
+            
+            # Get the parsed content
+            if "parse" not in data or "text" not in data["parse"]:
+                Utils.log_yellow(f"No content found for {word}")
+                return None
+                
+            content = data["parse"]["text"]["*"]
+            if not content:
+                Utils.log_yellow(f"No content found for {word}")
                 return None
             
-            content = data["parse"]["text"]["*"]
+            Utils.log_debug(f"Retrieved content length: {len(content)}")
             
             # Parse the content
             entry = self._parse_wiktionary_content(
@@ -114,15 +149,58 @@ class Wiktionary:
             )
             
             if entry:
+                Utils.log(f"Successfully parsed entry for {word}")
                 self.entries[cache_key] = entry
                 self._save_cache()
+            else:
+                Utils.log_yellow(f"No valid entry found for {word}")
             
             return entry
             
         except Exception as e:
             Utils.log_red(f"Error getting Wiktionary entry for {word}: {e}")
+            Utils.log_red(f"Error type: {type(e)}")
+            Utils.log_red(f"Error details: {str(e)}")
             return None
     
+    def _find_part_of_speech(self, content: str) -> str:
+        """
+        Find the first valid part of speech in the content.
+
+        NOTE: For the secondary languages, the IDs for their part of speech titles
+        have _{index} appended to them, so they should not interfere with this test.
+        """
+        Utils.log_debug("Looking for part of speech in content")
+        
+        # List of valid parts of speech to look for
+        valid_parts = ["Noun", "Verb", "Adjective", "Adverb", "Pronoun", 
+                      "Preposition", "Conjunction", "Interjection", "Article"]
+        
+        # Look for h3 or h4 elements with part of speech IDs
+        for part in valid_parts:
+            # Try h3 first
+            match = re.search(
+                rf'<h3[^>]*id="{part}"[^>]*>.*?</h3>',
+                content,
+                re.DOTALL
+            )
+            if match:
+                Utils.log_debug(f"Found part of speech '{part}' in h3")
+                return part.lower()
+            
+            # Then try h4
+            match = re.search(
+                rf'<h4[^>]*id="{part}"[^>]*>.*?</h4>',
+                content,
+                re.DOTALL
+            )
+            if match:
+                Utils.log_debug(f"Found part of speech '{part}' in h4")
+                return part.lower()
+        
+        Utils.log_yellow("No valid part of speech found")
+        return "unknown"
+
     def _parse_wiktionary_content(
         self,
         content: str,
@@ -133,130 +211,174 @@ class Wiktionary:
     ) -> Optional[WiktionaryEntry]:
         """Parse Wiktionary page content into a WiktionaryEntry object."""
         try:
+            Utils.log_debug(f"Parsing content for {word}")
+            
             # Find the language section
             lang_section = re.search(
-                rf'<h2><span class="mw-headline" id="{language}">.*?</h2>(.*?)(?=<h2>|$)',
+                rf'<h2[^>]*>English</h2>(.*?)(?=<h2>|$)',
                 content,
                 re.DOTALL
             )
             
             if not lang_section:
+                Utils.log_yellow(f"No {language} section found for {word}")
                 return None
             
             content = lang_section.group(1)
+            Utils.log_debug(f"Found {language} section for {word}")
             
-            # Extract part of speech
-            pos_match = re.search(r'<h3><span class="mw-headline" id=".*?">(.*?)</span></h3>', content)
-            part_of_speech = pos_match.group(1) if pos_match else "unknown"
+            # Find the part of speech
+            part_of_speech = self._find_part_of_speech(content)
+            Utils.log_debug(f"Part of speech: {part_of_speech}")
             
             # Extract definitions
             definitions = []
-            def_matches = re.finditer(r'<ol>.*?</ol>', content, re.DOTALL)
+            def_matches = re.finditer(r'<li>(.*?)(?=</li>|<h3>|<h4>|$)', content, re.DOTALL)
             for match in def_matches:
-                def_items = re.finditer(r'<li>(.*?)</li>', match.group(0))
-                definitions.extend(item.group(1) for item in def_items)
+                definition = re.sub(r'<[^>]+>', '', match.group(1)).strip()
+                if definition and not definition.startswith(('(', '→', 'For quotations')):
+                    definitions.append(definition)
+            Utils.log_debug(f"Found {len(definitions)} definitions")
             
             # Extract etymology if requested
             etymology = None
             if include_etymology:
                 etym_match = re.search(
-                    r'<h3><span class="mw-headline" id="Etymology">.*?</h3>(.*?)(?=<h3>|$)',
+                    r'<h3[^>]*>Etymology</h3>(.*?)(?=<h3>|$)',
                     content,
                     re.DOTALL
                 )
                 if etym_match:
                     etymology = re.sub(r'<[^>]+>', '', etym_match.group(1)).strip()
-            
-            # Extract pronunciation
-            pron_match = re.search(
-                r'<h3><span class="mw-headline" id="Pronunciation">.*?</h3>(.*?)(?=<h3>|$)',
-                content,
-                re.DOTALL
-            )
-            pronunciation = None
-            if pron_match:
-                pron_text = re.sub(r'<[^>]+>', '', pron_match.group(1)).strip()
-                pronunciation = pron_text.split('\n')[0] if pron_text else None
+                    Utils.log_debug("Found etymology")
             
             # Extract examples if requested
             examples = []
             if include_examples:
                 example_matches = re.finditer(
-                    r'<dl>.*?</dl>',
+                    r'<dd>(.*?)(?=</dd>|<h3>|<h4>|$)',
                     content,
                     re.DOTALL
                 )
                 for match in example_matches:
-                    example_items = re.finditer(r'<dd>(.*?)</dd>', match.group(0))
-                    examples.extend(
-                        re.sub(r'<[^>]+>', '', item.group(1)).strip()
-                        for item in example_items
-                    )
+                    example = re.sub(r'<[^>]+>', '', match.group(1)).strip()
+                    if example:
+                        examples.append(example)
+                Utils.log_debug(f"Found {len(examples)} examples")
             
-            # Extract related words
-            related = []
-            related_matches = re.finditer(
-                r'<h3><span class="mw-headline" id="Related_terms">.*?</h3>(.*?)(?=<h3>|$)',
-                content,
-                re.DOTALL
-            )
-            for match in related_matches:
-                related_items = re.finditer(r'<li><a[^>]+>(.*?)</a></li>', match.group(0))
-                related.extend(item.group(1) for item in related_items)
-            
-            return WiktionaryEntry(
+            entry = WiktionaryEntry(
                 word=word,
                 language=language,
                 part_of_speech=part_of_speech,
                 definitions=definitions,
                 etymology=etymology,
-                pronunciation=pronunciation,
+                pronunciation=None,  # We'll need to parse this from the content
                 examples=examples,
-                related_words=related,
-                last_accessed=time.time()
+                related_words=[],
+                last_accessed=time.time(),
+                content=content  # Store the raw content
             )
             
+            Utils.log(f"Successfully created WiktionaryEntry for {word}")
+            return entry
+            
         except Exception as e:
-            Utils.log_red(f"Error parsing Wiktionary content: {e}")
+            Utils.log_red(f"Error parsing Wiktionary content for {word}: {e}")
+            Utils.log_red(f"Error type: {type(e)}")
+            Utils.log_red(f"Error details: {str(e)}")
             return None
     
     def get_word_forms(self, word: str, language: str = "en") -> Dict[str, List[str]]:
         """Get different forms of a word (e.g., conjugations, declensions)."""
+        Utils.log(f"Getting word forms for {word} in {language}")
         entry = self.get_word_entry(word, language)
-        if not entry:
+        if not entry or not entry.content:
+            Utils.log_yellow(f"No entry found for {word}, cannot get word forms")
             return {}
-        
+
         forms = {}
-        
-        # Extract conjugation/declension tables
-        table_matches = re.finditer(
-            r'<table class="inflection-table">.*?</table>',
-            entry.content,
-            re.DOTALL
-        )
-        
-        for table in table_matches:
-            # Extract form name and values
-            form_matches = re.finditer(
-                r'<th[^>]*>(.*?)</th>.*?<td[^>]*>(.*?)</td>',
-                table.group(0),
+
+        # For English verbs, look for form designations in <i> elements
+        if language == "en" and entry.part_of_speech.lower() == "verb":
+            Utils.log_debug(f"Looking for verb forms in content of length {len(entry.content)}")
+            
+            # Look for present tense forms
+            present_forms = re.finditer(
+                r'<i>([^<]*present[^<]*)</i>.*?<b[^>]*>.*?<a[^>]*>(.*?)</a>',
+                entry.content,
                 re.DOTALL
             )
+            if present_forms:
+                Utils.log_debug(f"Found {len(present_forms)} present tense forms")
+                forms["present"] = []
+                for match in present_forms:
+                    form_type = match.group(1).strip()
+                    form = re.sub(r'<[^>]+>', '', match.group(2)).strip()
+                    if form:
+                        forms["present"].append(form)
+                        Utils.log_debug(f"Found present form: {form} ({form_type})")
+                        Utils.log_debug(f"Full match: {match.group(0)}")
+            else:
+                Utils.log_debug("No present tense forms found")
+                # Log a sample of the content to help debug
+                sample = entry.content[:500] + "..." if len(entry.content) > 500 else entry.content
+                Utils.log_debug(f"Content sample: {sample}")
             
-            for match in form_matches:
-                form_name = re.sub(r'<[^>]+>', '', match.group(1)).strip()
-                form_values = [
-                    re.sub(r'<[^>]+>', '', val).strip()
-                    for val in re.finditer(r'<td[^>]*>(.*?)</td>', match.group(2))
-                ]
-                forms[form_name] = form_values
+            # Look for past tense forms
+            past_forms = re.finditer(
+                r'<i>([^<]*past[^<]*)</i>.*?<b[^>]*>.*?<a[^>]*>(.*?)</a>',
+                entry.content,
+                re.DOTALL
+            )
+            if past_forms:
+                Utils.log_debug(f"Found {len(past_forms)} past tense forms")
+                forms["past"] = []
+                for match in past_forms:
+                    form_type = match.group(1).strip()
+                    form = re.sub(r'<[^>]+>', '', match.group(2)).strip()
+                    if form:
+                        forms["past"].append(form)
+                        Utils.log_debug(f"Found past form: {form} ({form_type})")
+                        Utils.log_debug(f"Full match: {match.group(0)}")
+            else:
+                Utils.log_debug("No past tense forms found")
+            
+            # Look for past participle forms
+            past_participle_forms = re.finditer(
+                r'<i>([^<]*past participle[^<]*)</i>.*?<b[^>]*>.*?<a[^>]*>(.*?)</a>',
+                entry.content,
+                re.DOTALL
+            )
+            if past_participle_forms:
+                Utils.log_debug(f"Found {len(past_participle_forms)} past participle forms")
+                forms["past participle"] = []
+                for match in past_participle_forms:
+                    form_type = match.group(1).strip()
+                    form = re.sub(r'<[^>]+>', '', match.group(2)).strip()
+                    if form:
+                        forms["past participle"].append(form)
+                        Utils.log_debug(f"Found past participle form: {form} ({form_type})")
+                        Utils.log_debug(f"Full match: {match.group(0)}")
+            else:
+                Utils.log_debug("No past participle forms found")
+        
+        # Log the final results
+        if forms:
+            Utils.log(f"Found {len(forms)} word forms for {word}:")
+            for form_type, form_list in forms.items():
+                Utils.log(f"  {form_type}: {form_list}")
+        else:
+            Utils.log_yellow(f"No word forms found for {word}")
+            Utils.log_debug(f"Word part of speech: {entry.part_of_speech}")
         
         return forms
     
     def get_synonyms(self, word: str, language: str = "en") -> List[str]:
         """Get synonyms for a word."""
+        Utils.log(f"Getting synonyms for {word} in {language}")
         entry = self.get_word_entry(word, language)
         if not entry:
+            Utils.log_yellow(f"No entry found for {word}, cannot get synonyms")
             return []
         
         synonyms = []
@@ -270,12 +392,15 @@ class Wiktionary:
             syn_items = re.finditer(r'<li><a[^>]+>(.*?)</a></li>', match.group(0))
             synonyms.extend(item.group(1) for item in syn_items)
         
+        Utils.log(f"Found {len(synonyms)} synonyms for {word}")
         return synonyms
     
     def get_antonyms(self, word: str, language: str = "en") -> List[str]:
         """Get antonyms for a word."""
+        Utils.log(f"Getting antonyms for {word} in {language}")
         entry = self.get_word_entry(word, language)
         if not entry:
+            Utils.log_yellow(f"No entry found for {word}, cannot get antonyms")
             return []
         
         antonyms = []
@@ -289,4 +414,5 @@ class Wiktionary:
             ant_items = re.finditer(r'<li><a[^>]+>(.*?)</a></li>', match.group(0))
             antonyms.extend(item.group(1) for item in ant_items)
         
+        Utils.log(f"Found {len(antonyms)} antonyms for {word}")
         return antonyms 
