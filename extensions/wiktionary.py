@@ -165,7 +165,8 @@ class Wiktionary:
     
     def _find_part_of_speech(self, content: str) -> str:
         """
-        Find the first valid part of speech in the content.
+        Find the first valid part of speech in the content by checking all parts of speech
+        and returning the one that appears earliest in the content.
 
         NOTE: For the secondary languages, the IDs for their part of speech titles
         have _{index} appended to them, so they should not interfere with this test.
@@ -176,27 +177,38 @@ class Wiktionary:
         valid_parts = ["Noun", "Verb", "Adjective", "Adverb", "Pronoun", 
                       "Preposition", "Conjunction", "Interjection", "Article"]
         
-        # Look for h3 or h4 elements with part of speech IDs
+        earliest_match = None
+        earliest_position = float('inf')
+        
+        # Check all parts of speech and find the earliest one
         for part in valid_parts:
             # Try h3 first
-            match = re.search(
+            h3_matches = re.finditer(
                 rf'<h3[^>]*id="{part}"[^>]*>.*?</h3>',
                 content,
                 re.DOTALL
             )
-            if match:
-                Utils.log_debug(f"Found part of speech '{part}' in h3")
-                return part.lower()
+            for match in h3_matches:
+                if match.start() < earliest_position:
+                    earliest_position = match.start()
+                    earliest_match = part
+                    Utils.log_debug(f"Found earlier part of speech '{part}' in h3 at position {earliest_position}")
             
             # Then try h4
-            match = re.search(
+            h4_matches = re.finditer(
                 rf'<h4[^>]*id="{part}"[^>]*>.*?</h4>',
                 content,
                 re.DOTALL
             )
-            if match:
-                Utils.log_debug(f"Found part of speech '{part}' in h4")
-                return part.lower()
+            for match in h4_matches:
+                if match.start() < earliest_position:
+                    earliest_position = match.start()
+                    earliest_match = part
+                    Utils.log_debug(f"Found earlier part of speech '{part}' in h4 at position {earliest_position}")
+        
+        if earliest_match:
+            Utils.log_debug(f"Earliest part of speech found: '{earliest_match}' at position {earliest_position}")
+            return earliest_match.lower()
         
         Utils.log_yellow("No valid part of speech found")
         return "unknown"
@@ -302,34 +314,54 @@ class Wiktionary:
         if language == "en" and entry.part_of_speech.lower() == "verb":
             Utils.log_debug(f"Looking for verb forms in content of length {len(entry.content)}")
             
-            # Look for present tense forms
-            present_forms = re.finditer(
-                r'<i>([^<]*present[^<]*)</i>.*?<b[^>]*>.*?<a[^>]*>(.*?)</a>',
+            # Look for present tense forms (excluding present participle)
+            present_forms = list(re.finditer(
+                r'<i>([^<]*present(?! participle)[^<]*)</i>.*?<b[^>]*>.*?<a[^>]*>(.*?)</a>',
                 entry.content,
                 re.DOTALL
-            )
+            ))
             if present_forms:
                 Utils.log_debug(f"Found {len(present_forms)} present tense forms")
-                forms["present"] = []
+                forms["present"] = [word]  # Start with the base form
                 for match in present_forms:
                     form_type = match.group(1).strip()
                     form = re.sub(r'<[^>]+>', '', match.group(2)).strip()
-                    if form:
+                    if form and form != word:  # Don't add the base form again if it's found
                         forms["present"].append(form)
                         Utils.log_debug(f"Found present form: {form} ({form_type})")
                         Utils.log_debug(f"Full match: {match.group(0)}")
             else:
                 Utils.log_debug("No present tense forms found")
+                forms["present"] = [word]  # Still include the base form
                 # Log a sample of the content to help debug
                 sample = entry.content[:500] + "..." if len(entry.content) > 500 else entry.content
                 Utils.log_debug(f"Content sample: {sample}")
             
-            # Look for past tense forms
-            past_forms = re.finditer(
-                r'<i>([^<]*past[^<]*)</i>.*?<b[^>]*>.*?<a[^>]*>(.*?)</a>',
+            # Look for present participle forms
+            present_participle_forms = list(re.finditer(
+                r'<i>([^<]*present participle[^<]*)</i>.*?<b[^>]*>.*?<a[^>]*>(.*?)</a>',
                 entry.content,
                 re.DOTALL
-            )
+            ))
+            if present_participle_forms:
+                Utils.log_debug(f"Found {len(present_participle_forms)} present participle forms")
+                forms["present participle"] = []
+                for match in present_participle_forms:
+                    form_type = match.group(1).strip()
+                    form = re.sub(r'<[^>]+>', '', match.group(2)).strip()
+                    if form:
+                        forms["present participle"].append(form)
+                        Utils.log_debug(f"Found present participle form: {form} ({form_type})")
+                        Utils.log_debug(f"Full match: {match.group(0)}")
+            else:
+                Utils.log_debug("No present participle forms found")
+            
+            # Look for past tense forms
+            past_forms = list(re.finditer(
+                r'<i>([^<]*past(?! participle)[^<]*)</i>.*?<b[^>]*>.*?<a[^>]*>(.*?)</a>',
+                entry.content,
+                re.DOTALL
+            ))
             if past_forms:
                 Utils.log_debug(f"Found {len(past_forms)} past tense forms")
                 forms["past"] = []
@@ -344,11 +376,11 @@ class Wiktionary:
                 Utils.log_debug("No past tense forms found")
             
             # Look for past participle forms
-            past_participle_forms = re.finditer(
+            past_participle_forms = list(re.finditer(
                 r'<i>([^<]*past participle[^<]*)</i>.*?<b[^>]*>.*?<a[^>]*>(.*?)</a>',
                 entry.content,
                 re.DOTALL
-            )
+            ))
             if past_participle_forms:
                 Utils.log_debug(f"Found {len(past_participle_forms)} past participle forms")
                 forms["past participle"] = []
