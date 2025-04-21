@@ -2,35 +2,15 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
-"POT-Creation-Date: 2025-04-18 14:32-0400\n"
-"PO-Revision-Date: 2025-04-18 14:32-0400\n"
-"Last-Translator: Translator Name <translator@example.com>\n"
+"POT-Creation-Date: 2025-04-21 13:50-0400\n"
+"PO-Revision-Date: 2025-04-21 13:50-0400\n"
+"Last-Translator: Thomas Hall <tomhall.main@gmail.com>\n"
 "Language-Team: en Team <<EMAIL>>\n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-
-#: ui/app_style.py
-msgid "Spracherwerb"
-msgstr "Spracherwerb"
-
-#: ui/app_style.py
-msgid "Language Learning"
-msgstr "Language Learning"
-
-#: ui/app_style.py
-msgid "Settings"
-msgstr "Settings"
-
-#: ui/app_style.py
-msgid "Media"
-msgstr "Media"
-
-#: ui/app_style.py
-msgid "Interaction"
-msgstr "Interaction"
 
 #: .\Spracherwerb\language_tutor.py:94
 msgid "a man"
@@ -39,148 +19,6 @@ msgstr "a man"
 #: .\Spracherwerb\language_tutor.py:96
 msgid "a woman"
 msgstr "a woman"
-
-#: .\Spracherwerb\muse.py:212
-msgid "Hello, I'm {0}"
-msgstr "Hello, I'm {0}"
-
-#: .\Spracherwerb\muse.py:216 .\Spracherwerb\muse.py:220
-msgid "Hello, I'm your DJ"
-msgstr "Hello, I'm your DJ"
-
-#: .\Spracherwerb\muse.py:227
-msgid "Hello"
-msgstr "Hello"
-
-#: .\Spracherwerb\muse.py:239
-msgid "today"
-msgstr "today"
-
-#: .\Spracherwerb\muse.py:239
-msgid "tonight"
-msgstr "tonight"
-
-#: .\Spracherwerb\muse.py:241
-msgid "The scheduled shutdown time has arrived. That's it for {0}."
-msgstr "The scheduled shutdown time has arrived. That's it for {0}."
-
-#: .\Spracherwerb\muse.py:245
-msgid "I'll be on again tomorrow."
-msgstr "I'll be on again tomorrow."
-
-#: .\Spracherwerb\muse.py:247
-msgid "Tomorrow you'll hear from {0}."
-msgstr "Tomorrow you'll hear from {0}."
-
-#: .\Spracherwerb\muse.py:251
-msgid "The next time I'll be on is next week, at the same time."
-msgstr "The next time I'll be on is next week, at the same time."
-
-#: .\Spracherwerb\muse.py:253
-msgid "I'll be on again this coming {0}."
-msgstr "I'll be on again this coming {0}."
-
-#: .\Spracherwerb\muse.py:264
-msgid "Good morning"
-msgstr "Good morning"
-
-#: .\Spracherwerb\muse.py:266
-msgid "Good day"
-msgstr "Good day"
-
-#: .\Spracherwerb\muse.py:268
-msgid "Good afternoon"
-msgstr "Good afternoon"
-
-#: .\Spracherwerb\muse.py:270
-msgid "Good evening"
-msgstr "Good evening"
-
-#: .\Spracherwerb\muse.py:285
-msgid "That was \"{0}\" in \"{1}\""
-msgstr "That was \"{0}\" in \"{1}\""
-
-#: .\Spracherwerb\muse.py:287 .\Spracherwerb\muse.py:323
-msgid " by \"{0}\"."
-msgstr " by \"{0}\"."
-
-#: .\Spracherwerb\muse.py:292
-msgid "That was a new track. How'd you like that?"
-msgstr "That was a new track. How'd you like that?"
-
-#: .\Spracherwerb\muse.py:294
-msgid "That was a new one. How'd you like it?"
-msgstr "That was a new one. How'd you like it?"
-
-#: .\Spracherwerb\muse.py:319
-msgid "To start, we'll be playing: \"{0}\" from \"{1}\""
-msgstr "To start, we'll be playing: \"{0}\" from \"{1}\""
-
-#: .\Spracherwerb\muse.py:321
-msgid "Next up, we'll be playing: \"{0}\" from \"{1}\""
-msgstr "Next up, we'll be playing: \"{0}\" from \"{1}\""
-
-#: .\Spracherwerb\muse.py:328
-msgid "This one is a new track."
-msgstr "This one is a new track."
-
-#: .\Spracherwerb\muse.py:340
-msgid "After that short interlude, we're back to our {0} shuffle."
-msgstr "After that short interlude, we're back to our {0} shuffle."
-
-#: .\Spracherwerb\muse.py:343
-msgid "We've been listening to a group of tracks from the {0} {1}"
-msgstr "We've been listening to a group of tracks from the {0} {1}"
-
-#: .\Spracherwerb\muse.py:353
-msgid "We're listening to a group of tracks from the {0} {1}."
-msgstr "We're listening to a group of tracks from the {0} {1}."
-
-#: .\Spracherwerb\muse.py:356
-msgid "We're going to start a new group of tracks from the {0} {1}."
-msgstr "We're going to start a new group of tracks from the {0} {1}."
-
-#: .\Spracherwerb\muse.py:407
-msgid "First let's hear about {0}"
-msgstr "First let's hear about {0}"
-
-#: .\Spracherwerb\muse.py:409
-msgid "But first, let's hear about {0}."
-msgstr "But first, let's hear about {0}."
-
-#: .\Spracherwerb\muse.py:686
-msgid ""
-"We're having some technical difficulties in accessing our source for {0}. "
-"We'll try again later"
-msgstr ""
-"We're having some technical difficulties in accessing our source for {0}. "
-"We'll try again later"
-
-#: .\Spracherwerb\muse.py:690
-msgid ""
-"It seems our writer for {0} is unexpectedly away at the moment. Did we "
-"forget to pay his salary again?"
-msgstr ""
-"It seems our writer for {0} is unexpectedly away at the moment. Did we "
-"forget to pay his salary again?"
-
-#: .\Spracherwerb\muse.py:694
-msgid ""
-"We've found problems with all of our {0} ideas. Please try again later."
-msgstr ""
-"We've found problems with all of our {0} ideas. Please try again later."
-
-#: .\Spracherwerb\muse.py:699
-msgid "Something went wrong. We'll try to fix it soon."
-msgstr "Something went wrong. We'll try to fix it soon."
-
-#: .\Spracherwerb\muse.py:766
-msgid "Starting tracks:"
-msgstr "Starting tracks:"
-
-#: .\Spracherwerb\muse.py:826
-msgid "The listener last tuned in {0} {1} ago"
-msgstr "The listener last tuned in {0} {1} ago"
 
 #: .\Spracherwerb\schedule.py:8 .\ui\schedules_window.py:40
 msgid "New Schedule"
@@ -201,180 +39,6 @@ msgstr "{0} - DJ: {1} - Days: {2} - Times: {3}-{4} - Shutdown: {5}"
 #: .\Spracherwerb\schedules_manager.py:71
 msgid "Not enough schedules found."
 msgstr "Not enough schedules found."
-
-#: .\app.py:133 .\ui\extensions_window.py:157 .\utils\globals.py:193
-msgid "Title"
-msgstr "Title"
-
-#: .\app.py:136 .\utils\globals.py:119 .\utils\globals.py:194
-msgid "Album"
-msgstr "Album"
-
-#: .\app.py:139 .\utils\globals.py:121 .\utils\globals.py:195
-#: .\utils\globals.py:249
-msgid "Artist"
-msgstr "Artist"
-
-#: .\app.py:142 .\utils\globals.py:123 .\utils\globals.py:196
-#: .\utils\globals.py:248
-msgid "Composer"
-msgstr "Composer"
-
-#: .\app.py:145
-msgid "Next Up"
-msgstr "Next Up"
-
-#: .\app.py:148
-msgid "Prior Track"
-msgstr "Prior Track"
-
-#: .\app.py:151
-msgid "Spot Details"
-msgstr "Spot Details"
-
-#: .\app.py:154
-msgid "Extension Status"
-msgstr "Extension Status"
-
-#: .\app.py:157
-msgid "Volume"
-msgstr "Volume"
-
-#: .\app.py:167
-msgid "Play"
-msgstr "Play"
-
-#: .\app.py:170
-msgid "Playlists"
-msgstr "Playlists"
-
-#: .\app.py:173
-msgid "Next"
-msgstr "Next"
-
-#: .\app.py:176
-msgid "Next Grouping"
-msgstr "Next Grouping"
-
-#: .\app.py:179
-msgid "Pause"
-msgstr "Pause"
-
-#: .\app.py:182
-msgid "Search"
-msgstr "Search"
-
-#: .\app.py:185
-msgid "Composers"
-msgstr "Composers"
-
-#: .\app.py:188
-msgid "Schedules"
-msgstr "Schedules"
-
-#: .\app.py:191
-msgid "Weather"
-msgstr "Weather"
-
-#: .\app.py:193
-msgid "Stop"
-msgstr "Stop"
-
-#: .\app.py:194
-msgid "Text"
-msgstr "Text"
-
-#: .\app.py:197
-msgid "Delay Seconds"
-msgstr "Delay Seconds"
-
-#: .\app.py:204
-msgid "Playlist"
-msgstr "Playlist"
-
-#: .\app.py:212
-msgid "Playlist Sort"
-msgstr "Playlist Sort"
-
-#: .\app.py:220
-msgid "Favorite"
-msgstr "Favorite"
-
-#: .\app.py:224
-msgid "Favorites"
-msgstr "Favorites"
-
-#: .\app.py:227
-msgid "Overwrite"
-msgstr "Overwrite"
-
-#: .\app.py:231
-msgid "Muse"
-msgstr "Muse"
-
-#: .\app.py:235 .\app.py:238
-msgid "Extension"
-msgstr "Extension"
-
-#: .\app.py:241
-msgid "Enable track splitting"
-msgstr "Enable track splitting"
-
-#: .\app.py:245
-msgid "Use system language for all topics"
-msgstr "Use system language for all topics"
-
-#: .\app.py:307
-msgid "Confirm Quit"
-msgstr "Confirm Quit"
-
-#: .\app.py:307
-msgid "Would you like to quit the application?"
-msgstr "Would you like to quit the application?"
-
-#: .\app.py:428
-msgid "Confirm Run"
-msgstr "Confirm Run"
-
-#: .\app.py:429
-msgid "Are you sure you want to proceed?"
-msgstr "Are you sure you want to proceed?"
-
-#: .\app.py:496
-msgid "Copied album art to clipboard."
-msgstr "Copied album art to clipboard."
-
-#: .\app.py:651
-msgid "Track: "
-msgstr "Track: "
-
-#: .\app.py:652
-msgid "Album: "
-msgstr "Album: "
-
-#: .\app.py:653
-msgid "Artist: "
-msgstr "Artist: "
-
-#: .\app.py:654
-msgid "Composer: "
-msgstr "Composer: "
-
-#: .\app.py:665
-msgid "Next Up: "
-msgstr "Next Up: "
-
-#: .\app.py:674
-msgid "Previous Track: "
-msgstr "Previous Track: "
-
-#: .\app.py:717
-msgid "Error"
-msgstr "Error"
-
-#: .\app.py:802
-msgid " Muse "
-msgstr " Muse "
 
 #: .\extensions\sd_runner_client.py:56
 msgid "Unsupported image generation type: {_type}"
@@ -412,6 +76,10 @@ msgstr "Date"
 #: .\ui\extensions_window.py:155
 msgid "Published"
 msgstr "Published"
+
+#: .\ui\extensions_window.py:157
+msgid "Title"
+msgstr "Title"
 
 #: .\ui\extensions_window.py:159
 msgid "Duration"
@@ -583,119 +251,75 @@ msgstr "Clear schedules"
 msgid "Modify"
 msgstr "Modify"
 
-#: .\utils\globals.py:125 .\utils\globals.py:197 .\utils\globals.py:250
-msgid "Genre"
-msgstr "Genre"
-
-#: .\utils\globals.py:127 .\utils\globals.py:198 .\utils\globals.py:251
-msgid "Form"
-msgstr "Form"
-
-#: .\utils\globals.py:129 .\utils\globals.py:199 .\utils\globals.py:252
-msgid "Instrument"
-msgstr "Instrument"
-
-#: .\utils\globals.py:135 .\utils\globals.py:253
-msgid "Random"
-msgstr "Random"
-
-#: .\utils\globals.py:136
-msgid "Sequence"
-msgstr "Sequence"
-
-#: .\utils\globals.py:137
-msgid "Album Shuffle"
-msgstr "Album Shuffle"
-
-#: .\utils\globals.py:138
-msgid "Artist Shuffle"
-msgstr "Artist Shuffle"
-
-#: .\utils\globals.py:139
-msgid "Composer Shuffle"
-msgstr "Composer Shuffle"
-
-#: .\utils\globals.py:140
-msgid "Genre Shuffle"
-msgstr "Genre Shuffle"
-
-#: .\utils\globals.py:141
-msgid "Form Shuffle"
-msgstr "Form Shuffle"
-
-#: .\utils\globals.py:142
-msgid "Instrument Shuffle"
-msgstr "Instrument Shuffle"
-
-#: .\utils\globals.py:302
+#: .\utils\globals.py:89
 msgid "weather"
 msgstr "weather"
 
-#: .\utils\globals.py:304
+#: .\utils\globals.py:91
 msgid "news"
 msgstr "news"
 
-#: .\utils\globals.py:308
+#: .\utils\globals.py:95
 msgid "joke"
 msgstr "joke"
 
-#: .\utils\globals.py:310
+#: .\utils\globals.py:97
 msgid "fact"
 msgstr "fact"
 
-#: .\utils\globals.py:312
+#: .\utils\globals.py:99
 msgid "fable"
 msgstr "fable"
 
-#: .\utils\globals.py:314
+#: .\utils\globals.py:101
 msgid "truth and lie"
 msgstr "truth and lie"
 
-#: .\utils\globals.py:316
+#: .\utils\globals.py:103
 msgid "aphorism"
 msgstr "aphorism"
 
-#: .\utils\globals.py:318
+#: .\utils\globals.py:105
 msgid "poem"
 msgstr "poem"
 
-#: .\utils\globals.py:320
+#: .\utils\globals.py:107
 msgid "quote"
 msgstr "quote"
 
-#: .\utils\globals.py:322
+#: .\utils\globals.py:109
 msgid "tongue twister"
 msgstr "tongue twister"
 
-#: .\utils\globals.py:324
+#: .\utils\globals.py:111
 msgid "motivation"
 msgstr "motivation"
 
-#: .\utils\globals.py:326
+#: .\utils\globals.py:113
 msgid "calendar"
 msgstr "calendar"
 
-#: .\utils\globals.py:328
+#: .\utils\globals.py:115
 msgid "more about the next track"
 msgstr "more about the next track"
 
-#: .\utils\globals.py:330
+#: .\utils\globals.py:117
 msgid "more about the last track"
 msgstr "more about the last track"
 
-#: .\utils\globals.py:332
+#: .\utils\globals.py:119
 msgid "more about our playlist"
 msgstr "more about our playlist"
 
-#: .\utils\globals.py:334
+#: .\utils\globals.py:121
 msgid "random wiki article"
 msgstr "random wiki article"
 
-#: .\utils\globals.py:336
+#: .\utils\globals.py:123
 msgid "funny story"
 msgstr "funny story"
 
-#: .\utils\globals.py:338
+#: .\utils\globals.py:125
 msgid "language learning"
 msgstr "language learning"
 
@@ -703,58 +327,78 @@ msgstr "language learning"
 msgid " (Pending runs: {0})"
 msgstr " (Pending runs: {0})"
 
-#: .\utils\translations.py:32
+#: .\utils\translations.py:17
+msgid "English"
+msgstr "English"
+
+#: .\utils\translations.py:19
+msgid "German"
+msgstr "German"
+
+#: .\utils\translations.py:21
+msgid "French"
+msgstr "French"
+
+#: .\utils\translations.py:23
+msgid "Spanish"
+msgstr "Spanish"
+
+#: .\utils\translations.py:25
+msgid "Italian"
+msgstr "Italian"
+
+#: .\utils\translations.py:48
 msgid "Monday"
 msgstr "Monday"
 
-#: .\utils\translations.py:34
+#: .\utils\translations.py:50
 msgid "Tuesday"
 msgstr "Tuesday"
 
-#: .\utils\translations.py:36
+#: .\utils\translations.py:52
 msgid "Wednesday"
 msgstr "Wednesday"
 
-#: .\utils\translations.py:38
+#: .\utils\translations.py:54
 msgid "Thursday"
 msgstr "Thursday"
 
-#: .\utils\translations.py:40
+#: .\utils\translations.py:56
 msgid "Friday"
 msgstr "Friday"
 
-#: .\utils\translations.py:42
+#: .\utils\translations.py:58
 msgid "Saturday"
 msgstr "Saturday"
 
-#: .\utils\translations.py:44
+#: .\utils\translations.py:60
 msgid "Sunday"
 msgstr "Sunday"
 
-#: .\utils\translations.py:56
+#: .\utils\translations.py:72
 msgid "seconds"
 msgstr "seconds"
 
-#: .\utils\translations.py:58
+#: .\utils\translations.py:74
 msgid "minutes"
 msgstr "minutes"
 
-#: .\utils\translations.py:60
+#: .\utils\translations.py:76
 msgid "hours"
 msgstr "hours"
 
-#: .\utils\translations.py:62
+#: .\utils\translations.py:78
 msgid "days"
 msgstr "days"
 
-#: .\utils\translations.py:64
+#: .\utils\translations.py:80
 msgid "weeks"
 msgstr "weeks"
 
-#: .\utils\translations.py:66
+#: .\utils\translations.py:82
 msgid "months"
 msgstr "months"
 
-#: .\utils\translations.py:68
+#: .\utils\translations.py:84
 msgid "years"
 msgstr "years"
