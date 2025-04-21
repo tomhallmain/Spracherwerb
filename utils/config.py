@@ -18,7 +18,8 @@ class Config:
         self.background_color = "#2596BE"
         
         # Language learning configuration
-        self.target_language = "German"
+        self.source_language = None # Take from system default if not provided
+        self.target_language = "de"
         self.proficiency_level = "intermediate"  # beginner, intermediate, advanced
         self.learning_focus = ["vocabulary", "grammar", "conversation"]  # List of focus areas
         self.daily_goal_minutes = 30
@@ -106,6 +107,7 @@ class Config:
         self.set_values(str,
             "foreground_color",
             "background_color",
+            "source_language",
             "target_language",
             "proficiency_level",
             "llm_model_name",
@@ -155,6 +157,8 @@ class Config:
 
         self.coqui_tts_model = tuple(self.coqui_tts_model)
 
+        if self.source_language is None:
+            self.source_language = Utils.get_default_user_language()
 
     def validate_and_set_directory(self, key, override=False):
         loc = key if override else self.dict[key]

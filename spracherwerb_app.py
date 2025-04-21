@@ -6,13 +6,21 @@ from PySide6.QtCore import Qt
 from ui.media_frame import MediaFrame
 from ui.interaction_panel import InteractionPanel
 from ui.config_panel import ConfigPanel
+from ui.translations_window import TranslationsWindow
 from ui.app_style import AppStyle
+from ui.app_actions import AppActions
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Spracherwerb")
         self.setMinimumSize(1200, 800)
+        
+        # Initialize AppActions
+        self.app_actions = AppActions(
+            # ... other callbacks ...
+            open_translations_callback=self.open_translations_window
+        )
         
         # Apply global styling
         self.setStyleSheet(AppStyle.get_global_stylesheet())
@@ -35,7 +43,7 @@ class MainWindow(QMainWindow):
         """)
         
         # Create panels
-        self.config_panel = ConfigPanel()
+        self.config_panel = ConfigPanel(app_actions=self.app_actions)
         self.media_frame = MediaFrame()
         self.interaction_panel = InteractionPanel()
         
@@ -68,6 +76,13 @@ class MainWindow(QMainWindow):
         
         # Add toggle button to layout
         main_layout.addWidget(self.toggle_config)
+    
+    def open_translations_window(self):
+        """Open the translations window."""
+        translations_window = TranslationsWindow(self)
+        # Connect config panel's language change signal to translations window
+        self.config_panel.languages_changed.connect(translations_window.update_language_display)
+        translations_window.show()
     
     def toggle_config_panel(self):
         """Toggle visibility of the configuration panel"""

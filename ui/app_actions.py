@@ -1,21 +1,27 @@
+
+def placeholder_callback(*args, **kwargs):
+    raise NotImplementedError("This callback is not implemented!")
+
+
 class AppActions:
     def __init__(self,
-                 update_media_frame_callback,  # For displaying images/videos in the media frame
-                 update_lesson_content_callback,  # For updating the current lesson content
-                 update_progress_callback,  # For tracking learning progress
-                 update_vocabulary_callback,  # For updating vocabulary lists
-                 update_grammar_exercises_callback,  # For updating grammar exercises
-                 update_conversation_callback,  # For conversation practice
-                 update_listening_exercise_callback,  # For listening comprehension
-                 update_writing_exercise_callback,  # For writing practice
-                 update_cultural_context_callback,  # For cultural lessons
-                 update_pronunciation_callback,  # For pronunciation practice
-                 update_reading_exercise_callback,  # For reading comprehension
-                 update_situational_dialogue_callback,  # For situational dialogues
-                 update_visual_vocabulary_callback,  # For visual vocabulary builder
-                 show_feedback_callback,  # For showing user feedback
-                 show_error_callback,  # For showing error messages
-                 shutdown_callback,  # For application shutdown
+                 update_media_frame_callback=placeholder_callback,  # For displaying images/videos in the media frame
+                 update_lesson_content_callback=placeholder_callback,  # For updating the current lesson content
+                 update_progress_callback=placeholder_callback,  # For tracking learning progress
+                 update_vocabulary_callback=placeholder_callback,  # For updating vocabulary lists
+                 update_grammar_exercises_callback=placeholder_callback,  # For updating grammar exercises
+                 update_conversation_callback=placeholder_callback,  # For conversation practice
+                 update_listening_exercise_callback=placeholder_callback,  # For listening comprehension
+                 update_writing_exercise_callback=placeholder_callback,  # For writing practice
+                 update_cultural_context_callback=placeholder_callback,  # For cultural lessons
+                 update_pronunciation_callback=placeholder_callback,  # For pronunciation practice
+                 update_reading_exercise_callback=placeholder_callback,  # For reading comprehension
+                 update_situational_dialogue_callback=placeholder_callback,  # For situational dialogues
+                 update_visual_vocabulary_callback=placeholder_callback,  # For visual vocabulary builder
+                 show_feedback_callback=placeholder_callback,  # For showing user feedback
+                 show_error_callback=placeholder_callback,  # For showing error messages
+                 shutdown_callback=placeholder_callback,  # For application shutdown
+                 open_translations_callback=placeholder_callback,  # For opening the translations window
                  ):
         # Media and content display
         self.update_media_frame = update_media_frame_callback
@@ -42,4 +48,7 @@ class AppActions:
         
         # Application control
         self.shutdown = shutdown_callback
+        
+        # Window management
+        self.open_translations = open_translations_callback
 

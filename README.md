@@ -42,6 +42,7 @@ NOTE: This project is a work in progress, and the features listed below may not 
 - Listening comprehension exercises
 - Visual vocabulary builder with AI-generated images
 - Multi-language image generation support
+- Save translations with notes
 
 ## Visual Learning
 

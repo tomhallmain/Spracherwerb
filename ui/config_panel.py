@@ -1,16 +1,22 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QComboBox, 
                              QGroupBox, QFormLayout, QPushButton,
                              QListWidget, QLabel)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 
 from ui.gutenberg_search_window import GutenbergSearchWindow
+from utils.config import config
+from utils.translations import I18N
 
 
 class ConfigPanel(QWidget):
     """Left sidebar for configuration options"""
-    def __init__(self, parent=None):
+    # Signal emitted when languages change
+    languages_changed = Signal()
+    
+    def __init__(self, parent=None, app_actions=None):
         super().__init__(parent)
         self.setMinimumWidth(250)
+        self.app_actions = app_actions
         
         # Create layout
         layout = QVBoxLayout(self)
@@ -20,13 +26,38 @@ class ConfigPanel(QWidget):
         language_group = QGroupBox("Language Settings")
         language_layout = QFormLayout()
         
-        self.language_combo = QComboBox()
-        self.language_combo.addItems(["English", "German", "French", "Spanish", "Italian"])
+        # Source language (typically English)
+        self.source_language_combo = QComboBox()
+        self.source_language_combo.addItems([
+            ("en", I18N.get_language_name("en")),
+            ("de", I18N.get_language_name("de")),
+            ("fr", I18N.get_language_name("fr")),
+            ("es", I18N.get_language_name("es")),
+            ("it", I18N.get_language_name("it"))
+        ])
+        self.source_language_combo.setCurrentText(config.source_language)
+        self.source_language_combo.currentTextChanged.connect(self.on_source_language_changed)
         
+        # Target language (language being learned)
+        self.target_language_combo = QComboBox()
+        self.target_language_combo.addItems([
+            ("en", I18N.get_language_name("en")),
+            ("de", I18N.get_language_name("de")),
+            ("fr", I18N.get_language_name("fr")),
+            ("es", I18N.get_language_name("es")),
+            ("it", I18N.get_language_name("it"))
+        ])
+        self.target_language_combo.setCurrentText(config.target_language)
+        self.target_language_combo.currentTextChanged.connect(self.on_target_language_changed)
+        
+        # Proficiency level
         self.level_combo = QComboBox()
         self.level_combo.addItems(["Beginner", "Intermediate", "Advanced"])
+        self.level_combo.setCurrentText(config.proficiency_level.capitalize())
+        self.level_combo.currentTextChanged.connect(self.on_proficiency_level_changed)
         
-        language_layout.addRow("Target Language:", self.language_combo)
+        language_layout.addRow("Source Language:", self.source_language_combo)
+        language_layout.addRow("Target Language:", self.target_language_combo)
         language_layout.addRow("Proficiency Level:", self.level_combo)
         language_group.setLayout(language_layout)
         
@@ -66,10 +97,21 @@ class ConfigPanel(QWidget):
         
         books_group.setLayout(books_layout)
         
+        # Translations Group
+        translations_group = QGroupBox("Translations")
+        translations_layout = QVBoxLayout()
+        
+        self.translations_button = QPushButton("Open Translation Notes")
+        self.translations_button.clicked.connect(self._open_translations)
+        translations_layout.addWidget(self.translations_button)
+        
+        translations_group.setLayout(translations_layout)
+        
         # Add groups to main layout
         layout.addWidget(language_group)
         layout.addWidget(mode_group)
         layout.addWidget(books_group)
+        layout.addWidget(translations_group)
         layout.addStretch()
         
         # Store selected books
@@ -94,6 +136,25 @@ class ConfigPanel(QWidget):
             if book.word_count:
                 item_text += f" ({book.word_count} words)"
             self.books_list.addItem(item_text)
+    
+    def _open_translations(self):
+        """Open the translations window using the app actions callback."""
+        if self.app_actions and self.app_actions.open_translations:
+            self.app_actions.open_translations()
+    
+    def on_source_language_changed(self, language):
+        """Handle source language change."""
+        config.source_language = language
+        self.languages_changed.emit()
+    
+    def on_target_language_changed(self, language):
+        """Handle target language change."""
+        config.target_language = language
+        self.languages_changed.emit()
+    
+    def on_proficiency_level_changed(self, level):
+        """Handle proficiency level change."""
+        config.proficiency_level = level.lower()
     
     def get_selected_books(self):
         """Get the list of selected Gutenberg books."""

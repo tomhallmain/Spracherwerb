@@ -2,7 +2,8 @@
     "foreground_color": "#e0e0e0",
     "background_color": "#1a1a1a",
     
-    "target_language": "German",
+    "source_language": null,
+    "target_language": "de",
     "proficiency_level": "intermediate",
     "learning_focus": [
         "vocabulary",

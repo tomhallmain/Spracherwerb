@@ -18,6 +18,7 @@ from utils.globals import Globals, PlaylistSortType, PlaybackMasterStrategy
 # Local imports - UI components
 from ui.app_actions import AppActions
 from ui.app_style import AppStyle
+from ui.config_panel import ConfigPanel
 from ui.extensions_window import ExtensionsWindow
 from ui.media_frame import MediaFrame
 from ui.preset import Preset
@@ -25,8 +26,8 @@ from ui.presets_window import PresetsWindow
 from ui.schedules_window import SchedulesWindow
 
 # Core application imports
-from Spracherwerb.run import Run
-from Spracherwerb.run_config import RunConfig
+from Spracherwerb.session_manager import SessionManager
+from Spracherwerb.session_config import SessionConfig
 
 # Utils imports
 from utils.persistent_data_manager import PersistentDataManager
@@ -119,6 +120,7 @@ class App():
             self.on_closing,
             self.toast,
             self.alert,
+            open_translations_callback=self.open_translations_window
         )
 
         # Sidebar
@@ -261,6 +263,8 @@ class App():
         self.toggle_theme()
         self.master.update()
         # self.close_autocomplete_popups()
+
+        self.config_panel = ConfigPanel(master, app_actions=self.app_actions)
 
     def toggle_theme(self, to_theme=None, do_toast=True):
         if (to_theme is None and AppStyle.IS_DEFAULT_THEME) or to_theme == AppStyle.LIGHT_THEME:
@@ -793,6 +797,13 @@ class App():
             element.destroy()
             setattr(self, element_ref_name, None)
             self.row_counter0 -= 1
+
+    def open_translations_window(self):
+        """Open the translations window."""
+        translations_window = TranslationsWindow(self.master)
+        # Connect config panel's language change signal to translations window
+        self.config_panel.languages_changed.connect(translations_window.update_language_display)
+        translations_window.show()
 
 
 if __name__ == "__main__":
