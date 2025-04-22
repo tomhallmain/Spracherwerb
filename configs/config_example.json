@@ -255,5 +255,6 @@
         "opensubtitles": null,
         "common_voice": null
     },
-    "ignore_missing_api_keys": false
+    "ignore_missing_api_keys": false,
+    "backup_dir": "{HOME}/Spracherwerb/library_data/data/backup"
 }

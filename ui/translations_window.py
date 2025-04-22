@@ -10,6 +10,7 @@ from datetime import datetime
 
 from utils.config import config
 from utils.translations import I18N
+from utils.translation_data_manager import TranslationDataManager
 from ui.translation_dialog import TranslationDialog
 
 class TranslationsWindow(QMainWindow):
@@ -17,6 +18,9 @@ class TranslationsWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("Translation Notes")
         self.setMinimumSize(800, 600)
+        
+        # Initialize data manager
+        self.data_manager = TranslationDataManager()
         
         # Create central widget
         central_widget = QWidget()
@@ -88,53 +92,60 @@ class TranslationsWindow(QMainWindow):
         self.setWindowFlags(Qt.Window)
     
     def load_translations(self):
-        """Load translations from JSON file"""
+        """Load translations from file"""
         try:
-            if os.path.exists('translations.json'):
-                with open('translations.json', 'r', encoding='utf-8') as f:
-                    all_translations = json.load(f)
-                    # Filter translations by current language combination
-                    self.translations = [
-                        t for t in all_translations 
-                        if t['source_language'] == config.source_language 
-                        and t['target_language'] == config.target_language
-                    ]
-                    # Convert date strings to datetime objects
-                    for trans in self.translations:
-                        trans['datetime'] = datetime.strptime(trans['date_added'], '%Y-%m-%d %H:%M:%S')
+            # Load translations filtered for current language combination
+            filtered_translations = self.data_manager.load_translations(
+                source_language=config.source_language,
+                target_language=config.target_language
+            )
+            
+            # Convert date strings to datetime objects
+            for t in filtered_translations:
+                t['datetime'] = datetime.strptime(t['date_added'], '%Y-%m-%d %H:%M:%S')
+            
+            self.translations = filtered_translations
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to load translations: {str(e)}")
             self.translations = []
     
     def save_translations(self):
-        """Save translations to JSON file"""
+        """Save translations to file"""
         try:
-            # First load all existing translations
-            all_translations = []
-            if os.path.exists('translations.json'):
-                with open('translations.json', 'r', encoding='utf-8') as f:
-                    all_translations = json.load(f)
-            
-            # Remove any existing translations for current language combination
-            all_translations = [
-                t for t in all_translations 
-                if not (t['source_language'] == config.source_language 
-                       and t['target_language'] == config.target_language)
-            ]
-            
-            # Add current translations (without datetime)
+            # Convert current translations to save format
             save_translations = []
-            for trans in self.translations:
-                save_trans = trans.copy()
-                save_trans['date_added'] = save_trans['datetime'].strftime('%Y-%m-%d %H:%M:%S')
-                del save_trans['datetime']
-                save_translations.append(save_trans)
+            for t in self.translations:
+                save_t = t.copy()
+                save_t['date_added'] = save_t['datetime'].strftime('%Y-%m-%d %H:%M:%S')
+                del save_t['datetime']
+                save_translations.append(save_t)
             
-            all_translations.extend(save_translations)
-            
-            # Save all translations
-            with open('translations.json', 'w', encoding='utf-8') as f:
-                json.dump(all_translations, f, ensure_ascii=False, indent=2)
+            # Try to save with data manager, providing current language combination
+            if not self.data_manager.save_translations(
+                save_translations,
+                source_language=config.source_language,
+                target_language=config.target_language
+            ):
+                # If save failed due to potential data loss, ask user
+                reply = QMessageBox.question(
+                    self, 
+                    "Confirm Save",
+                    "Saving these translations would result in significant data loss. Are you sure you want to continue?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                
+                if reply == QMessageBox.Yes:
+                    # Try again with force=True
+                    if not self.data_manager.save_translations(
+                        save_translations,
+                        source_language=config.source_language,
+                        target_language=config.target_language,
+                        force=True
+                    ):
+                        QMessageBox.warning(self, "Error", "Failed to save translations even with force option.")
+                else:
+                    QMessageBox.information(self, "Save Cancelled", "Translation save was cancelled to prevent data loss.")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to save translations: {str(e)}")
     
@@ -206,7 +217,7 @@ class TranslationsWindow(QMainWindow):
         """Add a new translation"""
         dialog = TranslationDialog(self)
         if dialog.exec_():
-            new_trans = {
+            new_t = {
                 'datetime': datetime.now(),
                 'source_text': dialog.source_text,
                 'translated_text': dialog.translated_text,
@@ -214,7 +225,7 @@ class TranslationsWindow(QMainWindow):
                 'source_language': config.source_language,
                 'target_language': config.target_language
             }
-            self.translations.insert(0, new_trans)
+            self.translations.insert(0, new_t)
             self.save_translations()
             self.update_table()
     

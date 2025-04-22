@@ -71,6 +71,7 @@ class Config:
 
         # File paths
         self.blacklist_file = os.path.join(root_dir, "data", "blacklist.json")
+        self.backup_dir = None  # Optional external backup directory
 
         # API Keys
         self.api_keys = {
@@ -115,6 +116,7 @@ class Config:
             "grammar_difficulty",
             "ui_language",
             "blacklist_file",
+            "backup_dir",
         )
         
         # Set API keys from config
@@ -154,6 +156,9 @@ class Config:
             "prompts_directory",
             "coqui_tts_location",
         )
+
+        if self.backup_dir is not None:
+            self.backup_dir = self.validate_and_set_directory("backup_dir")
 
         self.coqui_tts_model = tuple(self.coqui_tts_model)
 

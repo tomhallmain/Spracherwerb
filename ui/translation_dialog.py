@@ -8,8 +8,12 @@ from utils.config import config
 from utils.translations import I18N
 
 class CustomTextEdit(QTextEdit):
-    def find_next_input_widget(self):
-        """Find the next input widget in the dialog, skipping internal widgets"""
+    def find_next_input_widget(self, forward=True):
+        """Find the next or previous input widget in the dialog, skipping internal widgets
+        
+        Args:
+            forward (bool): If True, find next widget; if False, find previous widget
+        """
         current = self
         dialog = self.window()  # Get the top-level dialog
         
@@ -25,8 +29,12 @@ class CustomTextEdit(QTextEdit):
         # Find current widget's index
         try:
             current_index = input_widgets.index(current)
-            # Return next widget, wrapping around if needed
-            return input_widgets[(current_index + 1) % len(input_widgets)]
+            if forward:
+                # Return next widget, wrapping around if needed
+                return input_widgets[(current_index + 1) % len(input_widgets)]
+            else:
+                # Return previous widget, wrapping around if needed
+                return input_widgets[(current_index - 1) % len(input_widgets)]
         except ValueError:
             return None
 
@@ -46,15 +54,20 @@ class CustomTextEdit(QTextEdit):
             event.accept()
             return
             
-        # Handle Tab navigation
-        if event.key() == Qt.Key_Tab:
-            if event.modifiers() & Qt.ShiftModifier:
-                # If Shift is pressed, insert a tab character
+        # Handle Tab navigation and insertion
+        is_shift_tab = event.key() == 16777218  # Shift+Tab key code
+        if event.key() == Qt.Key_Tab or is_shift_tab:
+            raw_modifiers = event.modifiers()
+            shift_pressed = is_shift_tab or bool(raw_modifiers & Qt.ShiftModifier)
+            ctrl_pressed = bool(raw_modifiers & Qt.ControlModifier)
+            
+            if ctrl_pressed and not shift_pressed:
+                # If Ctrl is pressed without Shift, insert a tab character
                 self.insertPlainText('\t')
             else:
-                # Otherwise, move focus to next widget
+                # Otherwise, move focus to next/previous widget
                 try:
-                    next_widget = self.find_next_input_widget()
+                    next_widget = self.find_next_input_widget(forward=not shift_pressed)
                     if next_widget:
                         next_widget.setFocus()
                     else:

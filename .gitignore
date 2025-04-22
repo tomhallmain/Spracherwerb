@@ -10,6 +10,8 @@ cache/*
 configs/*
 !configs/config_example.json
 library_data/data/*
+!library_data/data/backup
+library_data/data/backup/*
 !library_data/data/blacklist_example.json
 library_data/prose_data/*
 library_data/wiki/*
