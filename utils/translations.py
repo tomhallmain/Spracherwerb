@@ -1,9 +1,12 @@
 import gettext
 import os
 
-from utils.utils import Utils
+from utils.logging_setup import get_logger
 
 _locale = "en" #Utils.get_default_user_language()
+
+logger = get_logger("translations")
+
 
 class I18N:
     localedir = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), 'locale')
@@ -45,7 +48,7 @@ class I18N:
         I18N.translate = gettext.translation('base', I18N.localedir, languages=[locale], fallback=True)
         I18N.translate.install()
         if verbose:
-            Utils.log("Switched locale to: " + locale)
+            logger.info("Switched locale to: " + locale)
 
     @staticmethod
     def _(s):

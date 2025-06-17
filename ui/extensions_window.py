@@ -266,10 +266,10 @@ class ExtensionsWindow(BaseWindow):
         try:
             new_strategy = ExtensionStrategy[self.strategy_var.get()]
             ExtensionManager.strategy = new_strategy
-            Utils.log(f"Extension strategy changed to: {new_strategy.name}")
+            print(f"Extension strategy changed to: {new_strategy.name}")
             ExtensionManager.reset_extension()
         except KeyError:
-            Utils.log_yellow(f"Invalid strategy selected: {self.strategy_var.get()}")
+            print(f"Invalid strategy selected: {self.strategy_var.get()}")
 
     def _clear_history(self):
         """Clear the extension history."""

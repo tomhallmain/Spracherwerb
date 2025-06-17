@@ -1,4 +1,4 @@
-"""Utility modules for the Muse application."""
+"""Utility modules for the Spracherwerb application."""
 
 from utils.app_info_cache import app_info_cache
 from utils.config import config
@@ -6,6 +6,7 @@ from utils.custom_formatter import CustomFormatter
 from utils.ffmpeg_handler import FFmpegHandler
 from utils.globals import Globals
 from utils.job_queue import JobQueue
+from utils.logging_setup import get_logger
 from utils.name_ops import NameOps
 from utils.runner_app_config import RunnerAppConfig
 from utils.temp_dir import TempDir
@@ -18,6 +19,7 @@ __all__ = [
     'CustomFormatter',
     'FFmpegHandler',
     'Globals',
+    'get_logger',
     'JobQueue',
     'NameOps',
     'RunnerAppConfig',

@@ -10,9 +10,11 @@ from tts.speakers import speakers
 from utils.config import config
 from utils.utils import Utils
 from utils.translations import I18N
+from utils.logging_setup import get_logger
 
 _ = I18N._
 
+logger = get_logger(__name__)
 
 @dataclass
 class LanguageTutor:
@@ -48,11 +50,11 @@ class LanguageTutor:
             try: 
                 for speaker in speakers:
                     if Utils.is_similar_strings(speaker, self.voice_name):
-                        Utils.log_yellow(f"Found similar voice name \"{self.voice_name}\", using valid speaker name \"{speaker}\" instead")
+                        logger.warning(f"Found similar voice name \"{self.voice_name}\", using valid speaker name \"{speaker}\" instead")
                         self.voice_name = speaker
                         break
             except Exception as e:
-                Utils.log_red(f"Error validating voice name: {e}")
+                logger.error(f"Error validating voice name: {e}")
                 raise ValueError(f"Invalid voice name: {self.voice_name}. Must be one of {list(speakers.keys())}")
         
         if self.avatar_paths is not None:
@@ -60,9 +62,9 @@ class LanguageTutor:
             for path in test_paths:
                 if not Path(path).exists():
                     test_paths.remove(path)
-                    Utils.log_yellow(f"Avatar path \"{path}\" does not exist, removing it")
+                    logger.warning(f"Avatar path \"{path}\" does not exist, removing it")
             if len(test_paths) == 0:
-                Utils.log_red(f"No valid avatar paths found for tutor \"{self.name}\", using default avatar")
+                logger.error(f"No valid avatar paths found for tutor \"{self.name}\", using default avatar")
                 self.avatar_paths = None
             else:
                 self.avatar_paths = test_paths
@@ -73,20 +75,20 @@ class LanguageTutor:
         self.context = new_context
         # Update last farewell time whenever the tutor speaks
         self.set_last_farewell_time()
-        Utils.log(f"Updated context for {self.name}: {old_context_len} -> {len(new_context)} tokens")
+        logger.info(f"Updated context for {self.name}: {old_context_len} -> {len(new_context)} tokens")
 
     def set_last_farewell_time(self) -> None:
         """Set the last farewell time to the current time."""
         old_time = self.last_farewell_time
         self.last_farewell_time = time.time()
         if old_time:
-            Utils.log(f"Updated last farewell time for {self.name}: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(old_time))} -> {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_farewell_time))}")
+            logger.info(f"Updated last farewell time for {self.name}: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(old_time))} -> {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_farewell_time))}")
         else:
-            Utils.log(f"Set initial farewell time for {self.name}: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_farewell_time))}")
+            logger.info(f"Set initial farewell time for {self.name}: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_farewell_time))}")
 
     def get_context(self) -> List[int]:
         """Get the current context."""
-        Utils.log(f"Retrieved context for {self.name}: {len(self.context)} tokens")
+        logger.info(f"Retrieved context for {self.name}: {len(self.context)} tokens")
         return self.context
 
     def get_gender(self) -> str:
@@ -112,7 +114,7 @@ class LanguageTutor:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the tutor to a dictionary for serialization."""
-        Utils.log(f"Serializing {self.name} tutor with {len(self.context)} tokens of context")
+        logger.info(f"Serializing {self.name} tutor with {len(self.context)} tokens of context")
         return {
             "name": self.name,
             "voice_name": self.voice_name,
@@ -131,7 +133,7 @@ class LanguageTutor:
     def from_dict(cls, data: Dict[str, Any]) -> 'LanguageTutor':
         """Create a tutor from a dictionary."""
         context_len = len(data.get("context", []))
-        Utils.log(f"Deserializing {data['name']} tutor with {context_len} tokens of context")
+        logger.info(f"Deserializing {data['name']} tutor with {context_len} tokens of context")
         return cls(
             name=data["name"],
             voice_name=data["voice_name"],
@@ -165,9 +167,9 @@ class LanguageTutorManager:
                 if tutor.voice_name not in self.tutors:
                     self.tutors[tutor.voice_name] = tutor
                 else:
-                    Utils.log_yellow(f"Tutor already exists, skipping: {tutor.voice_name}")
+                    logger.warning(f"Tutor already exists, skipping: {tutor.voice_name}")
         except Exception as e:
-            Utils.log_red(f"Error loading tutors: {e}")
+            logger.error(f"Error loading tutors: {e}")
         
         if len(self.tutors) == 0:
             self._create_default_tutors()
@@ -177,7 +179,7 @@ class LanguageTutorManager:
     def reload_tutors(self):
         """Reload tutors from the config JSON file."""
         try:
-            Utils.log(f"Reloading tutors from config, count = {len(config.language_tutors)}")
+            logger.info(f"Reloading tutors from config, count = {len(config.language_tutors)}")
             for tutor_data in config.language_tutors:
                 tutor_new = LanguageTutor.from_dict(tutor_data)
                 if tutor_new.voice_name not in self.tutors:
@@ -188,10 +190,10 @@ class LanguageTutorManager:
             # Remove mock tutors
             for name, tutor in self.tutors.items():
                 if tutor.is_mock:
-                    Utils.log_yellow(f"Removing mock tutor: {name}")
+                    logger.warning(f"Removing mock tutor: {name}")
                     del self.tutors[name]
         except Exception as e:
-            Utils.log_red(f"Error reloading tutors: {e}")
+            logger.error(f"Error reloading tutors: {e}")
 
     def _create_default_tutors(self):
         """Create default tutors if none exist."""
@@ -258,7 +260,7 @@ class LanguageTutorManager:
             return tutor
         else:
             if hasattr(self, "allow_mock_tutors") and self.allow_mock_tutors:
-                Utils.log_yellow(f"Mock tutor not found, creating new: {voice_name}")
+                logger.warning(f"Mock tutor not found, creating new: {voice_name}")
                 tutor = LanguageTutor(
                     name=voice_name,
                     voice_name=voice_name,
@@ -272,7 +274,7 @@ class LanguageTutorManager:
                 self.tutors[voice_name] = tutor
                 return tutor
             else:
-                Utils.log_red(f"Tutor not found: {voice_name}")
+                logger.error(f"Tutor not found: {voice_name}")
                 return None
 
     def set_current_tutor(self, voice_name: str) -> Optional[LanguageTutor]:
@@ -304,5 +306,5 @@ class LanguageTutorManager:
                 self.current_tutor.system_prompt if self.current_tutor else None
             ) 
         except Exception as e:
-            Utils.log_red(f"Error getting context and system prompt: {e}")
+            logger.error(f"Error getting context and system prompt: {e}")
             return ([], None) 

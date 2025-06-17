@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 import json
 import time
-import re
 
-from utils.utils import Utils
+from utils.logging_setup import get_logger
 
+logger = get_logger(__name__)
 
 @dataclass
 class Pronunciation:
@@ -49,7 +49,7 @@ class Forvo:
                         for word, pron_list in data.items()
                     }
         except Exception as e:
-            Utils.log_red(f"Error loading Forvo cache: {e}")
+            logger.error(f"Error loading Forvo cache: {e}")
             self.pronunciations = {}
     
     def _save_cache(self):
@@ -65,7 +65,7 @@ class Forvo:
                     indent=2
                 )
         except Exception as e:
-            Utils.log_red(f"Error saving Forvo cache: {e}")
+            logger.error(f"Error saving Forvo cache: {e}")
     
     def _is_cache_valid(self, pronunciations: List[Pronunciation]) -> bool:
         """Check if cached pronunciation data is still valid."""
@@ -120,7 +120,7 @@ class Forvo:
             return pronunciations
             
         except Exception as e:
-            Utils.log_red(f"Error getting Forvo pronunciations for {word}: {e}")
+            logger.error(f"Error getting Forvo pronunciations for {word}: {e}")
             return []
     
     def get_top_pronunciation(
@@ -151,7 +151,7 @@ class Forvo:
             return [lang["code"] for lang in data.get("items", [])]
             
         except Exception as e:
-            Utils.log_red(f"Error getting available languages: {e}")
+            logger.error(f"Error getting available languages: {e}")
             return []
     
     def get_country_pronunciations(
@@ -200,5 +200,5 @@ class Forvo:
             return pronunciations
             
         except Exception as e:
-            Utils.log_red(f"Error getting user pronunciations: {e}")
+            logger.error(f"Error getting user pronunciations: {e}")
             return [] 

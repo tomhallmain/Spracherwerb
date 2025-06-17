@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 import json
 import time
-import re
 
-from utils.utils import Utils
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -59,7 +60,7 @@ class LibriVox:
                         for book_id, book_data in data.items()
                     }
         except Exception as e:
-            Utils.log_red(f"Error loading LibriVox cache: {e}")
+            logger.error(f"Error loading LibriVox cache: {e}")
             self.audiobooks = {}
     
     def _save_cache(self):
@@ -75,7 +76,7 @@ class LibriVox:
                     indent=2
                 )
         except Exception as e:
-            Utils.log_red(f"Error saving LibriVox cache: {e}")
+            logger.error(f"Error saving LibriVox cache: {e}")
     
     def _is_cache_valid(self, audiobook: Audiobook) -> bool:
         """Check if cached audiobook data is still valid."""
@@ -116,7 +117,7 @@ class LibriVox:
             return results
             
         except Exception as e:
-            Utils.log_red(f"Error searching LibriVox: {e}")
+            logger.error(f"Error searching LibriVox: {e}")
             return []
     
     def get_audiobook(self, book_id: int) -> Optional[Audiobook]:
@@ -138,7 +139,7 @@ class LibriVox:
             return audiobook
             
         except Exception as e:
-            Utils.log_red(f"Error getting LibriVox audiobook {book_id}: {e}")
+            logger.error(f"Error getting LibriVox audiobook {book_id}: {e}")
             return None
     
     def _parse_audiobook_data(self, data: Dict[str, Any]) -> Audiobook:
@@ -174,7 +175,7 @@ class LibriVox:
             data = response.json()
             return [lang["name"] for lang in data.get("languages", [])]
         except Exception as e:
-            Utils.log_red(f"Error getting available languages: {e}")
+            logger.error(f"Error getting available languages: {e}")
             return []
     
     def get_popular_audiobooks(
@@ -205,5 +206,5 @@ class LibriVox:
             return results
             
         except Exception as e:
-            Utils.log_red(f"Error getting popular audiobooks: {e}")
+            logger.error(f"Error getting popular audiobooks: {e}")
             return [] 

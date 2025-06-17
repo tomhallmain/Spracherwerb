@@ -8,7 +8,9 @@ import time
 import requests
 from urllib.parse import quote
 
-from utils.utils import Utils
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -55,7 +57,7 @@ class WikimediaCommons:
                         for query, items in data.items()
                     }
         except Exception as e:
-            Utils.log_red(f"Error loading Wikimedia Commons cache: {e}")
+            logger.error(f"Error loading Wikimedia Commons cache: {e}")
             self.media = {}
     
     def _save_cache(self):
@@ -71,7 +73,7 @@ class WikimediaCommons:
                     indent=2
                 )
         except Exception as e:
-            Utils.log_red(f"Error saving Wikimedia Commons cache: {e}")
+            logger.error(f"Error saving Wikimedia Commons cache: {e}")
     
     def _is_cache_valid(self, items: List[MediaItem]) -> bool:
         """Check if cached media items are still valid."""
@@ -150,7 +152,7 @@ class WikimediaCommons:
             return items
             
         except Exception as e:
-            Utils.log_red(f"Error searching Wikimedia Commons: {e}")
+            logger.error(f"Error searching Wikimedia Commons: {e}")
             return []
     
     def get_media_by_category(
@@ -228,7 +230,7 @@ class WikimediaCommons:
             return items
             
         except Exception as e:
-            Utils.log_red(f"Error getting media by category: {e}")
+            logger.error(f"Error getting media by category: {e}")
             return []
     
     def download_media(self, item: MediaItem, output_dir: Path) -> Optional[Path]:
@@ -250,7 +252,7 @@ class WikimediaCommons:
             return output_path
             
         except Exception as e:
-            Utils.log_red(f"Error downloading media {item.id}: {e}")
+            logger.error(f"Error downloading media {item.id}: {e}")
             return None
     
     def get_media_statistics(self, query: str) -> Dict[str, Any]:

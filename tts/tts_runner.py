@@ -1,3 +1,6 @@
+
+# TODO UPDATE THIS FILE TO NEW VERSION FROM MUSE APP
+
 from datetime import datetime
 import os
 import re
@@ -11,19 +14,22 @@ import music_tag
 from utils.config import config
 from utils.job_queue import JobQueue
 from utils.utils import Utils
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 # Check if TTS is disabled
 if config.disable_tts:
-    Utils.log_yellow("TTS is disabled in config. Skipping TTS initialization.")
+    logger.warning("TTS is disabled in config. Skipping TTS initialization.")
     tts_available = False
 else:
     try:
-        Utils.log(f"Importing Coqui TTS...")
+        logger.info("Importing Coqui TTS...")
         sys.path.insert(0, config.coqui_tts_location)
         from TTS.api import TTS
         tts_available = True
     except ImportError:
-        Utils.log_red("Failed to import Coqui TTS. Ensure the code is downloaded and the \"coqui_tts_location\" value is set in the config.")
+        logger.error("Failed to import Coqui TTS. Ensure the code is downloaded and the \"coqui_tts_location\" value is set in the config.")
         tts_available = False
 
 import vlc
@@ -134,17 +140,17 @@ class TextToSpeechRunner:
     def clean(self):
         if len(self.used_audio_paths) > 0:
             def _clean(files_to_delete=[]):
-                Utils.log(f"Cleaning used TTS audio files")
+                logger.info("Cleaning used TTS audio files")
                 fail_count = 0
                 while len(files_to_delete) > 0:
                     if fail_count > 6:
-                        Utils.log_red("Failed to delete audio files: " + str(len(files_to_delete)))
+                        logger.error("Failed to delete audio files: " + str(len(files_to_delete)))
                         break
                     try:
                         os.remove(files_to_delete[0])
                         files_to_delete = files_to_delete[1:]
                     except Exception as e:
-                        Utils.log_red(e)
+                        logger.error(e)
                         fail_count += 1
                         time.sleep(0.5)
 
@@ -167,15 +173,15 @@ class TextToSpeechRunner:
 
     def generate_speech_file(self, text, output_path):
         if os.path.exists(output_path) and not self.overwrite:
-            Utils.log("Using existing generation file: " + output_path)
+            logger.info("Using existing generation file: " + output_path)
             return
         output_path1, output_path_no_unicode = self.get_output_path_no_unicode()
         final_output_path_mp3 = self.get_output_path_mp3(output_path1)
         final_output_path_mp3 = final_output_path_mp3[:-4] + " - TTS.mp3"
         if os.path.exists(final_output_path_mp3) and not self.overwrite:
-            Utils.log("Using existing generation file: " + final_output_path_mp3)
+            logger.info("Using existing generation file: " + final_output_path_mp3)
             return
-        Utils.log("Generating speech file: " + output_path)
+        logger.info("Generating speech file: " + output_path)
         try:
             # Init TTS with the target model name
             tts = TTS(model_name=self.model[0], progress_bar=False).to(device)
@@ -186,14 +192,14 @@ class TextToSpeechRunner:
                               file_path=output_path,
                               language=self.model[2])
             except Exception as e:
-                Utils.log_red(f"TTS generation failed: {str(e)}")
+                logger.error(f"TTS generation failed: {str(e)}")
                 # Check if the file was created despite the error
                 if not os.path.exists(output_path):
                     raise Exception("TTS failed to generate audio file")
                 # If file exists, we can continue despite the error
-                Utils.log("TTS generated file despite error, continuing...")
+                logger.info("TTS generated file despite error, continuing...")
         except Exception as e:
-            Utils.log_red(f"TTS initialization failed: {str(e)}")
+            logger.error(f"TTS initialization failed: {str(e)}")
             raise
 
     def play_async(self, filepath):
@@ -223,7 +229,7 @@ class TextToSpeechRunner:
                     if os.path.exists(next_job_output_path):
                         self.play_async(next_job_output_path)
                     else:
-                        Utils.log_red(f"Cannot find speech output path: {next_job_output_path}")
+                        logger.error(f"Cannot find speech output path: {next_job_output_path}")
                     while self.speech_queue.job_running:
                         time.sleep(.5)
             self.clean()
@@ -258,7 +264,7 @@ class TextToSpeechRunner:
             return
         full_text = ""
         for chunk in Chunker.get_str_chunks(text, locale=locale):
-            Utils.log("-------------------\n" + chunk)
+            logger.info("-------------------\n" + chunk)
             if full_text:
                 full_text += "\n\n"
             full_text += chunk
@@ -274,7 +280,7 @@ class TextToSpeechRunner:
             return
         full_text = ""
         for chunk in Chunker.get_chunks(filepath, split_on_each_line, locale=locale):
-            Utils.log("-------------------\n" + chunk)
+            logger.info("-------------------\n" + chunk)
             if full_text:
                 full_text += "\n\n"
             full_text += chunk
@@ -292,7 +298,7 @@ class TextToSpeechRunner:
         if file_path.endswith(".mp3") or os.path.exists(output_path):
             raise Exception("File already exists as mp3")
         args = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", os.path.abspath(file_path), output_path]
-        # Utils.log(args)
+        # logger.info(args)
         try:
             completed_process = subprocess.run(args)
             if completed_process.returncode != 0:
@@ -330,9 +336,9 @@ class TextToSpeechRunner:
 
             f['year'] = datetime.now().year
             f.save()
-            Utils.log(f"Added metadata to {output_path}")
+            logger.info(f"Added metadata to {output_path}")
         except Exception as e:
-            Utils.log_yellow(f"Could not add metadata: {e}")
+            logger.warning(f"Could not add metadata: {e}")
 
     def get_output_path_no_unicode(self):
         output_path = os.path.join(TextToSpeechRunner.output_directory, self.output_path + '.wav')
@@ -355,15 +361,15 @@ class TextToSpeechRunner:
         for i in range(len(self.audio_paths)):
             f = self.audio_paths[i]
             args.append(f.replace("\\", "/"))
-            Utils.log(f"File {f} was found: {os.path.exists(f)}")
+            logger.info(f"File {f} was found: {os.path.exists(f)}")
             if i < len(self.audio_paths) - 1:
                 args.append(silence_file.replace("\\", "/"))
         args.append(output_path_no_unicode.replace("\\", "/"))
-        # Utils.log(args)
+        # logger.info(args)
         try:
             completed_process = subprocess.run(args)
             if completed_process.returncode == 0:
-                Utils.log("Combined audio files: " + output_path)
+                logger.info("Combined audio files: " + output_path)
                 if save_mp3:
                     mp3_path = self.convert_to_mp3(output_path_no_unicode, text_content=text_content)
                 os.remove(output_path_no_unicode)
@@ -412,4 +418,4 @@ if __name__ == "__main__":
     # main(model, text)
 
     for chunk in Chunker.get_str_chunks("""Hello and welcome to our news show! Today, we have some exciting stories for you. First up, Tesla stock jumps on Q3 earnings beat. This is a major story as investors are always looking out for the latest updates from companies in their portfolios. The live briefing by Blinken says 'more progress' from Israel needed on Gaza aid flow shows that there is still tension between Israel and Palestine, with both countries blaming each other for the lack of aid to Gaza. The North Korean troops are in Russia, would be 'legitimate targets' in Ukraine, US says is a worrying story as we don't know what the United States plans to do if Russia invades Ukraine. The DOJ warns Elon Musk's America PAC that $1 million giveaway may break the law shows that money can buy influence and the DOJ is taking action against it. The Dragon Undocks from Station, Crew-8 Heads Toward Earth is a positive story as we finally have more astronauts going to space again! Chiefs finalizing trade to get DeAndre Hopkins from Titans shows that there are still trades happening in the NFL despite COVID-19 concerns. The Israeli strikes pound Lebanese coastal city after residents evacuate is a sad story as we don't know how many people were injured or killed during the attack. Wall Street closes down, pressured by tech losses and worries about rates shows that investors are still nervous about the economy despite the new stimulus package. The McDonald's takes Quarter Pounder off the menu at 1 in 5 restaurants due to E. coli outbreak is a scary story as we don't know where it came from or how many people got sick. Olivia Munn bares mastectomy scars in new SKIMS campaign shows that celebrities are still sharing their personal stories despite the pandemic. The Troops deployed to Jewish community center in Sri Lanka surfing town after US warns of possible attack in area is a worrying story as we don't know what will happen if this attack happens. The Panthers' Young to start after Dalton hurt in crash shows that there are still injuries happening despite the new safety measures. The New guidance for stroke prevention includes Ozempic, other weight loss drugs shows that healthcare professionals are trying to find new ways to help their patients and make it easier on them. The Iranian hacker group aims at US election websites and media before vote, Microsoft says is a worrying story as we don't know how serious this attack was or if any data was compromised. At least 4 dead in 'terrorist attack' on aerospace facility in Turkey shows that there are still terrorist attacks happening despite the pandemic. The Existing home sales fall to lowest level since 2010 shows that we need more affordable housing options for people who can't afford homes right now. And finally, How long can you stand like a flamingo? The answer may reflect your age, new study says is an interesting story as it gives us something fun to think about during these difficult times."""):
-        Utils.log(chunk)
+        logger.info(chunk)

@@ -3,9 +3,10 @@ import pickle
 import gc
 from typing import Optional, Dict, List, Any
 
-from utils import Utils
+from utils.logging_setup import get_logger
 from .learning_spot_profile import LearningSpot, LearningSpotProfile
 
+logger = get_logger(__name__)
 
 @dataclass
 class LearningSpotSnapshot:
@@ -70,7 +71,7 @@ class LearningMemory:
             LearningMemory.activity_progress = {}
             LearningMemory.session_history = []
         except Exception as e:
-            Utils.log(f"Error loading learning memory: {e}")
+            logger.error(f"Error loading learning memory: {e}")
 
     @staticmethod
     def save():
@@ -87,19 +88,19 @@ class LearningMemory:
     @staticmethod
     def update_all_learning_spots(spot: LearningSpot, activity_type: str):
         """Update the learning spots list and maintain historical snapshots."""
-        Utils.log_debug(f"Updating all learning spots: current count={len(LearningMemory.all_learning_spots)}, new spot creation_time={spot.timestamp}")
+        logger.debug(f"Updating all learning spots: current count={len(LearningMemory.all_learning_spots)}, new spot creation_time={spot.timestamp}")
         
         if len(LearningMemory.all_learning_spots) > 0:
             # Clean up the previous spot if it exists
             previous_spot = LearningMemory.all_learning_spots[0]
-            Utils.log_debug(f"Cleaning up previous spot: creation_time={previous_spot.timestamp}, was_spoken={previous_spot.was_spoken}")
+            logger.debug(f"Cleaning up previous spot: creation_time={previous_spot.timestamp}, was_spoken={previous_spot.was_spoken}")
             gc.collect()
 
         # Add to current spots
         LearningMemory.all_learning_spots.insert(0, spot)
         
         if len(LearningMemory.all_learning_spots) > LearningMemory.max_memory_size:
-            Utils.log_debug(f"Exceeding max memory size ({LearningMemory.max_memory_size}), converting excess spots to snapshots")
+            logger.debug(f"Exceeding max memory size ({LearningMemory.max_memory_size}), converting excess spots to snapshots")
             for spot in LearningMemory.all_learning_spots[LearningMemory.max_memory_size:]:
                 LearningMemory._add_historical_snapshot(spot, activity_type)
             LearningMemory.all_learning_spots = LearningMemory.all_learning_spots[:LearningMemory.max_memory_size]
@@ -126,7 +127,7 @@ class LearningMemory:
     @staticmethod
     def get_previous_session_spot(idx: int = 0, creation_time: Optional[float] = None) -> Optional[LearningSpot]:
         """Get the previous learning spot at the given index."""
-        Utils.log_debug(f"get_previous_session_spot called: idx={idx}, creation_time={creation_time}, list_length={len(LearningMemory.current_session_spots)}")
+        logger.debug(f"get_previous_session_spot called: idx={idx}, creation_time={creation_time}, list_length={len(LearningMemory.current_session_spots)}")
         
         if len(LearningMemory.current_session_spots) <= idx:
             return None

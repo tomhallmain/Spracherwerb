@@ -3,6 +3,9 @@ import os
 import sys
 
 from utils.utils import Utils
+from utils.logging_setup import get_logger
+
+logger = get_logger("config")
 
 root_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 configs_dir = os.path.join(root_dir, "configs")
@@ -101,8 +104,8 @@ class Config:
         try:
             self.dict = json.load(open(self.config_path, "r", encoding="utf-8"))
         except Exception as e:
-            Utils.log_red(e)
-            Utils.log_yellow("Unable to load config. Ensure config.json file settings are correct.")
+            logger.error(e)
+            logger.warning("Unable to load config. Ensure config.json file settings are correct.")
 
         # Set values from config file
         self.set_values(str,
@@ -182,8 +185,8 @@ class Config:
             try:
                 setattr(self, directory, self.validate_and_set_directory(directory))
             except Exception as e:
-                Utils.log_yellow(e)
-                Utils.log_yellow(f"Failed to set {directory} from config.json file. Ensure the key is set.")
+                logger.warning(e)
+                logger.warning(f"Failed to set {directory} from config.json file. Ensure the key is set.")
 
     def set_values(self, type, *names):
         for name in names:
@@ -191,14 +194,14 @@ class Config:
                 try:
                     setattr(self, name, type(self.dict[name]))
                 except Exception as e:
-                    Utils.log_red(e)
-                    Utils.log_yellow(f"Failed to set {name} from config.json file. Ensure the value is set and of the correct type.")
+                    logger.error(e)
+                    logger.warning(f"Failed to set {name} from config.json file. Ensure the value is set and of the correct type.")
             else:
                 try:
                     setattr(self, name, self.dict[name])
                 except Exception as e:
-                    Utils.log_red(e)
-                    Utils.log_yellow(f"Failed to set {name} from config.json file. Ensure the key is set.")
+                    logger.error(e)
+                    logger.warning(f"Failed to set {name} from config.json file. Ensure the key is set.")
 
 
     def get_subdirectories(self):

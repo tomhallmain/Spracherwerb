@@ -2,8 +2,10 @@
 import re
 
 from utils.config import config
-from utils.utils import Utils
+from utils.logging_setup import get_logger
 from utils.translations import I18N
+
+logger = get_logger(__name__)
 
 _ = I18N._
 
@@ -24,7 +26,7 @@ class TextModifierRule:
             else:
                 # If no locale is specified, use the default locale
                 if locale is not None:
-                    Utils.log_yellow(f"No replacement found for locale {locale}, using default locale {I18N.locale}")
+                    logger.warning(f"No replacement found for locale {locale}, using default locale {I18N.locale}")
                 try:
                     return self._replacement[I18N.locale]
                 except KeyError:
@@ -65,7 +67,7 @@ class TextCleanerRuleset:
         for rule_config in config.text_cleaner_ruleset:
             rule = TextModifierRule(**rule_config)
             self.add_rule(rule)
-            Utils.log(f"Added rule: {rule}")
+            logger.info(f"Added rule: {rule}")
         
     def clean(self, text, locale=None):
         for rule in self.rules:

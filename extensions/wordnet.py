@@ -8,7 +8,9 @@ import time
 from nltk.corpus import wordnet as wn
 from nltk.corpus.reader.wordnet import Synset
 
-from utils.utils import Utils
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -87,7 +89,7 @@ class WordNet:
                     return data
             return {}
         except Exception as e:
-            Utils.log_red(f"Error loading WordNet cache: {e}")
+            logger.error(f"Error loading WordNet cache: {e}")
             self.words = {}
             return {}
     
@@ -104,7 +106,7 @@ class WordNet:
                     indent=2
                 )
         except Exception as e:
-            Utils.log_red(f"Error saving WordNet cache: {e}")
+            logger.error(f"Error saving WordNet cache: {e}")
     
     def _is_cache_valid(self, word_info: WordInfo) -> bool:
         """Check if cached word data is still valid."""
@@ -176,7 +178,7 @@ class WordNet:
             return word_info
             
         except Exception as e:
-            Utils.log_red(f"Error getting WordNet info for {word}: {e}")
+            logger.error(f"Error getting WordNet info for {word}: {e}")
             return None
     
     def get_synonyms(self, word: str, cleaned: bool = True) -> List[str]:
@@ -280,7 +282,7 @@ class WordNet:
             return max_similarity
             
         except Exception as e:
-            Utils.log_red(f"Error calculating word similarity: {e}")
+            logger.error(f"Error calculating word similarity: {e}")
             return 0.0
     
     def get_related_words(self, word: str, depth: int = 2, cleaned: bool = True) -> Set[str]:
@@ -319,5 +321,5 @@ class WordNet:
             return related
             
         except Exception as e:
-            Utils.log_red(f"Error getting related words: {e}")
+            logger.error(f"Error getting related words: {e}")
             return set() 

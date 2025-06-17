@@ -8,7 +8,9 @@ import json
 import time
 import random
 
-from utils.utils import Utils
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -57,24 +59,24 @@ class Tatoeba:
         """Load cached sentence data from disk."""
         try:
             if self.CACHE_FILE.exists():
-                Utils.log(f"Loading cache from {self.CACHE_FILE}")
+                logger.info(f"Loading cache from {self.CACHE_FILE}")
                 with open(self.CACHE_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.sentences = {
                         int(sentence_id): TatoebaSentence(**sentence_data)
                         for sentence_id, sentence_data in data.items()
                     }
-                Utils.log(f"Cache loaded successfully with {len(self.sentences)} sentences")
+                logger.info(f"Cache loaded successfully with {len(self.sentences)} sentences")
             else:
-                Utils.log(f"No cache file found at {self.CACHE_FILE}")
+                logger.info(f"No cache file found at {self.CACHE_FILE}")
         except Exception as e:
-            Utils.log_red(f"Error loading Tatoeba cache: {e}")
+            logger.error(f"Error loading Tatoeba cache: {e}")
             self.sentences = {}
     
     def _save_cache(self):
         """Save sentence data to cache file."""
         try:
-            Utils.log(f"Saving cache to {self.CACHE_FILE}")
+            logger.info(f"Saving cache to {self.CACHE_FILE}")
             self.CACHE_DIR.mkdir(parents=True, exist_ok=True)
             with open(self.CACHE_FILE, 'w', encoding='utf-8') as f:
                 json.dump(
@@ -84,9 +86,9 @@ class Tatoeba:
                     ensure_ascii=False,
                     indent=2
                 )
-            Utils.log(f"Cache saved successfully with {len(self.sentences)} sentences")
+            logger.info(f"Cache saved successfully with {len(self.sentences)} sentences")
         except Exception as e:
-            Utils.log_red(f"Error saving Tatoeba cache: {e}")
+            logger.error(f"Error saving Tatoeba cache: {e}")
     
     def _is_cache_valid(self, sentence: TatoebaSentence) -> bool:
         """Check if cached sentence data is still valid."""
@@ -104,7 +106,7 @@ class Tatoeba:
         limit: int = 10
     ) -> List[TatoebaSentence]:
         """Search for sentences matching the given criteria."""
-        Utils.log(f"Searching sentences with params: language={language}, query={query}, limit={limit}")
+        logger.info(f"Searching sentences with params: language={language}, query={query}, limit={limit}")
         
         # First check cache for matching sentences
         cached_results = []
@@ -124,7 +126,7 @@ class Tatoeba:
             if len(cached_results) >= limit:
                 break
 
-        Utils.log(f"Found {len(cached_results)} cached results")
+        logger.info(f"Found {len(cached_results)} cached results")
 
         # If we have enough cached results, return them
         if len(cached_results) >= limit:
@@ -143,16 +145,16 @@ class Tatoeba:
             params["has_audio"] = "yes"
         
         try:
-            Utils.log(f"Making API request to {self.BASE_URL}/sentences with params: {params}")
+            logger.info(f"Making API request to {self.BASE_URL}/sentences with params: {params}")
             response = self.session.get(f"{self.BASE_URL}/sentences", params=params)
             response.raise_for_status()
             data = response.json()
             
-            Utils.log(f"API response status: {response.status_code}")
+            logger.info(f"API response status: {response.status_code}")
             if "data" in data:
-                Utils.log(f"API response data length: {len(data['data'])}")
+                logger.info(f"API response data length: {len(data['data'])}")
             else:
-                Utils.log_red(f"No data found in API response")
+                logger.error(f"No data found in API response")
                 return cached_results[:limit]
             
             results = []
@@ -177,18 +179,18 @@ class Tatoeba:
                 if len(results) >= limit:
                     break
             
-            Utils.log(f"Found {len(results)} new results from API")
+            logger.info(f"Found {len(results)} new results from API")
             
             # Save the cache after collecting results
             self._save_cache()
             
             # Combine cached and new results
             combined_results = cached_results + results
-            Utils.log(f"Returning {len(combined_results[:limit])} total results")
+            logger.info(f"Returning {len(combined_results[:limit])} total results")
             return combined_results[:limit]
             
         except Exception as e:
-            Utils.log_red(f"Error searching Tatoeba sentences: {e}")
+            logger.error(f"Error searching Tatoeba sentences: {e}")
             return cached_results[:limit]  # Return cached results even if API fails
     
     def get_sentence(self, sentence_id: int) -> Optional[TatoebaSentence]:
@@ -229,7 +231,7 @@ class Tatoeba:
             return sentence
             
         except Exception as e:
-            Utils.log_red(f"Error getting Tatoeba sentence {sentence_id}: {e}")
+            logger.error(f"Error getting Tatoeba sentence {sentence_id}: {e}")
             return None
     
     def _parse_sentence_data(self, data: Dict[str, Any]) -> TatoebaSentence:
@@ -257,7 +259,7 @@ class Tatoeba:
     ) -> Optional[TatoebaSentence]:
         """Get a random sentence matching the criteria."""
         try:
-            Utils.log(f"Getting random sentence with params: language={language}, min_length={min_length}, max_length={max_length}, has_audio={has_audio}")
+            logger.info(f"Getting random sentence with params: language={language}, min_length={min_length}, max_length={max_length}, has_audio={has_audio}")
             
             # First, get a list of sentences
             sentences = self.search_sentences(
@@ -268,19 +270,19 @@ class Tatoeba:
                 limit=10
             )
             
-            Utils.log(f"Found {len(sentences)} sentences")
+            logger.info(f"Found {len(sentences)} sentences")
             
             if not sentences:
-                Utils.log_red("No sentences found matching criteria")
+                logger.error("No sentences found matching criteria")
                 return None
             
             # Randomly select one sentence
             sentence = random.choice(sentences)
-            Utils.log(f"Selected random sentence: {sentence.text[:50]}...")
+            logger.info(f"Selected random sentence: {sentence.text[:50]}...")
             return sentence
             
         except Exception as e:
-            Utils.log_red(f"Error getting random Tatoeba sentence: {e}")
+            logger.error(f"Error getting random Tatoeba sentence: {e}")
             return None
     
     def get_available_languages(self) -> List[str]:

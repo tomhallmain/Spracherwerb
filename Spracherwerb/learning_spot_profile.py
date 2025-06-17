@@ -5,10 +5,11 @@ from dataclasses import dataclass
 
 from utils.config import config
 from utils.translations import I18N
-from utils.utils import Utils
+from utils.logging_setup import get_logger
 
 _ = I18N._
 
+logger = get_logger(__name__)
 
 @dataclass
 class LearningSpot:
@@ -64,7 +65,7 @@ class LearningSpotProfile:
         
         # For the first interaction, we should provide an introduction
         if self.is_first_interaction:
-            Utils.log("First interaction of activity - preparing introduction")
+            logger.info("First interaction of activity - preparing introduction")
             self.provide_introduction = True
         else:
             self.provide_introduction = False
@@ -128,7 +129,7 @@ class LearningSpotProfile:
         # Check time restriction
         no_time_restriction = self.last_spot_more_than_seconds(self.min_seconds_between_spots)
         if not no_time_restriction:
-            Utils.log("Time restriction applied to current spot preparation")
+            logger.info("Time restriction applied to current spot preparation")
             return False
             
         return True
@@ -143,25 +144,25 @@ class LearningSpotProfile:
         
     def get_last_spoken_spot(self) -> Optional[LearningSpot]:
         """Get the most recent spot that was actually spoken"""
-        Utils.log_debug(f"Starting get_last_spoken_spot for profile created at {self.creation_time}")
+        logger.debug(f"Starting get_last_spoken_spot for profile created at {self.creation_time}")
         idx = 0
         max_iterations = 100  # Failsafe to prevent infinite loops
         
         while True:
             spot = self.get_previous_spot(idx=idx)
             if spot is None:
-                Utils.log_debug(f"No spot found at index {idx}")
+                logger.debug(f"No spot found at index {idx}")
                 return None
                 
-            Utils.log_debug(f"Checking spot at index {idx}: timestamp={spot.timestamp}, was_spoken={spot.was_spoken}")
+            logger.debug(f"Checking spot at index {idx}: timestamp={spot.timestamp}, was_spoken={spot.was_spoken}")
             
             if spot.was_spoken:
-                Utils.log_debug(f"Found spoken spot at index {idx}: timestamp={spot.timestamp}")
+                logger.debug(f"Found spoken spot at index {idx}: timestamp={spot.timestamp}")
                 return spot
                 
             idx += 1
             if idx >= max_iterations:
-                Utils.log_red(f"Failsafe triggered: get_last_spoken_spot exceeded {max_iterations} iterations")
+                logger.error(f"Failsafe triggered: get_last_spoken_spot exceeded {max_iterations} iterations")
                 return None
                 
     def set_preparation_time(self) -> None:

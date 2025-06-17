@@ -1,7 +1,6 @@
 import asyncio
 import base64
 from datetime import timedelta, datetime
-import logging
 import math
 import re
 import os
@@ -13,31 +12,10 @@ import traceback
 import unicodedata
 from pathlib import Path
 
-from utils.custom_formatter import CustomFormatter
+from utils.logging_setup import get_logger
 
-# create logger
-logger = logging.getLogger("muse")
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
+logger = get_logger("utils")
 
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-ch.setFormatter(CustomFormatter())
-logger.addHandler(ch)
-
-# Create log file in ApplicationData
-appdata_dir = os.getenv('APPDATA') if sys.platform == 'win32' else os.path.expanduser('~/.local/share')
-log_dir = Path(appdata_dir) / 'muse' / 'logs'
-log_dir.mkdir(parents=True, exist_ok=True)
-date_str = datetime.now().strftime("%Y-%m-%d")
-log_file = log_dir / f'muse_{date_str}.log'
-
-# Add file handler
-fh = logging.FileHandler(log_file, mode='w+', encoding='utf-8')
-fh.setLevel(logging.DEBUG)
-fh.setFormatter(CustomFormatter())
-logger.addHandler(fh)
 
 class Utils:
     @staticmethod
@@ -86,24 +64,8 @@ class Utils:
                     message += f" ({total} remaining in total)"
             if extra_message is not None:
                 message += f" - {extra_message}"
-            Utils.log(message)
+            logger.info(message)
         time.sleep(seconds)
-
-    @staticmethod
-    def log(message, level=logging.INFO):
-        logger.log(level, message)
-    
-    @staticmethod
-    def log_debug(message):
-        Utils.log(message, logging.DEBUG)
-
-    @staticmethod
-    def log_red(message):
-        Utils.log(message, logging.ERROR)
-    
-    @staticmethod
-    def log_yellow(message):
-        Utils.log(message, logging.WARNING)
 
     @staticmethod
     def extract_substring(text, pattern):
@@ -145,7 +107,7 @@ class Utils:
                     period = int(run_obj) if isinstance(run_obj, int) else getattr(run_obj, sleep_attr)
                     await asyncio.sleep(period)
                     if run_obj and run_attr and not getattr(run_obj, run_attr):
-                        Utils.log(f"Ending periodic task: {run_obj.__name__}.{run_attr} = False")
+                        logger.info(f"Ending periodic task: {run_obj.__name__}.{run_attr} = False")
                         break
             return wrapper
         return scheduler
@@ -230,11 +192,11 @@ class Utils:
         if end_index >= len(string) or start_index >= len(string):
             raise Exception("Start or end index were too high for string: " + string)
         if start_index == 0:
-            Utils.log("Removed: " + string[:end_index+1])
+            logger.info("Removed: " + string[:end_index+1])
             return string[end_index+1:]
         left_part = string[:start_index]
         right_part = string[end_index+1:]
-        Utils.log("Removed: " + string[start_index:end_index+1])
+        logger.info("Removed: " + string[start_index:end_index+1])
         return left_part + right_part
 
     @staticmethod
@@ -348,7 +310,7 @@ class Utils:
             language = langcodes.Language.get(language_code)
             return language.display_name()
         except Exception as e:
-            Utils.log_red(f"Error while getting language name for code '{language_code}': {e}")
+            logger.error(f"Error while getting language name for code '{language_code}': {e}")
             return "English"
 
     @staticmethod

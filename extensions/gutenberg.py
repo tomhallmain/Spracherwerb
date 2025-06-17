@@ -7,8 +7,9 @@ from pathlib import Path
 import json
 import time
 
-from utils.utils import Utils
+from utils.logging_setup import get_logger
 
+logger = get_logger(__name__)
 
 @dataclass
 class GutenbergBook:
@@ -79,7 +80,7 @@ class Gutenberg:
                         for book_id, book_data in data.items()
                     }
         except Exception as e:
-            Utils.log_red(f"Error loading Gutenberg cache: {e}")
+            logger.error(f"Error loading Gutenberg cache: {e}")
             self.books = {}
     
     def _save_cache(self):
@@ -94,7 +95,7 @@ class Gutenberg:
                     indent=2
                 )
         except Exception as e:
-            Utils.log_red(f"Error saving Gutenberg cache: {e}")
+            logger.error(f"Error saving Gutenberg cache: {e}")
     
     def _is_cache_valid(self, book: GutenbergBook) -> bool:
         """Check if cached book data is still valid."""
@@ -137,7 +138,7 @@ class Gutenberg:
             return results
             
         except Exception as e:
-            Utils.log_red(f"Error searching Gutenberg books: {e}")
+            logger.error(f"Error searching Gutenberg books: {e}")
             return []
     
     def get_book(self, book_id: int) -> Optional[GutenbergBook]:
@@ -158,7 +159,7 @@ class Gutenberg:
             return book
             
         except Exception as e:
-            Utils.log_red(f"Error getting Gutenberg book {book_id}: {e}")
+            logger.error(f"Error getting Gutenberg book {book_id}: {e}")
             return None
     
     def _parse_book_data(self, data: Dict[str, Any]) -> GutenbergBook:
@@ -221,7 +222,7 @@ class Gutenberg:
             response.raise_for_status()
             return response.text
         except Exception as e:
-            Utils.log_red(f"Error getting book text for {book_id}: {e}")
+            logger.error(f"Error getting book text for {book_id}: {e}")
             return None
     
     def get_available_languages(self) -> List[str]:
@@ -232,7 +233,7 @@ class Gutenberg:
             data = response.json()
             return [lang["code"] for lang in data.get("results", [])]
         except Exception as e:
-            Utils.log_red(f"Error getting available languages: {e}")
+            logger.error(f"Error getting available languages: {e}")
             return []
     
     def get_popular_books(self, language: str, limit: int = 10) -> List[GutenbergBook]:
@@ -253,6 +254,6 @@ class Gutenberg:
             return results
             
         except Exception as e:
-            Utils.log_red(f"Error getting popular books for {language}: {e}")
+            logger.error(f"Error getting popular books for {language}: {e}")
             return []
 

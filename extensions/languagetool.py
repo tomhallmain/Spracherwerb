@@ -7,7 +7,9 @@ import json
 import time
 import requests
 
-from utils.utils import Utils
+from utils.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -53,7 +55,7 @@ class LanguageTool:
                         for text, errors in data.items()
                     }
         except Exception as e:
-            Utils.log_red(f"Error loading LanguageTool cache: {e}")
+            logger.error(f"Error loading LanguageTool cache: {e}")
             self.checks = {}
     
     def _save_cache(self):
@@ -69,7 +71,7 @@ class LanguageTool:
                     indent=2
                 )
         except Exception as e:
-            Utils.log_red(f"Error saving LanguageTool cache: {e}")
+            logger.error(f"Error saving LanguageTool cache: {e}")
     
     def _is_cache_valid(self, errors: List[LanguageError]) -> bool:
         """Check if cached checks are still valid."""
@@ -139,7 +141,7 @@ class LanguageTool:
             return errors
             
         except Exception as e:
-            Utils.log_red(f"Error checking text with LanguageTool: {e}")
+            logger.error(f"Error checking text with LanguageTool: {e}")
             return []
     
     def get_available_languages(self) -> List[str]:
@@ -150,7 +152,7 @@ class LanguageTool:
             data = response.json()
             return [lang["code"] for lang in data]
         except Exception as e:
-            Utils.log_red(f"Error getting available languages: {e}")
+            logger.error(f"Error getting available languages: {e}")
             return []
     
     def get_available_rules(self, language: str) -> Dict[str, Any]:
@@ -161,7 +163,7 @@ class LanguageTool:
             data = response.json()
             return data
         except Exception as e:
-            Utils.log_red(f"Error getting available rules: {e}")
+            logger.error(f"Error getting available rules: {e}")
             return {}
     
     def get_rule_categories(self, language: str) -> List[str]:

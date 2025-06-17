@@ -1,5 +1,9 @@
+from utils.logging_setup import get_logger
+from utils.translations import I18N
 
-from utils.utils import Utils
+logger = get_logger("job_queue")
+
+_ = I18N._
 
 class JobQueue:
     def __init__(self, name="JobQueue", max_size=50):
@@ -22,7 +26,7 @@ class JobQueue:
         if len(self.pending_jobs) > self.max_size:
             raise Exception(f"Reached limit of pending runs: {self.max_size} - wait until current run has completed.")
         self.pending_jobs.append(job_args)
-        Utils.log(f"JobQueue {self.name} - Added pending job: {job_args}")
+        logger.info(f"JobQueue {self.name} - Added pending job: {job_args}")
 
     def cancel(self):
         self.pending_jobs = []

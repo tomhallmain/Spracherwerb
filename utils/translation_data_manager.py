@@ -4,7 +4,10 @@ from pathlib import Path
 import appdirs
 
 from utils.config import config
-from utils.utils import Utils
+from utils.logging_setup import get_logger
+
+logger = get_logger("translation_data_manager")
+
 
 class TranslationDataManager:
     """Manages translation data storage and backup"""
@@ -17,12 +20,12 @@ class TranslationDataManager:
         self.data_dir = self.cache_dir / "translations"
         self.data_file = self.data_dir / "translations.json"
         self.backup_file = self.data_dir / "translations_backup.json"
-        Utils.log_debug(f"Data file: {self.data_file}")
-        Utils.log_debug(f"Backup file: {self.backup_file}")
+        logger.debug(f"Data file: {self.data_file}")
+        logger.debug(f"Backup file: {self.backup_file}")
         if hasattr(config, 'backup_dir') and config.backup_dir and config.backup_dir.strip() != "":
             if Path(config.backup_dir).exists():
                 backup_path = Path(config.backup_dir) / "translations_backup.json"
-                Utils.log_debug(f"Backup file 2: {backup_path}")
+                logger.debug(f"Backup file 2: {backup_path}")
 
         # Create necessary directories
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -51,7 +54,7 @@ class TranslationDataManager:
                 
             return translations
         except Exception as e:
-            Utils.log_red(f"Error loading translations: {e}")
+            logger.error(f"Error loading translations: {e}")
             # Try to load from most recent backup
             return self._load_from_backup()
     
@@ -93,7 +96,7 @@ class TranslationDataManager:
             
             return True
         except Exception as e:
-            Utils.log_red(f"Error saving translations: {e}")
+            logger.error(f"Error saving translations: {e}")
             return False
     
     def _create_backup(self):
@@ -112,9 +115,9 @@ class TranslationDataManager:
                     backup_path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(self.data_file, backup_path)
                 else:
-                    Utils.log_red(f"Backup path provided {config.backup_dir} does not exist")
+                    logger.error(f"Backup path provided {config.backup_dir} does not exist")
         except Exception as e:
-            Utils.log_red(f"Error creating backup: {e}")
+            logger.error(f"Error creating backup: {e}")
     
     def _load_from_backup(self):
         """Load translations from the most recent backup"""
@@ -127,20 +130,20 @@ class TranslationDataManager:
                         with open(backup_path, 'r', encoding='utf-8') as f:
                             return json.load(f)
                     else:
-                        Utils.log_red(f"Failed to load backup from {backup_path}")
+                        logger.error(f"Failed to load backup from {backup_path}")
                 else:
-                    Utils.log_red(f"Backup path provided {config.backup_dir} does not exist")
+                    logger.error(f"Backup path provided {config.backup_dir} does not exist")
             
             # Fall back to automatic backup
             if self.backup_file.exists():
                 with open(self.backup_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
             else:
-                Utils.log_red(f"Failed to load backup from {self.backup_file}")
+                logger.error(f"Failed to load backup from {self.backup_file}")
 
             return []
         except Exception as e:
-            Utils.log_red(f"Error loading from backup: {e}")
+            logger.error(f"Error loading from backup: {e}")
             return []
     
     def _would_lose_data(self, new_translations):

@@ -11,12 +11,10 @@ from pathlib import Path
 import json
 import time
 import requests
-import os
-import csv
-from io import StringIO
 
-from utils.utils import Utils
+from utils.logging_setup import get_logger
 
+logger = get_logger(__name__)
 
 @dataclass
 class VoiceSample:
@@ -63,7 +61,7 @@ class CommonVoice:
                         for lang, samples in data.items()
                     }
         except Exception as e:
-            Utils.log_red(f"Error loading Common Voice cache: {e}")
+            logger.error(f"Error loading Common Voice cache: {e}")
             self.samples = {}
     
     def _save_cache(self):
@@ -79,7 +77,7 @@ class CommonVoice:
                     indent=2
                 )
         except Exception as e:
-            Utils.log_red(f"Error saving Common Voice cache: {e}")
+            logger.error(f"Error saving Common Voice cache: {e}")
     
     def _is_cache_valid(self, samples: List[VoiceSample]) -> bool:
         """Check if cached voice samples are still valid."""
@@ -95,7 +93,7 @@ class CommonVoice:
             data = response.json()
             return [lang["code"] for lang in data.get("data", [])]
         except Exception as e:
-            Utils.log_red(f"Error getting available languages: {e}")
+            logger.error(f"Error getting available languages: {e}")
             return []
     
     def get_voice_samples(
@@ -131,7 +129,7 @@ class CommonVoice:
             return results
             
         except Exception as e:
-            Utils.log_red(f"Error getting Common Voice samples for {language}: {e}")
+            logger.error(f"Error getting Common Voice samples for {language}: {e}")
             return []
     
     def _parse_sample_data(self, data: Dict) -> VoiceSample:
@@ -189,7 +187,7 @@ class CommonVoice:
             return output_path
             
         except Exception as e:
-            Utils.log_red(f"Error downloading sample {sample.id}: {e}")
+            logger.error(f"Error downloading sample {sample.id}: {e}")
             return None
     
     def get_sample_statistics(self, language: str = "en-US") -> Dict[str, Any]:
@@ -208,5 +206,5 @@ class CommonVoice:
                 "age_groups": data.get("age_groups", {})
             }
         except Exception as e:
-            Utils.log_red(f"Error getting statistics for {language}: {e}")
+            logger.error(f"Error getting statistics for {language}: {e}")
             return {} 

@@ -6,9 +6,11 @@ from enum import Enum
 import time
 
 from utils.utils import Utils
+from utils.logging_setup import get_logger
 from .learning_spot_profile import LearningSpot, LearningSpotProfile
 from .learning_memory import LearningMemory
 
+logger = get_logger(__name__)
 
 class ActivityType(Enum):
     """Types of learning activities."""
@@ -189,7 +191,7 @@ class LearningProgression:
     def reorder_activities(self, new_order: List[int]):
         """Reorder the upcoming activities based on the provided indices."""
         if len(new_order) != len(self.upcoming_activities):
-            Utils.log_red("Invalid reorder: length mismatch")
+            logger.error("Invalid reorder: length mismatch")
             return
             
         reordered = [self.upcoming_activities[i] for i in new_order]

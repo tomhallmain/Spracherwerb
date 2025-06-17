@@ -1,4 +1,4 @@
-"""UI package for the Muse application."""
+"""UI package for the Spracherwerb application."""
 
 from ui.app_actions import AppActions
 from ui.app_style import AppStyle
