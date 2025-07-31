@@ -1,14 +1,15 @@
-"""LLM interface for the Spracherwerb application."""
+"""General LLM interface using Ollama."""
 
-import json
 from dataclasses import dataclass
-import random  # Add this at the top with other standard library imports
+import json
+import random
 import threading
 import time
 from typing import Optional, List
 from urllib import request
 
 from utils.logging_setup import get_logger
+from utils import Utils
 
 logger = get_logger(__name__)
 
@@ -52,6 +53,11 @@ class LLMResult:
             eval_duration=data.get("eval_duration", 0)
         )
 
+    def validate(self):
+        if self.response is None or self.response.strip() == "":
+            return False
+        return True
+
     def _get_json_attr(self, attr_name):
         try:
             if attr_name is None or attr_name.strip() == "":
@@ -77,6 +83,16 @@ class LLMResult:
 
 
 class LLM:
+    """
+    Interface for interacting with the Ollama LLM API.
+    
+    TODO: Consider implementing redundancy elimination during response generation.
+    This would require:
+    1. Setting up streaming responses from the LLM
+    2. Checking each chunk as it arrives
+    3. Short-circuiting response generation if redundancy is detected
+    4. This would save both processing time and API costs
+    """
     ENDPOINT = "http://localhost:11434/api/generate"
     DEFAULT_TIMEOUT = 180
     DEFAULT_SYSTEM_PROMPT_DROP_RATE = 0.9  # 90% chance to drop system prompt
@@ -89,7 +105,21 @@ class LLM:
         self._result = None
         self._exception = None
         self._thread = None
+        self.failure_count = 0  # Track consecutive LLM failures
         logger.info(f"Using LLM model: {self.model_name}")
+
+    def get_failure_count(self):
+        return self.failure_count
+
+    def increment_failure_count(self):
+        self.failure_count += 1
+
+    def reset_failure_count(self):
+        self.failure_count = 0
+
+    def get_llm_penalty(self):
+        import math
+        return 1.0 / (1.0 + math.log2(1.0 + self.failure_count))
 
     def ask(self, query, json_key=None, timeout=DEFAULT_TIMEOUT, context=None, system_prompt=None, system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE):
         """Ask the LLM a question and optionally extract a JSON value."""
@@ -141,9 +171,15 @@ class LLM:
             result = LLMResult.from_json(resp_json, context_provided=context is not None)
             result.response = self._clean_response_for_models(result.response)
             logger.debug(f"LLM response received, length: {len(result.response)}")
+            if result.validate():
+                # Reset LLM failure count on success
+                self.reset_failure_count()
+            else:
+                raise LLMResponseException("LLM response is invalid!")
             return result
         except Exception as e:
             logger.error(f"Failed to generate LLM response: {e}")
+            self.increment_failure_count()  # Increment on LLM failure
             raise LLMResponseException(f"Failed to generate LLM response: {e}")
 
     def generate_response_async(self, query, timeout=DEFAULT_TIMEOUT, context=None, system_prompt=None, system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE):
@@ -210,10 +246,49 @@ class LLM:
         """Check if the current model is a thinking model that uses internal prompts."""
         return self.model_name.startswith("deepseek-r1")
 
-    def _clean_response_for_models(self, response_text):
+    def _clean_response_for_models(self, response_text, accept_mostly_cjk_response=False):
+        """
+        Clean and validate model responses, handling model-specific patterns and invalid outputs.
+        
+        Args:
+            response_text: The raw response text from the model
+            accept_mostly_cjk_response: If False, responses containing mostly CJK (Chinese, Japanese, Korean) will be rejected.
+                                      If True, these responses will be allowed through.
+        
+        Returns:
+            str: Cleaned response text, or empty string if the response is invalid
+        """
+        # First handle thinking model specific cleaning
         if self._is_thinking_model():
             if response_text.strip().startswith("<think>") and "</think>" in response_text:
-                response_text = response_text[response_text.index("</think>") + len("</think>"):].strip()
+                response_text = response_text[response_text.rfind("</think>") + len("</think>"):].strip()
+            if "<think>" in response_text:
+                # Sometimes the model will return extra misplaced <think> tags in the non-thinking section of the response.
+                response_text = response_text.replace("<think>", "").replace("</think>", "").strip()
+
+        # Remove "Final Answer:" prefix if present
+        if response_text.strip().startswith("Final Answer:"):
+            response_text = response_text[response_text.find("Final Answer:") + len("Final Answer:"):].strip()
+
+        # Check for CJK characters if not accepting them
+        if not accept_mostly_cjk_response and Utils.get_cjk_character_ratio(response_text, 50):
+            return ""
+
+        # Check for invalid output pattern (Chinese characters followed by note block)
+        invalid_pattern = "---\n\n**Note:** The assistant's response is cut off due to the user stopping the interaction.\n\n---"
+        if invalid_pattern in response_text:
+            # If the response is just the invalid pattern, return empty string
+            if response_text.strip() == invalid_pattern:
+                return ""
+            
+            # Check if the text before the invalid pattern is mostly CJK characters
+            before_pattern = response_text[:response_text.find(invalid_pattern)].strip()
+            if Utils.get_cjk_character_ratio(before_pattern, 50):
+                return ""
+            
+            # Otherwise, just remove the invalid pattern
+            response_text = response_text.replace(invalid_pattern, "").strip()
+
         return response_text
 
     def _sanitize_query(self, query):
@@ -233,7 +308,7 @@ class LLM:
             self._cancelled = True
             self._thread.join(timeout=1.0)
             if self._thread.is_alive():
-                logger.info("Thread did not terminate gracefully, forcing cleanup")
+                logger.error("Thread did not terminate gracefully, forcing cleanup")
             self._thread = None  # Force cleanup even if thread is still alive
 
     def __del__(self):
