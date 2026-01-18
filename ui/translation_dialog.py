@@ -5,6 +5,7 @@ from PySide6.QtGui import QKeyEvent
 import traceback
 
 from utils.config import config
+from utils.globals import Language
 from utils.translations import I18N
 
 class CustomTextEdit(QTextEdit):
@@ -90,8 +91,8 @@ class TranslationDialog(QDialog):
         
         # Create language display
         language_layout = QHBoxLayout()
-        self.source_language_label = QLabel(f"Source: {I18N.get_language_name(config.source_language)}")
-        self.target_language_label = QLabel(f"Target: {I18N.get_language_name(config.target_language)}")
+        self.source_language_label = QLabel(f"Source: {Language.get_language_name(config.source_language)}")
+        self.target_language_label = QLabel(f"Target: {Language.get_language_name(config.target_language)}")
         language_layout.addWidget(self.source_language_label)
         language_layout.addWidget(self.target_language_label)
         layout.addLayout(language_layout)

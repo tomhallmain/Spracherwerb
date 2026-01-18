@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 
 from utils.config import config
+from utils.globals import Language
 from utils.translations import I18N
 from utils.translation_data_manager import TranslationDataManager
 from ui.translation_dialog import TranslationDialog
@@ -35,8 +36,8 @@ class TranslationsWindow(QMainWindow):
         
         # Create language display
         language_layout = QHBoxLayout()
-        self.source_language_label = QLabel(f"Source: {I18N.get_language_name(config.source_language)}")
-        self.target_language_label = QLabel(f"Target: {I18N.get_language_name(config.target_language)}")
+        self.source_language_label = QLabel(f"Source: {Language.get_language_name(config.source_language)}")
+        self.target_language_label = QLabel(f"Target: {Language.get_language_name(config.target_language)}")
         language_layout.addWidget(self.source_language_label)
         language_layout.addWidget(self.target_language_label)
         layout.addLayout(language_layout)
@@ -94,10 +95,10 @@ class TranslationsWindow(QMainWindow):
     def load_translations(self):
         """Load translations from file"""
         try:
-            # Load translations filtered for current language combination
-            filtered_translations = self.data_manager.load_translations(
-                source_language=config.source_language,
-                target_language=config.target_language
+            # Load translations for current language pair using new structured API
+            filtered_translations = self.data_manager.get_language_pair(
+                config.source_language,
+                config.target_language
             )
             
             # Convert date strings to datetime objects
@@ -120,11 +121,11 @@ class TranslationsWindow(QMainWindow):
                 del save_t['datetime']
                 save_translations.append(save_t)
             
-            # Try to save with data manager, providing current language combination
-            if not self.data_manager.save_translations(
+            # Save using new structured API for the current language pair
+            if not self.data_manager.save_language_pair(
                 save_translations,
-                source_language=config.source_language,
-                target_language=config.target_language
+                config.source_language,
+                config.target_language
             ):
                 # If save failed due to potential data loss, ask user
                 reply = QMessageBox.question(
@@ -137,10 +138,10 @@ class TranslationsWindow(QMainWindow):
                 
                 if reply == QMessageBox.Yes:
                     # Try again with force=True
-                    if not self.data_manager.save_translations(
+                    if not self.data_manager.save_language_pair(
                         save_translations,
-                        source_language=config.source_language,
-                        target_language=config.target_language,
+                        config.source_language,
+                        config.target_language,
                         force=True
                     ):
                         QMessageBox.warning(self, "Error", "Failed to save translations even with force option.")
@@ -151,8 +152,8 @@ class TranslationsWindow(QMainWindow):
     
     def update_language_display(self):
         """Update the language display labels when languages change"""
-        self.source_language_label.setText(f"Source: {I18N.get_language_name(config.source_language)}")
-        self.target_language_label.setText(f"Target: {I18N.get_language_name(config.target_language)}")
+        self.source_language_label.setText(f"Source: {Language.get_language_name(config.source_language)}")
+        self.target_language_label.setText(f"Target: {Language.get_language_name(config.target_language)}")
         self.load_translations()  # Reload translations with new language filter
         self.update_table()
     

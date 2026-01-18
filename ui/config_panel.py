@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, Signal
 from ui.gutenberg_search_window import GutenbergSearchWindow
 from utils.config import config
 from utils.translations import I18N
+from utils.globals import Language
 
 
 class ConfigPanel(QWidget):
@@ -28,16 +29,19 @@ class ConfigPanel(QWidget):
         
         # Source language
         self.source_language_combo = QComboBox()
-        for lang_code in ["en", "de", "fr", "es", "it"]:
-            self.source_language_combo.addItem(I18N.get_language_name(lang_code), lang_code)
-        self.source_language_combo.setCurrentText(I18N.get_language_name(config.source_language))
+        # Use Language enum, but exclude Latin from source languages (typically not used as source)
+        source_languages = [lang for lang in Language if lang != Language.LATIN]
+        for lang in source_languages:
+            self.source_language_combo.addItem(Language.get_language_name(lang.value), lang.value)
+        self.source_language_combo.setCurrentText(Language.get_language_name(config.source_language))
         self.source_language_combo.currentTextChanged.connect(self.on_source_language_changed)
         
         # Target language (language being learned)
         self.target_language_combo = QComboBox()
-        for lang_code in ["en", "de", "fr", "es", "it"]:
-            self.target_language_combo.addItem(I18N.get_language_name(lang_code), lang_code)
-        self.target_language_combo.setCurrentText(I18N.get_language_name(config.target_language))
+        # Use Language enum for all supported languages
+        for lang in Language:
+            self.target_language_combo.addItem(Language.get_language_name(lang.value), lang.value)
+        self.target_language_combo.setCurrentText(Language.get_language_name(config.target_language))
         self.target_language_combo.currentTextChanged.connect(self.on_target_language_changed)
         
         # Proficiency level
@@ -134,12 +138,12 @@ class ConfigPanel(QWidget):
     
     def on_source_language_changed(self, language):
         """Handle source language change."""
-        config.source_language = I18N.get_language_code(language)
+        config.source_language = Language.get_language_code(language)
         self.languages_changed.emit()
     
     def on_target_language_changed(self, language):
         """Handle target language change."""
-        config.target_language = I18N.get_language_code(language)
+        config.target_language = Language.get_language_code(language)
         self.languages_changed.emit()
     
     def on_proficiency_level_changed(self, level):

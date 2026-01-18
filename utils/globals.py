@@ -19,6 +19,69 @@ class Globals:
     def set_volume(cls, volume=60):
         cls.DEFAULT_VOLUME_THRESHOLD = int(volume)
 
+class Language(Enum):
+    """Supported languages with ISO 639-1 language codes as values."""
+    ENGLISH = "en"
+    GERMAN = "de"
+    FRENCH = "fr"
+    SPANISH = "es"
+    ITALIAN = "it"
+    LATIN = "la"
+    
+    @classmethod
+    def get_all_codes(cls):
+        """Get a list of all language codes."""
+        return [lang.value for lang in cls]
+    
+    @classmethod
+    def from_code(cls, code):
+        """Get Language enum member from language code."""
+        for lang in cls:
+            if lang.value == code:
+                return lang
+        return None
+    
+    @classmethod
+    def is_supported(cls, code):
+        """Check if a language code is supported."""
+        return cls.from_code(code) is not None
+    
+    @classmethod
+    def get_language_name(cls, lang_code):
+        """Convert a language code to its display name in the current locale."""
+        # Lazy import to avoid circular dependency
+        from utils.translations import I18N
+        
+        # Map language codes to their display names
+        lang_name_map = {
+            cls.ENGLISH.value: I18N._("English"),
+            cls.GERMAN.value: I18N._("German"),
+            cls.FRENCH.value: I18N._("French"),
+            cls.SPANISH.value: I18N._("Spanish"),
+            cls.ITALIAN.value: I18N._("Italian"),
+            cls.LATIN.value: I18N._("Latin"),
+        }
+        
+        return lang_name_map.get(lang_code, lang_code)  # Return the code if no translation is available
+    
+    @classmethod
+    def get_language_code(cls, lang_name):
+        """Convert a language name to its language code."""
+        # Lazy import to avoid circular dependency
+        from utils.translations import I18N
+        
+        # Create a mapping of translated names to codes
+        lang_map = {
+            I18N._("English"): cls.ENGLISH.value,
+            I18N._("German"): cls.GERMAN.value,
+            I18N._("French"): cls.FRENCH.value,
+            I18N._("Spanish"): cls.SPANISH.value,
+            I18N._("Italian"): cls.ITALIAN.value,
+            I18N._("Latin"): cls.LATIN.value,
+        }
+        return lang_map.get(lang_name, lang_name)  # Return the code if found, otherwise return the input
+
+
 class MediaFileType(Enum):
     MKV = '.MKV'
     MP4 = '.MP4'

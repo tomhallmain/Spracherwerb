@@ -14,35 +14,6 @@ class I18N:
     translate = gettext.translation('base', localedir, languages=[_locale])
 
     @staticmethod
-    def get_language_name(lang_code):
-        """Convert a language code to its display name in the current locale."""
-        if lang_code == "en":
-            return I18N._("English")
-        elif lang_code == "de":
-            return I18N._("German")
-        elif lang_code == "fr":
-            return I18N._("French")
-        elif lang_code == "es":
-            return I18N._("Spanish")
-        elif lang_code == "it":
-            return I18N._("Italian")
-        else:
-            return lang_code  # Return the code if no translation is available
-
-    @staticmethod
-    def get_language_code(lang_name):
-        """Convert a language name to its language code."""
-        # Create a mapping of translated names to codes
-        lang_map = {
-            I18N._("English"): "en",
-            I18N._("German"): "de",
-            I18N._("French"): "fr",
-            I18N._("Spanish"): "es",
-            I18N._("Italian"): "it"
-        }
-        return lang_map.get(lang_name, lang_name)  # Return the code if found, otherwise return the input
-
-    @staticmethod
     def install_locale(locale, verbose=True):
         I18N.locale = locale
         I18N.translate = gettext.translation('base', I18N.localedir, languages=[locale], fallback=True)
