@@ -8,13 +8,14 @@ import json
 import os
 from datetime import datetime
 
+from lib.lib.multi_display import SmartMainWindow
 from utils.config import config
 from utils.globals import Language
 from utils.translations import I18N
 from utils.translation_data_manager import TranslationDataManager
 from ui.translation_dialog import TranslationDialog
 
-class TranslationsWindow(QMainWindow):
+class TranslationsWindow(SmartMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Translation Notes")

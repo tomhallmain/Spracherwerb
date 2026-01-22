@@ -1,5 +1,7 @@
 appdirs
 beautifulsoup4
+cryptography
+keyring
 nltk
 pytest>=7.0.0
 pytest-order>=1.0.0

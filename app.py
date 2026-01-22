@@ -3,16 +3,19 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QSplitter)
 from PySide6.QtCore import Qt
 
+from lib.lib.multi_display import SmartMainWindow
 from ui.media_frame import MediaFrame
 from ui.interaction_panel import InteractionPanel
 from ui.config_panel import ConfigPanel
 from ui.translations_window import TranslationsWindow
 from ui.app_style import AppStyle
 from ui.app_actions import AppActions
+from utils.app_info_cache import app_info_cache
 
-class MainWindow(QMainWindow):
+
+class MainWindow(SmartMainWindow):
     def __init__(self):
-        super().__init__()
+        super().__init__(restore_geometry=True)
         self.setWindowTitle("Spracherwerb")
         self.setMinimumSize(1200, 800)
         
@@ -92,9 +95,41 @@ class MainWindow(QMainWindow):
         else:
             self.config_panel.show()
             self.toggle_config.setText("◀")
+    
+    def closeEvent(self, event):
+        """Handle window close event - ensure app_info_cache is stored"""
+        # Store the cache before closing
+        try:
+            app_info_cache.store()
+        except Exception as e:
+            from utils.logging_setup import get_logger
+            logger = get_logger(__name__)
+            logger.error(f"Error storing app_info_cache on window close: {e}")
+        # Call parent closeEvent (which will also store if restore_geometry is enabled)
+        super().closeEvent(event)
+
 
 if __name__ == "__main__":
+    # Load app_info_cache at startup (though it's already loaded in __init__, this is explicit)
+    try:
+        app_info_cache.load()
+    except Exception as e:
+        from utils.logging_setup import get_logger
+        logger = get_logger(__name__)
+        logger.warning(f"Error loading app_info_cache at startup: {e}")
+    
     app = QApplication(sys.argv)
+    
+    # Ensure app_info_cache is stored when application is about to quit
+    def store_cache_on_quit():
+        try:
+            app_info_cache.store()
+        except Exception as e:
+            from utils.logging_setup import get_logger
+            logger = get_logger(__name__)
+            logger.error(f"Error storing app_info_cache on application quit: {e}")
+    
+    app.aboutToQuit.connect(store_cache_on_quit)
     
     # Apply global application styling
     app.setStyleSheet(AppStyle.get_global_stylesheet())

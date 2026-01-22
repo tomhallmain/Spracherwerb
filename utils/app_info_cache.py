@@ -1,45 +1,126 @@
 import datetime
 import json
 import os
+import shutil
 
+from lib.lib.position_data import PositionData
+from utils.globals import AppInfo
+from utils.logging_setup import get_logger
+from utils.encryptor import encrypt_data_to_file, decrypt_data_from_file
 from utils.runner_app_config import RunnerAppConfig
 
+logger = get_logger('app_info_cache')
+
+
 class AppInfoCache:
-    CACHE_LOC = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), "app_info_cache.json")
+    CACHE_LOC = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), "app_info_cache.enc")
+    JSON_LOC = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), "app_info_cache.json")
     INFO_KEY = "info"
     HISTORY_KEY = "history"
-    DIRECTORIES_KEY = "directories"
     TRACKERS_KEY = "trackers"
     MAX_HISTORY_ENTRIES = 50
+    NUM_BACKUPS = 3
 
     def __init__(self):
-        self._cache = {AppInfoCache.INFO_KEY: {}, AppInfoCache.HISTORY_KEY: [], AppInfoCache.DIRECTORIES_KEY: {}}
+        self._cache = {AppInfoCache.INFO_KEY: {}, AppInfoCache.HISTORY_KEY: []}
         self.load()
         self.validate()
 
     def store(self):
-        with open(AppInfoCache.CACHE_LOC, "w") as f:
-            json.dump(self._cache, f, indent=4)
+        """
+        Store the cache to disk with encryption.
+        Handles credential manager errors gracefully (e.g., on first run when keys don't exist yet).
+        """
+        try:
+            cache_data = json.dumps(self._cache).encode('utf-8')
+            encrypt_data_to_file(
+                cache_data,
+                AppInfo.SERVICE_NAME,
+                AppInfo.APP_IDENTIFIER,
+                AppInfoCache.CACHE_LOC
+            )
+        except Exception as e:
+            # Check if it's a Windows Credential Manager error (credential not found)
+            # This can happen on first run when keys haven't been generated yet
+            # Error format: (1168, 'CredRead', 'Element not found.')
+            error_str = str(e)
+            error_repr = repr(e)
+            
+            # Check for Windows Credential Manager errors
+            is_cred_error = (
+                'CredRead' in error_str or 
+                'CredRead' in error_repr or
+                'Element not found' in error_str or 
+                '1168' in error_str or
+                (isinstance(e, tuple) and len(e) >= 2 and 'CredRead' in str(e[1]))
+            )
+            
+            if is_cred_error:
+                logger.debug(f"Credential manager error (likely first run): {e}. Keys will be generated on next access.")
+                # Don't raise - this is expected on first run
+                return
+            else:
+                logger.error(f"Error storing cache: {e}")
+                # Only raise for unexpected errors
+                raise e
+
+    def _try_load_cache_from_file(self, path):
+        """Attempt to load and decrypt the cache from the given file path. Raises on failure."""
+        encrypted_data = decrypt_data_from_file(
+            path,
+            AppInfo.SERVICE_NAME,
+            AppInfo.APP_IDENTIFIER
+        )
+        return json.loads(encrypted_data.decode('utf-8'))
 
     def load(self):
         try:
-            with open(AppInfoCache.CACHE_LOC, "r") as f:
-                self._cache = json.load(f)
-        except FileNotFoundError:
-            pass
+            if os.path.exists(AppInfoCache.JSON_LOC):
+                logger.info(f"Removing old cache file: {AppInfoCache.JSON_LOC}")
+                # Get the old data first
+                with open(AppInfoCache.JSON_LOC, "r", encoding="utf-8") as f:
+                    self._cache = json.load(f)
+                self.store() # store encrypted cache
+                os.remove(AppInfoCache.JSON_LOC)
+                return
+
+            # Try encrypted cache and backups in order
+            cache_paths = [self.CACHE_LOC] + self._get_backup_paths()
+            any_exist = any(os.path.exists(path) for path in cache_paths)
+            if not any_exist:
+                logger.info(f"No cache file found at {self.CACHE_LOC}, creating new cache")
+                return
+
+            for path in cache_paths:
+                if os.path.exists(path):
+                    try:
+                        self._cache = self._try_load_cache_from_file(path)
+                        # Only rotate backups if we loaded from the main file
+                        if path == self.CACHE_LOC:
+                            message = f"Loaded cache from {self.CACHE_LOC}"
+                            rotated_count = self._rotate_backups()
+                            if rotated_count > 0:
+                                message += f", rotated {rotated_count} backups"
+                            logger.info(message)
+                        else:
+                            logger.warning(f"Loaded cache from backup: {path}")
+                        return
+                    except Exception as e:
+                        logger.error(f"Failed to load cache from {path}: {e}")
+                        continue
+            # If we get here, all attempts failed (but at least one file existed)
+            raise Exception(f"Failed to load cache from all locations: {cache_paths}")
+        except Exception as e:
+            logger.error(f"Error loading cache: {e}")
+            raise e
 
     def validate(self):
-        pass
+        return True
 
     def _get_history(self) -> list:
         if AppInfoCache.HISTORY_KEY not in self._cache:
             self._cache[AppInfoCache.HISTORY_KEY] = {}
         return self._cache[AppInfoCache.HISTORY_KEY]
-
-    def _get_directory_info(self):
-        if AppInfoCache.DIRECTORIES_KEY not in self._cache:
-            self._cache[AppInfoCache.DIRECTORIES_KEY] = {}
-        return self._cache[AppInfoCache.DIRECTORIES_KEY]
 
     def _get_trackers(self) -> dict:
         if AppInfoCache.TRACKERS_KEY not in self._cache:
@@ -83,21 +164,30 @@ class AppInfoCache:
             return RunnerAppConfig()
         return RunnerAppConfig.from_dict(history[0])
 
-    def set_directory(self, directory, key, value):
-        directory = AppInfoCache.normalize_directory_key(directory)
-        if directory is None or directory.strip() == "":
-            raise Exception(f"Invalid directory provided to app_info_cache.set(). key={key} value={value}")
-        directory_info = self._get_directory_info()
-        if directory not in directory_info:
-            directory_info[directory] = {}
-        directory_info[directory][key] = value
+    def set_display_position(self, master):
+        """Store the main window's display position and size."""
+        self.set("display_position", PositionData.from_master(master).to_dict())
+    
+    def set_virtual_screen_info(self, master):
+        """Store the virtual screen information."""
+        try:
+            self.set("virtual_screen_info", PositionData.from_master_virtual_screen(master).to_dict())
+        except Exception as e:
+            logger.warning(f"Failed to store virtual screen info: {e}")
+    
+    def get_virtual_screen_info(self):
+        """Get the cached virtual screen info, returns None if not set or invalid."""
+        virtual_screen_data = self.get("virtual_screen_info")
+        if not virtual_screen_data:
+            return None
+        return PositionData.from_dict(virtual_screen_data)
 
-    def get_directory(self, directory, key, default_val=None):
-        directory = AppInfoCache.normalize_directory_key(directory)
-        directory_info = self._get_directory_info()
-        if directory not in directory_info or key not in directory_info[directory]:
-            return default_val
-        return directory_info[directory][key]
+    def get_display_position(self):
+        """Get the cached display position, returns None if not set or invalid."""
+        position_data = self.get("display_position")
+        if not position_data:
+            return None
+        return PositionData.from_dict(position_data)
 
     def get_tracker(self, tracker):
         trackers = self._get_trackers()
@@ -120,5 +210,35 @@ class AppInfoCache:
     @staticmethod
     def normalize_directory_key(directory):
         return os.path.normpath(os.path.abspath(directory))
+
+
+    def _get_backup_paths(self):
+        """Get list of backup file paths in order of preference"""
+        backup_paths = []
+        for i in range(1, self.NUM_BACKUPS + 1):
+            index = "" if i == 1 else f"{i}"
+            path = f"{self.CACHE_LOC}.bak{index}"
+            backup_paths.append(path)
+        return backup_paths
+
+    def _rotate_backups(self):
+        """Rotate backup files: move each backup to the next position, oldest gets overwritten"""
+        backup_paths = self._get_backup_paths()
+        rotated_count = 0
+        
+        # Remove the oldest backup if it exists
+        if os.path.exists(backup_paths[-1]):
+            os.remove(backup_paths[-1])
+        
+        # Shift backups: move each backup to the next position
+        for i in range(len(backup_paths) - 1, 0, -1):
+            if os.path.exists(backup_paths[i - 1]):
+                shutil.copy2(backup_paths[i - 1], backup_paths[i])
+                rotated_count += 1
+        
+        # Copy main cache to first backup position
+        shutil.copy2(self.CACHE_LOC, backup_paths[0])
+        
+        return rotated_count
 
 app_info_cache = AppInfoCache()

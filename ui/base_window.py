@@ -5,10 +5,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 
+from lib.lib.multi_display import SmartMainWindow
 from ui.app_style import AppStyle
 
 
-class BaseWindow(QMainWindow):
+class BaseWindow(SmartMainWindow):
     """Base window class for all secondary windows in the application."""
     
     # Signal emitted when window is closed
