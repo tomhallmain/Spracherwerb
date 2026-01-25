@@ -3,7 +3,8 @@ __pycache__
 .coverage
 .cursorignore
 api.md
-app_info_cache.json
+app_info_cache.*
+!app_info_cache.py
 app_media_track_cache
 translations.json
 cache/*
