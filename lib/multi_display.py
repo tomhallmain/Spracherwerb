@@ -623,6 +623,7 @@ class SmartMainWindow(QMainWindow):
             from utils.app_info_cache import app_info_cache
             
             position_data = app_info_cache.get_display_position()
+            cached_virtual_screen = app_info_cache.get_virtual_screen_info()
             
             if position_data and position_data.is_valid():
                 x = position_data.x

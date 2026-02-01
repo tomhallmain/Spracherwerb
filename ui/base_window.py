@@ -1,30 +1,28 @@
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+    QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QComboBox, QSlider
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 
-from lib.lib.multi_display import SmartMainWindow
+from lib.multi_display import SmartWindow
 from ui.app_style import AppStyle
 
 
-class BaseWindow(SmartMainWindow):
+class BaseWindow(SmartWindow):
     """Base window class for all secondary windows in the application."""
     
     # Signal emitted when window is closed
     window_closed = Signal()
     
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(persistent_parent=parent, **kwargs)
         self.has_closed = False
         self.row_counter0 = 0
         self.row_counter1 = 0
         
-        # Create central widget and main layout
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.main_layout = QHBoxLayout(self.central_widget)
+        # Main layout on self (SmartWindow is QWidget, no setCentralWidget)
+        self.main_layout = QHBoxLayout(self)
         
         # Create sidebar and content area
         self.sidebar = QWidget()

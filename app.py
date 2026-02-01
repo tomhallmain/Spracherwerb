@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QSplitter)
 from PySide6.QtCore import Qt
 
-from lib.lib.multi_display import SmartMainWindow
+from lib.multi_display import SmartMainWindow
 from ui.media_frame import MediaFrame
 from ui.interaction_panel import InteractionPanel
 from ui.config_panel import ConfigPanel
@@ -79,6 +79,9 @@ class MainWindow(SmartMainWindow):
         
         # Add toggle button to layout
         main_layout.addWidget(self.toggle_config)
+        
+        # Restore window position/size from app_info_cache (must be after UI setup)
+        self.restore_window_geometry()
     
     def open_translations_window(self):
         """Open the translations window."""
@@ -97,16 +100,16 @@ class MainWindow(SmartMainWindow):
             self.toggle_config.setText("◀")
     
     def closeEvent(self, event):
-        """Handle window close event - ensure app_info_cache is stored"""
-        # Store the cache before closing
+        """Handle window close event - ensure position_data is saved and app_info_cache is stored"""
+        # Call parent closeEvent first so SmartMainWindow saves position_data into app_info_cache
+        super().closeEvent(event)
+        # Then persist the cache (including the position_data just saved by parent)
         try:
             app_info_cache.store()
         except Exception as e:
             from utils.logging_setup import get_logger
             logger = get_logger(__name__)
             logger.error(f"Error storing app_info_cache on window close: {e}")
-        # Call parent closeEvent (which will also store if restore_geometry is enabled)
-        super().closeEvent(event)
 
 
 if __name__ == "__main__":

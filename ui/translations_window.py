@@ -1,39 +1,33 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, 
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                              QTableWidgetItem, QPushButton, QLineEdit, QLabel,
-                             QComboBox, QHeaderView, QMessageBox, QMainWindow,
-                             QSizePolicy)
+                             QComboBox, QHeaderView, QMessageBox, QSizePolicy)
 from PySide6.QtCore import Qt, QDateTime, Signal, QSize
 from PySide6.QtGui import QShortcut, QKeySequence
 import json
 import os
 from datetime import datetime
 
-from lib.lib.multi_display import SmartMainWindow
+from lib.multi_display import SmartWindow
 from utils.config import config
 from utils.globals import Language
 from utils.translations import I18N
 from utils.translation_data_manager import TranslationDataManager
 from ui.translation_dialog import TranslationDialog
 
-class TranslationsWindow(SmartMainWindow):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Translation Notes")
+class TranslationsWindow(SmartWindow):
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(persistent_parent=parent, title="Translation Notes", geometry="800x600", **kwargs)
         self.setMinimumSize(800, 600)
         
         # Initialize data manager
         self.data_manager = TranslationDataManager()
         
-        # Create central widget
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        
         # Initialize translations data
         self.translations = []
         self.load_translations()
         
-        # Create main layout
-        layout = QVBoxLayout(central_widget)
+        # Main layout on self (SmartWindow is QWidget, no setCentralWidget)
+        layout = QVBoxLayout(self)
         
         # Create language display
         language_layout = QHBoxLayout()
