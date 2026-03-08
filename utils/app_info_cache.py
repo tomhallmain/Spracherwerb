@@ -2,67 +2,56 @@ import datetime
 import json
 import os
 import shutil
+import threading
 
 from lib.position_data import PositionData
 from utils.globals import AppInfo
-from utils.logging_setup import get_logger
 from utils.encryptor import encrypt_data_to_file, decrypt_data_from_file
 from utils.runner_app_config import RunnerAppConfig
+from utils.logging_setup import get_logger
+from utils.translations import I18N
 
-logger = get_logger('app_info_cache')
+logger = get_logger(__name__)
+_ = I18N._
 
 
 class AppInfoCache:
     CACHE_LOC = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), "app_info_cache.enc")
     JSON_LOC = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), "app_info_cache.json")
     INFO_KEY = "info"
-    HISTORY_KEY = "history"
-    TRACKERS_KEY = "trackers"
-    MAX_HISTORY_ENTRIES = 50
-    NUM_BACKUPS = 3
+    NUM_BACKUPS = 4  # Number of backup files to maintain
 
     def __init__(self):
-        self._cache = {AppInfoCache.INFO_KEY: {}, AppInfoCache.HISTORY_KEY: []}
+        self._lock = threading.RLock()
+        self._cache = {AppInfoCache.INFO_KEY: {}}
         self.load()
         self.validate()
 
     def store(self):
-        """
-        Store the cache to disk with encryption.
-        Handles credential manager errors gracefully (e.g., on first run when keys don't exist yet).
-        """
-        try:
-            cache_data = json.dumps(self._cache).encode('utf-8')
-            encrypt_data_to_file(
-                cache_data,
-                AppInfo.SERVICE_NAME,
-                AppInfo.APP_IDENTIFIER,
-                AppInfoCache.CACHE_LOC
-            )
-        except Exception as e:
-            # Check if it's a Windows Credential Manager error (credential not found)
-            # This can happen on first run when keys haven't been generated yet
-            # Error format: (1168, 'CredRead', 'Element not found.')
-            error_str = str(e)
-            error_repr = repr(e)
-            
-            # Check for Windows Credential Manager errors
-            is_cred_error = (
-                'CredRead' in error_str or 
-                'CredRead' in error_repr or
-                'Element not found' in error_str or 
-                '1168' in error_str or
-                (isinstance(e, tuple) and len(e) >= 2 and 'CredRead' in str(e[1]))
-            )
-            
-            if is_cred_error:
-                logger.debug(f"Credential manager error (likely first run): {e}. Keys will be generated on next access.")
-                # Don't raise - this is expected on first run
-                return
-            else:
-                logger.error(f"Error storing cache: {e}")
-                # Only raise for unexpected errors
-                raise e
+        """Persist cache to encrypted file. Returns True on success, False if encrypted store failed but JSON fallback succeeded. Raises on encoding or JSON fallback failure."""
+        with self._lock:
+            try:
+                cache_data = json.dumps(self._cache).encode('utf-8')
+            except Exception as e:
+                raise Exception(_("Error compiling application cache: {}").format(e))
+
+            try:
+                encrypt_data_to_file(
+                    cache_data,
+                    AppInfo.SERVICE_NAME,
+                    AppInfo.APP_IDENTIFIER,
+                    AppInfoCache.CACHE_LOC
+                )
+                return True  # Encryption successful
+            except Exception as e:
+                logger.error(_("Error encrypting cache: {}").format(e))
+
+            try:
+                with open(self.JSON_LOC, "w", encoding="utf-8") as f:
+                    json.dump(self._cache, f)
+                return False  # Encryption failed, but JSON fallback succeeded
+            except Exception as e:
+                raise Exception(_("Error storing application cache: {}").format(e))
 
     def _try_load_cache_from_file(self, path):
         """Attempt to load and decrypt the cache from the given file path. Raises on failure."""
@@ -74,95 +63,69 @@ class AppInfoCache:
         return json.loads(encrypted_data.decode('utf-8'))
 
     def load(self):
-        try:
-            if os.path.exists(AppInfoCache.JSON_LOC):
-                logger.info(f"Removing old cache file: {AppInfoCache.JSON_LOC}")
-                # Get the old data first
-                with open(AppInfoCache.JSON_LOC, "r", encoding="utf-8") as f:
-                    self._cache = json.load(f)
-                self.store() # store encrypted cache
-                os.remove(AppInfoCache.JSON_LOC)
-                return
+        """Load the cache from encrypted file"""
+        with self._lock:
+            try:
+                if os.path.exists(AppInfoCache.JSON_LOC):
+                    logger.info(_("Detected JSON-format application cache, will attempt migration to encrypted store"))
+                    # Get the old data first
+                    with open(AppInfoCache.JSON_LOC, "r", encoding="utf-8") as f:
+                        self._cache = json.load(f)
+                    if self.store():
+                        logger.info(_("Migrated application cache from {} to encrypted store").format(self.JSON_LOC))
+                        os.remove(self.JSON_LOC)
+                    else:
+                        logger.warning(_("Encrypted store of application cache failed; keeping JSON cache file"))
+                    return
 
-            # Try encrypted cache and backups in order
-            cache_paths = [self.CACHE_LOC] + self._get_backup_paths()
-            any_exist = any(os.path.exists(path) for path in cache_paths)
-            if not any_exist:
-                logger.info(f"No cache file found at {self.CACHE_LOC}, creating new cache")
-                return
+                # Try encrypted cache and backups in order
+                cache_paths = [self.CACHE_LOC] + self._get_backup_paths()
+                any_exist = any(os.path.exists(path) for path in cache_paths)
+                if not any_exist:
+                    logger.info(f"No cache file found at {self.CACHE_LOC}, creating new cache")
+                    return
 
-            for path in cache_paths:
-                if os.path.exists(path):
-                    try:
-                        self._cache = self._try_load_cache_from_file(path)
-                        # Only rotate backups if we loaded from the main file
-                        if path == self.CACHE_LOC:
-                            message = f"Loaded cache from {self.CACHE_LOC}"
-                            rotated_count = self._rotate_backups()
-                            if rotated_count > 0:
-                                message += f", rotated {rotated_count} backups"
-                            logger.info(message)
-                        else:
-                            logger.warning(f"Loaded cache from backup: {path}")
-                        return
-                    except Exception as e:
-                        logger.error(f"Failed to load cache from {path}: {e}")
-                        continue
-            # If we get here, all attempts failed (but at least one file existed)
-            raise Exception(f"Failed to load cache from all locations: {cache_paths}")
-        except Exception as e:
-            logger.error(f"Error loading cache: {e}")
-            raise e
+                for path in cache_paths:
+                    if os.path.exists(path):
+                        try:
+                            self._cache = self._try_load_cache_from_file(path)
+                            # Only shift backups if we loaded from the main file
+                            if path == self.CACHE_LOC:
+                                message = f"Loaded cache from {self.CACHE_LOC}"
+                                rotated_count = self._rotate_backups()
+                                if rotated_count > 0:
+                                    message += f", rotated {rotated_count} backups"
+                                logger.info(message)
+                            else:
+                                logger.warning(f"Loaded cache from backup: {path}")
+                            return
+                        except Exception as e:
+                            logger.error(f"Failed to load cache from {path}: {e}")
+                            continue
+                # If we get here, all attempts failed (but at least one file existed)
+                raise Exception(f"Failed to load cache from all locations: {cache_paths}")
+            except FileNotFoundError:
+                pass
+            except Exception as e:
+                logger.error(_("Error loading cache: {}").format(str(e)))
+                # If decryption fails, start with empty cache
+                self._cache = {AppInfoCache.INFO_KEY: {}}
 
     def validate(self):
-        return True
-
-    def _get_history(self) -> list:
-        if AppInfoCache.HISTORY_KEY not in self._cache:
-            self._cache[AppInfoCache.HISTORY_KEY] = {}
-        return self._cache[AppInfoCache.HISTORY_KEY]
-
-    def _get_trackers(self) -> dict:
-        if AppInfoCache.TRACKERS_KEY not in self._cache:
-            self._cache[AppInfoCache.TRACKERS_KEY] = {}
-        return self._cache[AppInfoCache.TRACKERS_KEY]
+        with self._lock:
+            return True
 
     def set(self, key, value):
-        if AppInfoCache.INFO_KEY not in self._cache:
-            self._cache[AppInfoCache.INFO_KEY] = {}
-        self._cache[AppInfoCache.INFO_KEY][key] = value
+        with self._lock:
+            if AppInfoCache.INFO_KEY not in self._cache:
+                self._cache[AppInfoCache.INFO_KEY] = {}
+            self._cache[AppInfoCache.INFO_KEY][key] = value
 
     def get(self, key, default_val=None):
-        if AppInfoCache.INFO_KEY not in self._cache or key not in self._cache[AppInfoCache.INFO_KEY]:
-            return default_val
-        return self._cache[AppInfoCache.INFO_KEY][key]
-
-    def set_history(self, runner_config):
-        history = self._get_history()
-        if len(history) > 0 and runner_config == RunnerAppConfig.from_dict(history[0]):
-            return False
-        config_dict = runner_config.to_dict()
-        history.insert(0, config_dict)
-        # Remove the oldest entry from history if over the limit of entries
-        while len(history) >= AppInfoCache.MAX_HISTORY_ENTRIES:
-            history = history[0:-1]
-        return True
-
-    def get_last_history_index(self):
-        history = self._get_history()
-        return len(history) - 1
-
-    def get_history(self, _idx=0):
-        history = self._get_history()
-        if _idx >= len(history):
-            raise Exception("Invalid history index " + str(_idx))
-        return history[_idx]
-
-    def get_history_latest(self):
-        history = self._get_history()
-        if len(history) == 0:
-            return RunnerAppConfig()
-        return RunnerAppConfig.from_dict(history[0])
+        with self._lock:
+            if AppInfoCache.INFO_KEY not in self._cache or key not in self._cache[AppInfoCache.INFO_KEY]:
+                return default_val
+            return self._cache[AppInfoCache.INFO_KEY][key]
 
     def set_display_position(self, master):
         """Store the main window's display position and size."""
@@ -188,29 +151,6 @@ class AppInfoCache:
         if not position_data:
             return None
         return PositionData.from_dict(position_data)
-
-    def get_tracker(self, tracker):
-        trackers = self._get_trackers()
-        if tracker not in trackers:
-            trackers[tracker] = {"count": 0, "last": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}
-        return trackers[tracker]
-
-    def increment_tracker(self, tracker):
-        tracker = self.get_tracker(tracker)
-        now = datetime.datetime.now()
-        last_track = datetime.datetime.strptime(tracker["last"], "%Y-%m-%d %H:%M")
-        if now.year <= last_track.year and now.month <= last_track.month and now.day <= last_track.day:
-            tracker["count"] += 1
-        else:
-            tracker["count"] = 1
-        tracker["last"] = now.strftime("%Y-%m-%d %H:%M")
-        hours_since_last = (now - last_track).total_seconds()/3600
-        return int(tracker["count"]), float(hours_since_last)
-
-    @staticmethod
-    def normalize_directory_key(directory):
-        return os.path.normpath(os.path.abspath(directory))
-
 
     def _get_backup_paths(self):
         """Get list of backup file paths in order of preference"""
