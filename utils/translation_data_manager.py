@@ -6,6 +6,7 @@ from collections import defaultdict
 
 from utils.config import config
 from utils.logging_setup import get_logger
+from utils.utils import Utils
 
 logger = get_logger("translation_data_manager")
 
@@ -27,7 +28,7 @@ class TranslationDataManager:
         logger.debug(f"Backup file: {self.backup_file}")
         
         if hasattr(config, 'backup_dir') and config.backup_dir and config.backup_dir.strip() != "":
-            if Path(config.backup_dir).exists():
+            if Utils.isdir_with_retry(config.backup_dir):
                 self.user_backup_file = Path(config.backup_dir) / "translations_structured_backup.json"
                 logger.debug(f"User backup file: {self.user_backup_file}")
 
@@ -41,10 +42,10 @@ class TranslationDataManager:
         """Migrate from old flat list format to new structured format"""
         old_data_file = self.data_dir / "translations.json"
         
-        if not old_data_file.exists():
+        if not Utils.exists_with_retry(str(old_data_file)):
             return  # No migration needed
         
-        if self.data_file.exists():
+        if Utils.exists_with_retry(str(self.data_file)):
             # Already migrated, but check if old file is newer
             old_mtime = old_data_file.stat().st_mtime
             new_mtime = self.data_file.stat().st_mtime
@@ -98,8 +99,8 @@ class TranslationDataManager:
     def get_language_pair(self, source_language, target_language):
         """Get all translations for a specific language pair"""
         try:
-            if not self.data_file.exists():
-                return []
+            if not Utils.exists_with_retry(str(self.data_file)):
+                return self._load_from_backup_pair(source_language, target_language)
             
             with open(self.data_file, 'r', encoding='utf-8') as f:
                 structured_data = json.load(f)
@@ -185,7 +186,7 @@ class TranslationDataManager:
     def get_all_language_pairs(self):
         """Get all language pairs in the database"""
         try:
-            if not self.data_file.exists():
+            if not Utils.exists_with_retry(str(self.data_file)):
                 return {}
             
             with open(self.data_file, 'r', encoding='utf-8') as f:
@@ -201,7 +202,7 @@ class TranslationDataManager:
     def get_translation_stats(self):
         """Get statistics about translations"""
         try:
-            if not self.data_file.exists():
+            if not Utils.exists_with_retry(str(self.data_file)):
                 return {"total": 0, "by_pair": {}}
             
             with open(self.data_file, 'r', encoding='utf-8') as f:
@@ -252,7 +253,7 @@ class TranslationDataManager:
     def _load_structured_data(self):
         """Load structured data, creating empty dict if file doesn't exist"""
         try:
-            if not self.data_file.exists():
+            if not Utils.exists_with_retry(str(self.data_file)):
                 return {}
             
             with open(self.data_file, 'r', encoding='utf-8') as f:
@@ -264,7 +265,7 @@ class TranslationDataManager:
     
     def _create_backup(self):
         """Create a backup of the current structured data file"""
-        if not self.data_file.exists():
+        if not Utils.exists_with_retry(str(self.data_file)):
             return
         
         try:
@@ -272,7 +273,7 @@ class TranslationDataManager:
             shutil.copy2(self.data_file, self.backup_file)
             
             # Create backup in user-specified location if configured
-            if self.user_backup_file and self.user_backup_file.parent.exists():
+            if self.user_backup_file and Utils.isdir_with_retry(str(self.user_backup_file.parent)):
                 self.user_backup_file.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(self.data_file, self.user_backup_file)
                 
@@ -285,12 +286,12 @@ class TranslationDataManager:
             backup_data = None
             
             # Try user-specified backup first
-            if self.user_backup_file and self.user_backup_file.exists():
+            if self.user_backup_file and Utils.exists_with_retry(str(self.user_backup_file)):
                 with open(self.user_backup_file, 'r', encoding='utf-8') as f:
                     backup_data = json.load(f)
             
             # Fall back to automatic backup
-            elif self.backup_file.exists():
+            elif Utils.exists_with_retry(str(self.backup_file)):
                 with open(self.backup_file, 'r', encoding='utf-8') as f:
                     backup_data = json.load(f)
             

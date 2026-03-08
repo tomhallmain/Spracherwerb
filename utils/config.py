@@ -175,7 +175,7 @@ class Config:
                 loc = loc.strip().replace("{HOME}", os.path.expanduser("~"))
             if not sys.platform == "win32" and "\\" in loc:
                 loc = loc.replace("\\", "/")
-            if not os.path.isdir(loc):
+            if not Utils.isdir_with_retry(loc):
                 raise Exception(f"Invalid location provided for {key}: {loc}")
             return loc
         return None
