@@ -1,9 +1,10 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                              QTableWidgetItem, QPushButton, QLineEdit, QLabel,
-                             QComboBox, QHeaderView, QMessageBox, QSizePolicy)
+                             QComboBox, QHeaderView, QMessageBox, QSizePolicy,
+                             QFileDialog)
 from PySide6.QtCore import Qt, QDateTime, Signal, QSize
 from PySide6.QtGui import QShortcut, QKeySequence
-import json
+import csv
 import os
 from datetime import datetime
 
@@ -51,6 +52,16 @@ class TranslationsWindow(SmartWindow):
         self.sort_combo.currentIndexChanged.connect(self.sort_translations)
         search_layout.addWidget(self.sort_combo)
         
+        # Import translations button
+        self.import_button = QPushButton("Import")
+        self.import_button.setToolTip(
+            "Import translations from a CSV or TSV file into the currently "
+            "selected language pair. Each row must include source_text and "
+            "translated_text. Other fields (notes, date_added) are optional."
+        )
+        self.import_button.clicked.connect(self.import_translations)
+        search_layout.addWidget(self.import_button)
+
         # Add new translation button
         self.add_button = QPushButton("Add Translation")
         self.add_button.clicked.connect(self.add_translation)
@@ -263,4 +274,203 @@ class TranslationsWindow(SmartWindow):
         if reply == QMessageBox.Yes:
             del self.translations[index]
             self.save_translations()
-            self.update_table() 
+            self.update_table()
+
+    # ---- Import ---------------------------------------------------------
+
+    # Map flexible header/key names to canonical translation fields. The
+    # source/target language are intentionally not accepted from the imported
+    # file: imports always use the language pair currently selected in the
+    # window.
+    _IMPORT_FIELD_ALIASES = {
+        'source_text':      {'source_text', 'source', 'src', 'original', 'from_text', 'original_text', 'from'},
+        'translated_text':  {'translated_text', 'translated', 'translation', 'target', 'tgt', 'to_text', 'target_text', 'to'},
+        'notes':            {'notes', 'note', 'comment', 'comments', 'remark', 'remarks'},
+        'date_added':       {'date_added', 'date', 'added', 'created', 'created_at', 'timestamp'},
+    }
+
+    def import_translations(self):
+        """Import translations from a JSON, CSV, or TSV file into the active language pair."""
+        source_language = self._coerce_str(getattr(config, 'source_language', ''))
+        target_language = self._coerce_str(getattr(config, 'target_language', ''))
+        if not source_language or not target_language:
+            QMessageBox.warning(
+                self,
+                "Import",
+                "A source and target language must be selected before importing."
+            )
+            return
+
+        file_path, _selected_filter = QFileDialog.getOpenFileName(
+            self,
+            "Import Translations",
+            "",
+            "Translation files (*.csv *.tsv);;CSV (*.csv);;TSV (*.tsv);;All files (*)"
+        )
+        if not file_path:
+            return
+
+        try:
+            raw_rows = self._parse_import_file(file_path)
+        except Exception as e:
+            QMessageBox.warning(self, "Import Failed", f"Could not read file:\n{str(e)}")
+            return
+
+        if not raw_rows:
+            QMessageBox.information(self, "Import", "No translations found in file.")
+            return
+
+        valid_rows, skipped = self._normalize_imported_rows(
+            raw_rows, source_language, target_language
+        )
+        if not valid_rows:
+            QMessageBox.warning(
+                self,
+                "Import",
+                "No valid translations found.\n\n"
+                f"Skipped {len(skipped)} rows. Each row must include "
+                "source_text and translated_text."
+            )
+            return
+
+        confirm_msg = (
+            f"Import {len(valid_rows)} translations as "
+            f"{source_language} \u2192 {target_language}?"
+        )
+        if skipped:
+            confirm_msg += (
+                f"\n\n{len(skipped)} rows will be skipped (missing source_text "
+                "or translated_text)."
+            )
+        reply = QMessageBox.question(
+            self,
+            "Confirm Import",
+            confirm_msg,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            existing = self.data_manager.get_language_pair(source_language, target_language) or []
+        except Exception as e:
+            QMessageBox.warning(self, "Import Failed", f"Could not load existing translations:\n{str(e)}")
+            return
+
+        existing_keys = {
+            (e.get('source_text', ''), e.get('translated_text', ''))
+            for e in existing
+        }
+        unique_new = []
+        duplicate_count = 0
+        for t in valid_rows:
+            key = (t['source_text'], t['translated_text'])
+            if key in existing_keys:
+                duplicate_count += 1
+                continue
+            existing_keys.add(key)
+            unique_new.append(t)
+
+        imported_count = 0
+        save_failed = False
+        if unique_new:
+            combined = existing + unique_new
+            if self.data_manager.save_language_pair(
+                combined, source_language, target_language, force=True
+            ):
+                imported_count = len(unique_new)
+            else:
+                save_failed = True
+
+        # Refresh the current view to surface the newly imported rows.
+        self.load_translations()
+        self.update_table()
+
+        result_lines = [f"Imported {imported_count} translations."]
+        if duplicate_count:
+            result_lines.append(f"Skipped {duplicate_count} duplicates already present.")
+        if skipped:
+            result_lines.append(f"Skipped {len(skipped)} malformed rows.")
+        if save_failed:
+            result_lines.append("Save failed; no changes were written.")
+        QMessageBox.information(self, "Import Complete", "\n".join(result_lines))
+
+    def _parse_import_file(self, file_path):
+        """Parse a CSV/TSV import file into a list of row dicts.
+
+        Raises:
+            ValueError: if the file extension is unsupported
+            OSError, csv.Error: on read/parse failure
+        """
+        ext = os.path.splitext(file_path)[1].lower()
+
+        if ext not in ('.csv', '.tsv'):
+            raise ValueError(f"Unsupported file extension: {ext}")
+
+        delimiter = '\t' if ext == '.tsv' else ','
+        with open(file_path, 'r', encoding='utf-8-sig', newline='') as f:
+            reader = csv.DictReader(f, delimiter=delimiter)
+            return [self._normalize_row_keys(row) for row in reader]
+
+    @classmethod
+    def _normalize_row_keys(cls, row):
+        """Map flexible header/key names to canonical fields, preserving extras."""
+        if not isinstance(row, dict):
+            return {}
+        normalized = {}
+        for raw_key, value in row.items():
+            if raw_key is None:
+                continue
+            key = str(raw_key).strip().lower().replace(' ', '_').replace('-', '_')
+            mapped = None
+            for canonical, group in cls._IMPORT_FIELD_ALIASES.items():
+                if key in group:
+                    mapped = canonical
+                    break
+            normalized[mapped or key] = value
+        return normalized
+
+    @staticmethod
+    def _coerce_str(value):
+        if value is None:
+            return ''
+        if isinstance(value, str):
+            return value.strip()
+        return str(value).strip()
+
+    def _normalize_imported_rows(self, rows, source_language, target_language):
+        """Validate rows and stamp the active pair onto each one.
+
+        Returns:
+            tuple[list[dict], list]: (valid_rows, skipped_rows)
+        """
+        valid = []
+        skipped = []
+
+        for raw in rows:
+            if not isinstance(raw, dict):
+                skipped.append(raw)
+                continue
+
+            source_text = self._coerce_str(raw.get('source_text'))
+            translated_text = self._coerce_str(raw.get('translated_text'))
+
+            if not source_text or not translated_text:
+                skipped.append(raw)
+                continue
+
+            date_added = self._coerce_str(raw.get('date_added'))
+            if not date_added:
+                date_added = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            valid.append({
+                'source_text': source_text,
+                'translated_text': translated_text,
+                'source_language': source_language,
+                'target_language': target_language,
+                'notes': self._coerce_str(raw.get('notes')),
+                'date_added': date_added,
+            })
+
+        return valid, skipped
