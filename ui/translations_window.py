@@ -99,19 +99,13 @@ class TranslationsWindow(SmartWindow):
         self.setWindowFlags(Qt.Window)
     
     def load_translations(self):
-        """Load translations from file"""
+        """Load translations from file, backfilling any missing date_added stamps."""
         try:
-            # Load translations for current language pair using new structured API
-            filtered_translations = self.data_manager.get_language_pair(
+            self.translations = self.data_manager.get_language_pair_with_dates(
                 config.source_language,
-                config.target_language
+                config.target_language,
+                on_warning=lambda msg: QMessageBox.warning(self, "Warning", msg),
             )
-            
-            # Convert date strings to datetime objects
-            for t in filtered_translations:
-                t['datetime'] = datetime.strptime(t['date_added'], '%Y-%m-%d %H:%M:%S')
-            
-            self.translations = filtered_translations
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to load translations: {str(e)}")
             self.translations = []
@@ -123,7 +117,7 @@ class TranslationsWindow(SmartWindow):
             save_translations = []
             for t in self.translations:
                 save_t = t.copy()
-                save_t['date_added'] = save_t['datetime'].strftime('%Y-%m-%d %H:%M:%S')
+                save_t['date_added'] = save_t['datetime'].strftime(TranslationDataManager.DATE_ADDED_FORMAT)
                 del save_t['datetime']
                 save_translations.append(save_t)
             
@@ -283,23 +277,28 @@ class TranslationsWindow(SmartWindow):
     # file: imports always use the language pair currently selected in the
     # window.
     _IMPORT_FIELD_ALIASES = {
-        'source_text':      {'source_text', 'source', 'src', 'original', 'from_text', 'original_text', 'from'},
-        'translated_text':  {'translated_text', 'translated', 'translation', 'target', 'tgt', 'to_text', 'target_text', 'to'},
+        'source_text':      {'source_text', 'source_language', 'source', 'src', 'original', 'from_text', 'original_text', 'from'},
+        'translated_text':  {'translated_text', 'target_language', 'translated', 'translation', 'target', 'tgt', 'to_text', 'target_text', 'to'},
         'notes':            {'notes', 'note', 'comment', 'comments', 'remark', 'remarks'},
         'date_added':       {'date_added', 'date', 'added', 'created', 'created_at', 'timestamp'},
     }
 
     def import_translations(self):
-        """Import translations from a JSON, CSV, or TSV file into the active language pair."""
+        """Import translations from a CSV or TSV file into the active language pair."""
         source_language = self._coerce_str(getattr(config, 'source_language', ''))
         target_language = self._coerce_str(getattr(config, 'target_language', ''))
         if not source_language or not target_language:
             QMessageBox.warning(
                 self,
                 "Import",
-                "A source and target language must be selected before importing."
+                "Please select a source and target language before importing."
             )
             return
+
+        pair_label = (
+            f"{Language.get_language_name(source_language)} "
+            f"\u2192 {Language.get_language_name(target_language)}"
+        )
 
         file_path, _selected_filter = QFileDialog.getOpenFileName(
             self,
@@ -313,34 +312,36 @@ class TranslationsWindow(SmartWindow):
         try:
             raw_rows = self._parse_import_file(file_path)
         except Exception as e:
-            QMessageBox.warning(self, "Import Failed", f"Could not read file:\n{str(e)}")
+            QMessageBox.warning(self, "Import Failed", f"Could not read the file:\n{str(e)}")
             return
 
         if not raw_rows:
-            QMessageBox.information(self, "Import", "No translations found in file.")
+            QMessageBox.information(self, "Import", "The file does not contain any translations.")
             return
 
         valid_rows, skipped = self._normalize_imported_rows(
             raw_rows, source_language, target_language
         )
         if not valid_rows:
-            QMessageBox.warning(
-                self,
-                "Import",
-                "No valid translations found.\n\n"
-                f"Skipped {len(skipped)} rows. Each row must include "
-                "source_text and translated_text."
-            )
+            msg = "The file did not contain any usable translations."
+            if skipped:
+                msg += (
+                    f"\n\n{self._pluralize(len(skipped), 'row was', 'rows were')} skipped "
+                    "because the source or translated text was missing."
+                )
+            else:
+                msg += "\n\nEach row needs a source text and a translated text."
+            QMessageBox.warning(self, "Import", msg)
             return
 
         confirm_msg = (
-            f"Import {len(valid_rows)} translations as "
-            f"{source_language} \u2192 {target_language}?"
+            f"Import {self._pluralize(len(valid_rows), 'translation')} "
+            f"as {pair_label}?"
         )
         if skipped:
             confirm_msg += (
-                f"\n\n{len(skipped)} rows will be skipped (missing source_text "
-                "or translated_text)."
+                f"\n\n{self._pluralize(len(skipped), 'row will', 'rows will')} be skipped "
+                "because the source or translated text is missing."
             )
         reply = QMessageBox.question(
             self,
@@ -355,17 +356,23 @@ class TranslationsWindow(SmartWindow):
         try:
             existing = self.data_manager.get_language_pair(source_language, target_language) or []
         except Exception as e:
-            QMessageBox.warning(self, "Import Failed", f"Could not load existing translations:\n{str(e)}")
+            QMessageBox.warning(
+                self,
+                "Import Failed",
+                f"Could not load existing translations:\n{str(e)}"
+            )
             return
 
         existing_keys = {
-            (e.get('source_text', ''), e.get('translated_text', ''))
+            TranslationsWindow._import_duplicate_key(
+                e.get('source_text'), e.get('translated_text'))
             for e in existing
         }
         unique_new = []
         duplicate_count = 0
         for t in valid_rows:
-            key = (t['source_text'], t['translated_text'])
+            key = TranslationsWindow._import_duplicate_key(
+                t['source_text'], t['translated_text'])
             if key in existing_keys:
                 duplicate_count += 1
                 continue
@@ -387,13 +394,21 @@ class TranslationsWindow(SmartWindow):
         self.load_translations()
         self.update_table()
 
-        result_lines = [f"Imported {imported_count} translations."]
+        result_lines = [
+            f"Imported {self._pluralize(imported_count, 'translation')} into {pair_label}."
+        ]
         if duplicate_count:
-            result_lines.append(f"Skipped {duplicate_count} duplicates already present.")
+            result_lines.append(
+                f"Skipped {self._pluralize(duplicate_count, 'duplicate')} "
+                "already in your translations."
+            )
         if skipped:
-            result_lines.append(f"Skipped {len(skipped)} malformed rows.")
+            result_lines.append(
+                f"Skipped {self._pluralize(len(skipped), 'row')} with missing "
+                "source or translated text."
+            )
         if save_failed:
-            result_lines.append("Save failed; no changes were written.")
+            result_lines.append("The save did not complete; no changes were written.")
         QMessageBox.information(self, "Import Complete", "\n".join(result_lines))
 
     def _parse_import_file(self, file_path):
@@ -439,6 +454,72 @@ class TranslationsWindow(SmartWindow):
             return value.strip()
         return str(value).strip()
 
+    @staticmethod
+    def _pluralize(count, singular, plural=None):
+        """Return e.g. '1 translation' or '617 translations'."""
+        if plural is None:
+            plural = singular + 's'
+        return f"{count} {singular if count == 1 else plural}"
+
+    @classmethod
+    def _row_is_blank(cls, row):
+        """True when a parsed row has no non-empty values (e.g. trailing empty CSV line)."""
+        if not isinstance(row, dict):
+            return True
+        for value in row.values():
+            if isinstance(value, list):
+                # csv.DictReader puts extra trailing-comma fields in a list under None
+                if any(cls._coerce_str(v) for v in value):
+                    return False
+            elif cls._coerce_str(value):
+                return False
+        return True
+
+    @staticmethod
+    def _import_duplicate_key(source_text, translated_text):
+        """Trimmed, case-insensitive key for import deduplication only."""
+        return (
+            TranslationsWindow._coerce_str(source_text).casefold(),
+            TranslationsWindow._coerce_str(translated_text).casefold(),
+        )
+
+    @staticmethod
+    def _primary_language_tag(language_code):
+        """BCP 47 primary language subtag (e.g. en-US → en), lowercased."""
+        if not language_code:
+            return ''
+        return str(language_code).strip().lower().replace('_', '-').split('-')[0]
+
+    # Languages where uppercasing only the first character still matches typical
+    # imported phrase/sentence conventions. German (mandatory noun caps), Romance
+    # languages (lighter capitalization than English in titles and headings),
+    # Latin (often lowercase in sources), Turkic locales with dotted-I rules,
+    # and unknown codes default to preserving file casing.
+    _AUTO_CAPITALIZE_PRIMARY_TAGS = frozenset({
+        'en',
+        'nl', 'af',
+        'sv', 'no', 'nb', 'nn', 'da', 'is', 'fo',
+        'fi',
+        'pl', 'cs', 'sk', 'hr', 'sl',
+        'bg', 'sr', 'mk', 'ru', 'uk', 'be',
+        'el',
+        'et', 'lv', 'lt',
+        'hu', 'ro',
+        'sq',
+        'ga', 'cy',
+        'mt',
+    })
+
+    @classmethod
+    def _capitalize_first(cls, text, language_code):
+        """Uppercase the first character only when the language allowlists it."""
+        if not text:
+            return text
+        primary = cls._primary_language_tag(language_code)
+        if primary not in cls._AUTO_CAPITALIZE_PRIMARY_TAGS:
+            return text
+        return text[0].upper() + text[1:]
+
     def _normalize_imported_rows(self, rows, source_language, target_language):
         """Validate rows and stamp the active pair onto each one.
 
@@ -453,6 +534,10 @@ class TranslationsWindow(SmartWindow):
                 skipped.append(raw)
                 continue
 
+            # Silently drop entirely-empty rows (e.g. trailing blank line in a CSV).
+            if self._row_is_blank(raw):
+                continue
+
             source_text = self._coerce_str(raw.get('source_text'))
             translated_text = self._coerce_str(raw.get('translated_text'))
 
@@ -460,9 +545,12 @@ class TranslationsWindow(SmartWindow):
                 skipped.append(raw)
                 continue
 
+            source_text = self._capitalize_first(source_text, source_language)
+            translated_text = self._capitalize_first(translated_text, target_language)
+
             date_added = self._coerce_str(raw.get('date_added'))
             if not date_added:
-                date_added = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                date_added = datetime.now().strftime(TranslationDataManager.DATE_ADDED_FORMAT)
 
             valid.append({
                 'source_text': source_text,

@@ -1,5 +1,6 @@
 import json
 import shutil
+from datetime import datetime
 from pathlib import Path
 import appdirs
 from collections import defaultdict
@@ -13,6 +14,25 @@ logger = get_logger("translation_data_manager")
 
 class TranslationDataManager:
     """Manages translation data with structured storage by language pairs"""
+
+    DATE_ADDED_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+    @classmethod
+    def parse_or_stamp_date_added(cls, raw_value):
+        """Parse a stored date_added value, falling back to now() when missing/invalid.
+
+        Returns:
+            tuple[datetime, bool]: (parsed_datetime, was_repaired). `was_repaired`
+            is True when the input was missing, blank, of the wrong type, or
+            unparseable, in which case `datetime.now()` is returned.
+        """
+        if isinstance(raw_value, str) and raw_value.strip():
+            try:
+                return datetime.strptime(raw_value.strip(), cls.DATE_ADDED_FORMAT), False
+            except ValueError:
+                pass
+        return datetime.now(), True
+
     
     def __init__(self):
         # Use appdirs to get proper cache directory
@@ -111,6 +131,62 @@ class TranslationDataManager:
         except Exception as e:
             logger.error(f"Error loading language pair {source_language}-{target_language}: {e}")
             return self._load_from_backup_pair(source_language, target_language)
+
+    def get_language_pair_with_dates(self, source_language, target_language, on_warning=None):
+        """Load a language pair, backfill missing date_added values, and attach a parsed datetime.
+
+        Each returned entry is mutated in place to include a `datetime` key for
+        in-memory use. Any rows whose `date_added` was missing or unparseable are
+        stamped with the current time and persisted back to disk so the same
+        rows aren't re-stamped on subsequent loads.
+
+        Args:
+            source_language: source language code
+            target_language: target language code
+            on_warning: optional callable(str) used to surface non-fatal warnings,
+                e.g. when the persistence step fails. Warnings are always logged.
+
+        Returns:
+            list[dict]: language pair entries with `datetime` attached.
+        """
+        translations = self.get_language_pair(source_language, target_language) or []
+
+        backfilled = False
+        for t in translations:
+            parsed, was_repaired = self.parse_or_stamp_date_added(t.get('date_added'))
+            if was_repaired:
+                t['date_added'] = parsed.strftime(self.DATE_ADDED_FORMAT)
+                backfilled = True
+            t['datetime'] = parsed
+
+        if backfilled:
+            try:
+                # `datetime` is an in-memory convenience; strip it before persisting.
+                persistable = [
+                    {k: v for k, v in t.items() if k != 'datetime'}
+                    for t in translations
+                ]
+                if not self.save_language_pair(
+                    persistable, source_language, target_language, force=True
+                ):
+                    msg = (
+                        "Some translations were missing a date and were stamped "
+                        "with the current time, but the change could not be saved."
+                    )
+                    logger.warning(msg)
+                    if on_warning is not None:
+                        on_warning(msg)
+            except Exception as save_err:
+                msg = (
+                    "Some translations were missing a date and were stamped "
+                    f"with the current time, but the change could not be saved:\n{save_err}"
+                )
+                logger.warning(msg)
+                if on_warning is not None:
+                    on_warning(msg)
+
+        return translations
+
     
     def save_language_pair(self, translations, source_language, target_language, force=False):
         """Save translations for a specific language pair"""
