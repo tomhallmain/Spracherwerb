@@ -87,6 +87,68 @@ class Language(Enum):
         return lang_map.get(lang_name, lang_name)  # Return the code if found, otherwise return the input
 
 
+class TranslationSortOrder(Enum):
+    """Sort options for the translations listing window."""
+    DATE_ADDED_NEWEST = "date_added_newest"
+    DATE_ADDED_OLDEST = "date_added_oldest"
+    SOURCE_TEXT = "source_text"
+    TRANSLATED_TEXT = "translated_text"
+
+    def label(self):
+        if self == TranslationSortOrder.DATE_ADDED_NEWEST:
+            return "Date Added (Newest)"
+        if self == TranslationSortOrder.DATE_ADDED_OLDEST:
+            return "Date Added (Oldest)"
+        if self == TranslationSortOrder.SOURCE_TEXT:
+            return "Source Text"
+        if self == TranslationSortOrder.TRANSLATED_TEXT:
+            return "Translated Text"
+        raise ValueError(f"unhandled translation sort order: {self}")
+
+    @classmethod
+    def members_in_order(cls):
+        return list(cls)
+
+    @classmethod
+    def default(cls):
+        return cls.DATE_ADDED_NEWEST
+
+    @classmethod
+    def from_combo_index(cls, index):
+        members = cls.members_in_order()
+        if 0 <= index < len(members):
+            return members[index]
+        return cls.default()
+
+    def combo_index(self):
+        return self.members_in_order().index(self)
+
+    @classmethod
+    def from_cache(cls, value):
+        """Restore from app_info_cache, accepting legacy int combo indices."""
+        if value is None:
+            return cls.default()
+        if isinstance(value, int):
+            return cls.from_combo_index(value)
+        if isinstance(value, str):
+            for member in cls:
+                if member.value == value:
+                    return member
+        return cls.default()
+
+    def apply_to(self, translations):
+        if self == TranslationSortOrder.DATE_ADDED_NEWEST:
+            translations.sort(key=lambda x: x['datetime'], reverse=True)
+        elif self == TranslationSortOrder.DATE_ADDED_OLDEST:
+            translations.sort(key=lambda x: x['datetime'])
+        elif self == TranslationSortOrder.SOURCE_TEXT:
+            translations.sort(key=lambda x: x['source_text'].lower())
+        elif self == TranslationSortOrder.TRANSLATED_TEXT:
+            translations.sort(key=lambda x: x['translated_text'].lower())
+        else:
+            raise ValueError(f"unhandled translation sort order: {self}")
+
+
 class MediaFileType(Enum):
     MKV = '.MKV'
     MP4 = '.MP4'

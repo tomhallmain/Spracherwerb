@@ -9,13 +9,16 @@ import os
 from datetime import datetime
 
 from lib.multi_display import SmartWindow
+from utils.app_info_cache import app_info_cache
 from utils.config import config
-from utils.globals import Language
+from utils.globals import Language, TranslationSortOrder
 from utils.translations import I18N
 from utils.translation_data_manager import TranslationDataManager
 from ui.translation_dialog import TranslationDialog
 
+
 class TranslationsWindow(SmartWindow):
+    SORT_CACHE_KEY = "translations_sort_order"
     def __init__(self, parent=None, **kwargs):
         super().__init__(persistent_parent=parent, title="Translation Notes", geometry="800x600", **kwargs)
         self.setMinimumSize(800, 600)
@@ -47,8 +50,15 @@ class TranslationsWindow(SmartWindow):
         
         # Create sort combo box
         self.sort_combo = QComboBox()
-        self.sort_combo.addItems(["Date Added (Newest)", "Date Added (Oldest)", 
-                                "Source Text", "Translated Text"])
+        self.sort_combo.addItems([
+            order.label() for order in TranslationSortOrder.members_in_order()
+        ])
+        saved_sort_order = TranslationSortOrder.from_cache(
+            app_info_cache.get(self.SORT_CACHE_KEY)
+        )
+        self.sort_combo.blockSignals(True)
+        self.sort_combo.setCurrentIndex(saved_sort_order.combo_index())
+        self.sort_combo.blockSignals(False)
         self.sort_combo.currentIndexChanged.connect(self.sort_translations)
         search_layout.addWidget(self.sort_combo)
         
@@ -92,8 +102,8 @@ class TranslationsWindow(SmartWindow):
         self.add_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
         self.add_shortcut.activated.connect(self.add_translation)
         
-        # Populate table with filtered translations
-        self.update_table()
+        # Populate table with cached sort order
+        self.sort_translations()
         
         # Set window flags to ensure it's a proper window
         self.setWindowFlags(Qt.Window)
@@ -203,15 +213,11 @@ class TranslationsWindow(SmartWindow):
     
     def sort_translations(self):
         """Sort translations based on selected criteria"""
-        sort_index = self.sort_combo.currentIndex()
-        if sort_index == 0:  # Date Added (Newest)
-            self.translations.sort(key=lambda x: x['datetime'], reverse=True)
-        elif sort_index == 1:  # Date Added (Oldest)
-            self.translations.sort(key=lambda x: x['datetime'])
-        elif sort_index == 2:  # Source Text
-            self.translations.sort(key=lambda x: x['source_text'].lower())
-        elif sort_index == 3:  # Translated Text
-            self.translations.sort(key=lambda x: x['translated_text'].lower())
+        sort_order = TranslationSortOrder.from_combo_index(
+            self.sort_combo.currentIndex()
+        )
+        sort_order.apply_to(self.translations)
+        app_info_cache.set(self.SORT_CACHE_KEY, sort_order.value)
         self.update_table()
     
     def add_translation(self):
