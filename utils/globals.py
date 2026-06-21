@@ -144,7 +144,10 @@ class TranslationSortOrder(Enum):
         elif self == TranslationSortOrder.SOURCE_TEXT:
             translations.sort(key=lambda x: x['source_text'].lower())
         elif self == TranslationSortOrder.TRANSLATED_TEXT:
-            translations.sort(key=lambda x: x['translated_text'].lower())
+            translations.sort(key=lambda x: (
+                x.get('target_article', '').lower(),
+                x.get('translated_text', '').lower(),
+            ))
         else:
             raise ValueError(f"unhandled translation sort order: {self}")
 

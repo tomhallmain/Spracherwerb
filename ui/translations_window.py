@@ -14,6 +14,7 @@ from utils.config import config
 from utils.globals import Language, TranslationSortOrder
 from utils.translations import I18N
 from utils.translation_data_manager import TranslationDataManager
+from utils import translation_import
 from ui.translation_dialog import TranslationDialog
 
 
@@ -65,9 +66,12 @@ class TranslationsWindow(SmartWindow):
         # Import translations button
         self.import_button = QPushButton("Import")
         self.import_button.setToolTip(
-            "Import translations from a CSV or TSV file into the currently "
-            "selected language pair. Each row must include source_text and "
-            "translated_text. Other fields (notes, date_added) are optional."
+            "Import translations from a CSV, TSV, or plain-text file into the "
+            "currently selected language pair. CSV/TSV rows may use "
+            "source_text and translated_text columns, or a single "
+            "target - source line per row. Plain-text files use one "
+            "target - source entry per line (spaces around the hyphen are "
+            "optional). Other fields (notes, date_added) are optional."
         )
         self.import_button.clicked.connect(self.import_translations)
         search_layout.addWidget(self.import_button)
@@ -116,6 +120,9 @@ class TranslationsWindow(SmartWindow):
                 config.target_language,
                 on_warning=lambda msg: QMessageBox.warning(self, "Warning", msg),
             )
+            for t in self.translations:
+                translation_import.normalize_target_article_fields(
+                    t, config.target_language)
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to load translations: {str(e)}")
             self.translations = []
@@ -170,7 +177,7 @@ class TranslationsWindow(SmartWindow):
     def update_table(self):
         """Update the table with current translations"""
         self.table.setRowCount(len(self.translations))
-        for i, trans in enumerate(self.translations):
+        for i, t in enumerate(self.translations):
             # Edit button
             edit_button = QPushButton("Edit")
             edit_button.setFixedSize(50, 20)  # Smaller button size
@@ -180,15 +187,20 @@ class TranslationsWindow(SmartWindow):
             self.table.setCellWidget(i, 0, edit_button)
             
             # Source text
-            source_item = QTableWidgetItem(trans['source_text'])
+            source_item = QTableWidgetItem(t['source_text'])
             self.table.setItem(i, 1, source_item)
             
-            # Translated text
-            trans_item = QTableWidgetItem(trans['translated_text'])
-            self.table.setItem(i, 2, trans_item)
+            # Translated text; optional article prefix when stored separately
+            display_target = translation_import.format_target_for_display(
+                t.get('translated_text', ''),
+                t.get('target_article', ''),
+                t.get('target_language', config.target_language),
+            )
+            t_item = QTableWidgetItem(display_target)
+            self.table.setItem(i, 2, t_item)
             
             # Notes
-            notes_item = QTableWidgetItem(trans.get('notes', ''))
+            notes_item = QTableWidgetItem(t.get('notes', ''))
             self.table.setItem(i, 3, notes_item)
             
             # Remove button
@@ -224,14 +236,18 @@ class TranslationsWindow(SmartWindow):
         """Add a new translation"""
         dialog = TranslationDialog(self)
         if dialog.exec_():
+            target_article, translated_text = translation_import.extract_target_article(
+                dialog.translated_text, config.target_language)
             new_t = {
                 'datetime': datetime.now(),
                 'source_text': dialog.source_text,
-                'translated_text': dialog.translated_text,
+                'translated_text': translated_text,
                 'notes': dialog.notes,
                 'source_language': config.source_language,
                 'target_language': config.target_language
             }
+            if target_article:
+                new_t['target_article'] = target_article
             self.translations.insert(0, new_t)
             self.save_translations()
             self.update_table()
@@ -240,11 +256,18 @@ class TranslationsWindow(SmartWindow):
         """Edit an existing translation"""
         dialog = TranslationDialog(self, self.translations[index])
         if dialog.exec_():
-            self.translations[index].update({
+            target_article, translated_text = translation_import.extract_target_article(
+                dialog.translated_text, config.target_language)
+            update = {
                 'source_text': dialog.source_text,
-                'translated_text': dialog.translated_text,
+                'translated_text': translated_text,
                 'notes': dialog.notes
-            })
+            }
+            if target_article:
+                update['target_article'] = target_article
+            else:
+                self.translations[index].pop('target_article', None)
+            self.translations[index].update(update)
             self.save_translations()
             self.update_table()
     
@@ -252,7 +275,11 @@ class TranslationsWindow(SmartWindow):
         """Remove a translation"""
         translation = self.translations[index]
         source_text = translation['source_text']
-        target_text = translation['translated_text']
+        target_text = translation_import.format_target_for_display(
+            translation.get('translated_text', ''),
+            translation.get('target_article', ''),
+            translation.get('target_language', config.target_language),
+        )
         
         # Truncate texts if they're too long
         max_length = 50
@@ -290,7 +317,7 @@ class TranslationsWindow(SmartWindow):
     }
 
     def import_translations(self):
-        """Import translations from a CSV or TSV file into the active language pair."""
+        """Import translations from a CSV, TSV, or plain-text file into the active language pair."""
         source_language = self._coerce_str(getattr(config, 'source_language', ''))
         target_language = self._coerce_str(getattr(config, 'target_language', ''))
         if not source_language or not target_language:
@@ -310,7 +337,8 @@ class TranslationsWindow(SmartWindow):
             self,
             "Import Translations",
             "",
-            "Translation files (*.csv *.tsv);;CSV (*.csv);;TSV (*.tsv);;All files (*)"
+            "Translation files (*.csv *.tsv *.txt);;"
+            "CSV (*.csv);;TSV (*.tsv);;Plain text (*.txt);;All files (*)"
         )
         if not file_path:
             return
@@ -328,6 +356,9 @@ class TranslationsWindow(SmartWindow):
         valid_rows, skipped = self._normalize_imported_rows(
             raw_rows, source_language, target_language
         )
+        pre_merge_count = len(valid_rows)
+        valid_rows = translation_import.merge_rows_by_target(valid_rows)
+        merged_in_file_count = pre_merge_count - len(valid_rows)
         if not valid_rows:
             msg = "The file did not contain any usable translations."
             if skipped:
@@ -344,6 +375,11 @@ class TranslationsWindow(SmartWindow):
             f"Import {self._pluralize(len(valid_rows), 'translation')} "
             f"as {pair_label}?"
         )
+        if merged_in_file_count:
+            confirm_msg += (
+                f"\n\n{self._pluralize(merged_in_file_count, 'duplicate target was', 'duplicate targets were')} "
+                "merged by combining their source definitions."
+            )
         if skipped:
             confirm_msg += (
                 f"\n\n{self._pluralize(len(skipped), 'row will', 'rows will')} be skipped "
@@ -369,25 +405,48 @@ class TranslationsWindow(SmartWindow):
             )
             return
 
+        for row in existing:
+            translation_import.normalize_target_article_fields(row, target_language)
+
+        existing_by_target = translation_import.index_existing_by_target(existing)
         existing_keys = {
             TranslationsWindow._import_duplicate_key(
-                e.get('source_text'), e.get('translated_text'))
+                e.get('source_text'), e.get('translated_text'), e.get('target_article'))
             for e in existing
         }
         unique_new = []
         duplicate_count = 0
+        merged_into_existing_count = 0
         for t in valid_rows:
             key = TranslationsWindow._import_duplicate_key(
-                t['source_text'], t['translated_text'])
+                t['source_text'], t['translated_text'], t.get('target_article'))
             if key in existing_keys:
                 duplicate_count += 1
                 continue
+
+            target_key = translation_import.target_identity_key(
+                t['translated_text'], t.get('target_article', ''))
+            existing_row = existing_by_target.get(target_key)
+            if existing_row is not None:
+                merged_source = translation_import.merge_source_texts(
+                    existing_row.get('source_text', ''), t['source_text'])
+                if merged_source != self._coerce_str(existing_row.get('source_text')):
+                    existing_row['source_text'] = merged_source
+                    existing_keys.add(
+                        TranslationsWindow._import_duplicate_key(
+                            merged_source, t['translated_text'], t.get('target_article')))
+                    merged_into_existing_count += 1
+                else:
+                    duplicate_count += 1
+                continue
+
             existing_keys.add(key)
+            existing_by_target[target_key] = t
             unique_new.append(t)
 
         imported_count = 0
         save_failed = False
-        if unique_new:
+        if unique_new or merged_into_existing_count:
             combined = existing + unique_new
             if self.data_manager.save_language_pair(
                 combined, source_language, target_language, force=True
@@ -403,6 +462,16 @@ class TranslationsWindow(SmartWindow):
         result_lines = [
             f"Imported {self._pluralize(imported_count, 'translation')} into {pair_label}."
         ]
+        if merged_in_file_count:
+            result_lines.append(
+                f"Merged {self._pluralize(merged_in_file_count, 'duplicate target')} "
+                "within the import file."
+            )
+        if merged_into_existing_count:
+            result_lines.append(
+                f"Merged {self._pluralize(merged_into_existing_count, 'entry')} "
+                "into existing translations with the same target."
+            )
         if duplicate_count:
             result_lines.append(
                 f"Skipped {self._pluralize(duplicate_count, 'duplicate')} "
@@ -418,7 +487,10 @@ class TranslationsWindow(SmartWindow):
         QMessageBox.information(self, "Import Complete", "\n".join(result_lines))
 
     def _parse_import_file(self, file_path):
-        """Parse a CSV/TSV import file into a list of row dicts.
+        """Parse a CSV/TSV/TXT import file into a list of row dicts.
+
+        Plain-text and headerless files use one ``target - source`` entry per
+        line (target on the left, source glosses on the right).
 
         Raises:
             ValueError: if the file extension is unsupported
@@ -426,13 +498,25 @@ class TranslationsWindow(SmartWindow):
         """
         ext = os.path.splitext(file_path)[1].lower()
 
-        if ext not in ('.csv', '.tsv'):
+        if ext not in ('.csv', '.tsv', '.txt'):
             raise ValueError(f"Unsupported file extension: {ext}")
 
-        delimiter = '\t' if ext == '.tsv' else ','
         with open(file_path, 'r', encoding='utf-8-sig', newline='') as f:
-            reader = csv.DictReader(f, delimiter=delimiter)
-            return [self._normalize_row_keys(row) for row in reader]
+            content = f.read()
+
+        if not content.strip():
+            return []
+
+        if ext == '.txt':
+            return translation_import.lines_to_row_dicts(content.splitlines())
+
+        delimiter = '\t' if ext == '.tsv' else ','
+        reader = csv.DictReader(content.splitlines(), delimiter=delimiter)
+        rows = [self._normalize_row_keys(row) for row in reader]
+        if translation_import.rows_have_translation_fields(rows, self._row_is_blank):
+            return rows
+
+        return translation_import.lines_to_row_dicts(content.splitlines())
 
     @classmethod
     def _normalize_row_keys(cls, row):
@@ -482,10 +566,11 @@ class TranslationsWindow(SmartWindow):
         return True
 
     @staticmethod
-    def _import_duplicate_key(source_text, translated_text):
+    def _import_duplicate_key(source_text, translated_text, target_article=''):
         """Trimmed, case-insensitive key for import deduplication only."""
         return (
             TranslationsWindow._coerce_str(source_text).casefold(),
+            TranslationsWindow._coerce_str(target_article).casefold(),
             TranslationsWindow._coerce_str(translated_text).casefold(),
         )
 
@@ -548,23 +633,36 @@ class TranslationsWindow(SmartWindow):
             translated_text = self._coerce_str(raw.get('translated_text'))
 
             if not source_text or not translated_text:
+                line = translation_import.extract_line_from_row(raw)
+                if line:
+                    split = translation_import.split_translation_line(line)
+                    if split:
+                        translated_text, source_text = split
+
+            if not source_text or not translated_text:
                 skipped.append(raw)
                 continue
 
             source_text = self._capitalize_first(source_text, source_language)
             translated_text = self._capitalize_first(translated_text, target_language)
 
+            target_article, translated_text = translation_import.extract_target_article(
+                translated_text, target_language)
+
             date_added = self._coerce_str(raw.get('date_added'))
             if not date_added:
                 date_added = datetime.now().strftime(TranslationDataManager.DATE_ADDED_FORMAT)
 
-            valid.append({
+            row = {
                 'source_text': source_text,
                 'translated_text': translated_text,
                 'source_language': source_language,
                 'target_language': target_language,
                 'notes': self._coerce_str(raw.get('notes')),
                 'date_added': date_added,
-            })
+            }
+            if target_article:
+                row['target_article'] = target_article
+            valid.append(row)
 
         return valid, skipped

@@ -7,6 +7,7 @@ import traceback
 from utils.config import config
 from utils.globals import Language
 from utils.translations import I18N
+from utils import translation_import
 
 class CustomTextEdit(QTextEdit):
     def find_next_input_widget(self, forward=True):
@@ -135,7 +136,13 @@ class TranslationDialog(QDialog):
         # If editing existing translation, populate fields
         if translation:
             self._source_text_edit.setPlainText(translation['source_text'])
-            self._translated_text_edit.setPlainText(translation['translated_text'])
+            self._translated_text_edit.setPlainText(
+                translation_import.format_target_for_display(
+                    translation.get('translated_text', ''),
+                    translation.get('target_article', ''),
+                    config.target_language,
+                )
+            )
             self._notes_edit.setPlainText(translation.get('notes', ''))
     
     @property
