@@ -29,9 +29,10 @@ class Prompter:
         ├── system/                 # System prompts
         │   ├── pronunciation.txt
         │   └── translation.txt
-        └── activities/            # Activity-specific prompts
-            ├── visual_vocabulary.txt
-            └── situational_dialogues.txt
+        └── activities/            # Activity-specific prompts (ActivityType values)
+            ├── vocabulary_builder.txt
+            ├── grammar_practice.txt
+            └── …
         
     Usage:
         prompter = Prompter()
@@ -42,8 +43,8 @@ class Prompter:
         # Get a system prompt
         pronunciation_prompt = prompter.get_prompt("system/pronunciation")
         
-        # Get a prompt for a specific learning activity
-        grammar_prompt = prompter.get_prompt(Topic.GRAMMAR, language_code="fr")
+        # Get a prompt for a learning activity
+        vocab_prompt = prompter.get_prompt("vocabulary_builder", language_code="de")
     
     TODO: Create migration guide for:
     - Adding new language support

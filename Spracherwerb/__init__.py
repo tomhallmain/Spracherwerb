@@ -13,8 +13,6 @@ from .learning_progression import LearningProgression
 from .learning_session import LearningSession
 from .learning_spot_profile import LearningSpotProfile
 from .prompter import Prompter
-from .schedule import Schedule
-from .schedules_manager import SchedulesManager
 from .session_config import SessionConfig
 from .session_context import SessionContext
 from .session_manager import SessionManager
@@ -49,8 +47,6 @@ __all__ = [
     'LearningSpotProfile',
     'ModuleServices',
     'Prompter',
-    'Schedule',
-    'SchedulesManager',
     'SessionConfig',
     'SessionContext',
     'SessionManager',

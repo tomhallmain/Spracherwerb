@@ -302,18 +302,6 @@ msgstr ""
 msgid "calendar"
 msgstr ""
 
-#: .\utils\globals.py:115
-msgid "more about the next track"
-msgstr ""
-
-#: .\utils\globals.py:117
-msgid "more about the last track"
-msgstr ""
-
-#: .\utils\globals.py:119
-msgid "more about our playlist"
-msgstr ""
-
 #: .\utils\globals.py:121
 msgid "random wiki article"
 msgstr ""

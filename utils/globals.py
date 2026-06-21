@@ -210,9 +210,6 @@ class Topic(Enum):
     TONGUE_TWISTER = "tongue_twister"
     MOTIVATION = "motivation"
     CALENDAR = "calendar"
-    TRACK_CONTEXT_PRIOR = "track_context_prior"
-    TRACK_CONTEXT_POST = "track_context_post"
-    PLAYLIST_CONTEXT = "playlist_context"
     RANDOM_WIKI_ARTICLE = "random_wiki_article"
     FUNNY_STORY = "funny_story"
     LANGUAGE_LEARNING = "language_learning"
@@ -244,12 +241,6 @@ class Topic(Enum):
             return _("motivation")
         elif self == Topic.CALENDAR:
             return _("calendar")
-        elif self == Topic.TRACK_CONTEXT_PRIOR:
-            return _("more about the next track")
-        elif self == Topic.TRACK_CONTEXT_POST:
-            return _("more about the last track")
-        elif self == Topic.PLAYLIST_CONTEXT:
-            return _("more about our playlist")
         elif self == Topic.RANDOM_WIKI_ARTICLE:
             return _("random wiki article")
         elif self == Topic.FUNNY_STORY:

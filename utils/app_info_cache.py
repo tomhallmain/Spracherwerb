@@ -8,7 +8,6 @@ from lib.position_data import PositionData
 from utils.cache_paths import spracherwerb_cache_dir
 from utils.globals import AppInfo
 from utils.encryptor import encrypt_data_to_file, decrypt_data_from_file
-from utils.runner_app_config import RunnerAppConfig
 from utils.logging_setup import get_logger
 from utils.translations import I18N
 

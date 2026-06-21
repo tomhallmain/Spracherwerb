@@ -300,18 +300,6 @@ msgstr "Motivation"
 msgid "calendar"
 msgstr "Kalender"
 
-#: .\utils\globals.py:115
-msgid "more about the next track"
-msgstr "mehr zum nächsten Track"
-
-#: .\utils\globals.py:117
-msgid "more about the last track"
-msgstr "Mehr zum letzten Track"
-
-#: .\utils\globals.py:119
-msgid "more about our playlist"
-msgstr "mehr über unsere Playlist"
-
 #: .\utils\globals.py:121
 msgid "random wiki article"
 msgstr "zufällig wiki artikel"

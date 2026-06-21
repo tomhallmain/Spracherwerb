@@ -49,10 +49,7 @@ def _patch_app_info_cache_singleton(monkeypatch, cache_instance) -> None:
 
     for module_name in (
         "Spracherwerb.prompter",
-        "Spracherwerb.schedules_manager",
         "ui.translations_window",
-        "ui.presets_window",
-        "ui.schedules_window",
     ):
         try:
             module = importlib.import_module(module_name)
@@ -90,7 +87,6 @@ def _patch_config_singleton(monkeypatch, config_instance) -> None:
         "ui.translation_dialog",
         "ui.translations_window",
         "ui.gutenberg_search_window",
-        "ui.extensions_window",
         "extensions.sd_runner_client",
         "tts.tts_runner",
         "tts.text_cleaner_ruleset",
