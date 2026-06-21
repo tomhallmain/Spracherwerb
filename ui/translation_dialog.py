@@ -8,6 +8,7 @@ from utils.config import config
 from utils.globals import Language
 from utils.translations import I18N
 from utils import translation_import
+from extensions.wordreference import WordReference, WordReferenceError
 
 class CustomTextEdit(QTextEdit):
     def find_next_input_widget(self, forward=True):
@@ -24,6 +25,7 @@ class CustomTextEdit(QTextEdit):
             dialog._source_text_edit,
             dialog._translated_text_edit,
             dialog._notes_edit,
+            dialog.wordreference_button,
             dialog.add_button,
             dialog.cancel_button
         ]
@@ -118,6 +120,12 @@ class TranslationDialog(QDialog):
         
         # Create buttons
         button_layout = QHBoxLayout()
+        self.wordreference_button = QPushButton("WordReference")
+        self.wordreference_button.setToolTip(
+            "Look up the source text on WordReference (English↔other language pairs)."
+        )
+        self.wordreference_button.clicked.connect(self.lookup_wordreference)
+        button_layout.addWidget(self.wordreference_button)
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.reject)
         self.add_button = QPushButton("Save")
@@ -129,7 +137,8 @@ class TranslationDialog(QDialog):
         # Set tab order
         self.setTabOrder(self._source_text_edit, self._translated_text_edit)
         self.setTabOrder(self._translated_text_edit, self._notes_edit)
-        self.setTabOrder(self._notes_edit, self.add_button)
+        self.setTabOrder(self._notes_edit, self.wordreference_button)
+        self.setTabOrder(self.wordreference_button, self.add_button)
         self.setTabOrder(self.add_button, self.cancel_button)
         self.setTabOrder(self.cancel_button, self._source_text_edit)  # Complete the cycle
         
@@ -179,6 +188,72 @@ class TranslationDialog(QDialog):
             
         return True
     
+    def lookup_wordreference(self):
+        """Fetch WordReference entries for the current source text."""
+        source_text = self.source_text
+        if not source_text:
+            QMessageBox.warning(
+                self,
+                "WordReference",
+                "Enter source text to look up.",
+            )
+            self._source_text_edit.setFocus()
+            return
+
+        client = WordReference()
+        if not client.dictionary_code(config.source_language, config.target_language):
+            QMessageBox.information(
+                self,
+                "WordReference",
+                "WordReference only supports dictionaries with English on one side "
+                f"({Language.get_language_name(config.source_language)} → "
+                f"{Language.get_language_name(config.target_language)} is not available).",
+            )
+            return
+
+        try:
+            result = client.lookup(
+                source_text,
+                config.source_language,
+                config.target_language,
+            )
+        except WordReferenceError as exc:
+            QMessageBox.warning(self, "WordReference", str(exc))
+            return
+
+        if result is None:
+            reply = QMessageBox.question(
+                self,
+                "WordReference",
+                "Could not retrieve results. Open the WordReference page in your browser instead?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+            if reply == QMessageBox.Yes:
+                try:
+                    WordReference.open_lookup_in_browser(
+                        source_text,
+                        config.source_language,
+                        config.target_language,
+                    )
+                except WordReferenceError as exc:
+                    QMessageBox.warning(self, "WordReference", str(exc))
+            return
+
+        message = WordReference.format_result_summary(result)
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("WordReference")
+        dialog.setText(message)
+        open_button = dialog.addButton("Open in Browser", QMessageBox.ActionRole)
+        dialog.addButton(QMessageBox.Ok)
+        dialog.exec_()
+        if dialog.clickedButton() == open_button:
+            WordReference.open_lookup_in_browser(
+                source_text,
+                config.source_language,
+                config.target_language,
+            )
+
     def accept(self):
         if not self.validate_inputs():
             return
