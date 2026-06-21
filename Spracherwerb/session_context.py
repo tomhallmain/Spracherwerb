@@ -79,12 +79,18 @@ class SessionContext:
             'results': results,
             'completion_time': time.time()
         })
-        
-        # Update relevant metrics based on activity type
-        if activity == 'vocabulary_builder':
-            self.vocabulary_learned.extend(results.get('new_words', []))
-        elif activity == 'grammar_practice':
-            self.grammar_points_covered.extend(results.get('grammar_points', []))
+
+        module_results = results.get('module_results', results)
+
+        for word in module_results.get('new_words', []):
+            if word not in self.vocabulary_learned:
+                self.vocabulary_learned.append(word)
+        for word in module_results.get('reviewed_words', []):
+            if word not in self.vocabulary_learned:
+                self.vocabulary_learned.append(word)
+        for point in module_results.get('grammar_points', []):
+            if point not in self.grammar_points_covered:
+                self.grammar_points_covered.append(point)
 
     def set_current_activity(self, activity: str) -> None:
         """Set the current learning activity"""

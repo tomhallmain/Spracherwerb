@@ -83,4 +83,26 @@ class Voice:
             return
         self._tts.add_speech_file_to_queue(filepath)
 
+    def set_language(self, language_code: str) -> None:
+        self._language_code = language_code
+
+    def set_speed(self, speed: float) -> None:
+        self._speech_speed = speed
+
+    def generate_speech(self, text: str, topic: str = "learning"):
+        if not text or not self.can_speak:
+            return None
+        locale = getattr(self, "_language_code", None)
+        return self.prepare_to_say(text, topic=topic, save_mp3=True, locale=locale)
+
+    def pause(self) -> None:
+        pass
+
+    def resume(self) -> None:
+        pass
+
+    def cleanup(self) -> None:
+        if self.can_speak and self._tts is not None:
+            self.finish_speaking()
+
 

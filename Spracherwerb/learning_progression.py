@@ -2,31 +2,15 @@
 
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Any
-from enum import Enum
 import time
 
 from utils.utils import Utils
 from utils.logging_setup import get_logger
 from .learning_spot_profile import LearningSpot, LearningSpotProfile
 from .learning_memory import LearningMemory
+from .activity_types import ActivityType
 
 logger = get_logger(__name__)
-
-class ActivityType(Enum):
-    """Types of learning activities."""
-    VOCABULARY_BUILDER = "vocabulary_builder"
-    GRAMMAR_PRACTICE = "grammar_practice"
-    CONVERSATION_PRACTICE = "conversation_practice"
-    LISTENING_COMPREHENSION = "listening_comprehension"
-    WRITING_PRACTICE = "writing_practice"
-    CULTURAL_CONTEXT = "cultural_context"
-    PRONUNCIATION_GUIDE = "pronunciation_guide"
-    IDIOMS_AND_EXPRESSIONS = "idioms_and_expressions"
-    READING_COMPREHENSION = "reading_comprehension"
-    SITUATIONAL_DIALOGUES = "situational_dialogues"
-    VISUAL_VOCABULARY = "visual_vocabulary"
-
-
 @dataclass
 class LearningActivity:
     """Represents a learning activity with its content and progression."""

@@ -2,6 +2,10 @@
 Spracherwerb package for interactive language learning with AI assistance.
 """
 
+from .activity_registry import ActivityRegistry
+from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleServices
+from .activity_types import ActivityType, LearningActivity
+from .base_learning_module import ActivityNotRegisteredError, BaseLearningModule
 from .language_tutor import LanguageTutor
 from .learning_engine import LearningEngine
 from .learning_memory import LearningMemory
@@ -14,6 +18,7 @@ from .schedules_manager import SchedulesManager
 from .session_config import SessionConfig
 from .session_context import SessionContext
 from .session_manager import SessionManager
+from .stub_learning_module import StubLearningModule
 from .voice import Voice
 # TODO: Implement the following modules
 # from .vocabulary_builder import VocabularyBuilder
@@ -29,17 +34,26 @@ from .voice import Voice
 # from .visual_vocabulary import VisualVocabulary
 
 __all__ = [
+    'ActivityNotRegisteredError',
+    'ActivityRegistry',
+    'ActivityStartResult',
+    'ActivityTurnResult',
+    'ActivityType',
+    'BaseLearningModule',
     'LanguageTutor',
+    'LearningActivity',
     'LearningEngine',
     'LearningMemory',
     'LearningProgression',
     'LearningSession',
     'LearningSpotProfile',
+    'ModuleServices',
     'Prompter',
     'Schedule',
     'SchedulesManager',
     'SessionConfig',
     'SessionContext',
     'SessionManager',
+    'StubLearningModule',
     'Voice',
-] 
+]

@@ -3,10 +3,8 @@ from typing import Optional, Dict, Any, List
 from enum import Enum, auto
 import logging
 
-from utils.config import config
-from utils.utils import Utils
 from utils.translations import I18N
-from .session_config import SessionConfig, SessionType, DifficultyLevel
+from .session_config import SessionConfig
 from .session_context import SessionContext, UserAction
 from .learning_session import LearningSession
 
@@ -21,21 +19,6 @@ class SessionContextEnum(Enum):
     PAUSED = auto()
     COMPLETED = auto()
     CANCELLED = auto()
-
-
-class LearningActivity(Enum):
-    """Types of learning activities available"""
-    VOCABULARY_BUILDER = auto()
-    GRAMMAR_PRACTICE = auto()
-    CONVERSATION_PRACTICE = auto()
-    LISTENING_COMPREHENSION = auto()
-    WRITING_PRACTICE = auto()
-    CULTURAL_CONTEXT = auto()
-    PRONUNCIATION_GUIDE = auto()
-    IDIOMS_AND_EXPRESSIONS = auto()
-    READING_COMPREHENSION = auto()
-    SITUATIONAL_DIALOGUES = auto()
-    VISUAL_VOCABULARY = auto()
 
 
 class SessionManager:

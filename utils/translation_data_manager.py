@@ -88,19 +88,19 @@ class TranslationDataManager:
             
             # Convert to structured format
             structured_data = {}
-            for trans in old_translations:
-                source = trans.get('source_language')
-                target = trans.get('target_language')
+            for t in old_translations:
+                source = t.get('source_language')
+                target = t.get('target_language')
                 
                 if not source or not target:
-                    logger.warning(f"Skipping translation without language info: {trans.get('source_text', 'Unknown')}")
+                    logger.warning(f"Skipping translation without language info: {t.get('source_text', 'Unknown')}")
                     continue
                 
                 pair_key = f"{source}-{target}"
                 if pair_key not in structured_data:
                     structured_data[pair_key] = []
                 
-                structured_data[pair_key].append(trans)
+                structured_data[pair_key].append(t)
             
             # Save new format
             with open(self.data_file, 'w', encoding='utf-8') as f:
@@ -452,15 +452,15 @@ def get_legacy_compatible_manager():
                 
                 # Group translations by language pair
                 structured_data = {}
-                for trans in translations:
-                    source = trans.get('source_language')
-                    target = trans.get('target_language')
+                for t in translations:
+                    source = t.get('source_language')
+                    target = t.get('target_language')
                     
                     if source and target:
                         pair_key = f"{source}-{target}"
                         if pair_key not in structured_data:
                             structured_data[pair_key] = []
-                        structured_data[pair_key].append(trans)
+                        structured_data[pair_key].append(t)
                 
                 # Save each pair individually
                 for pair_key, pair_translations in structured_data.items():
