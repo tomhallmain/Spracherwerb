@@ -6,6 +6,7 @@ import appdirs
 from collections import defaultdict
 
 from utils.config import config
+from utils.cache_paths import spracherwerb_cache_dir
 from utils.logging_setup import get_logger
 from utils.utils import Utils
 
@@ -35,10 +36,13 @@ class TranslationDataManager:
 
     
     def __init__(self):
-        # Use appdirs to get proper cache directory
         self.app_name = "Spracherwerb"
         self.app_author = "Spracherwerb"
-        self.cache_dir = Path(appdirs.user_cache_dir(self.app_name, self.app_author))
+        cache_override = spracherwerb_cache_dir()
+        if cache_override:
+            self.cache_dir = Path(cache_override)
+        else:
+            self.cache_dir = Path(appdirs.user_cache_dir(self.app_name, self.app_author))
         self.data_dir = self.cache_dir / "translations"
         self.data_file = self.data_dir / "translations_structured.json"
         self.backup_file = self.data_dir / "translations_structured_backup.json"

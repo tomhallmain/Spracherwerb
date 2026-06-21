@@ -15,7 +15,24 @@ library_data_dir = os.path.join(root_dir, "library_data", "data")
 class Config:
     CONFIGS_DIR_LOC = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "configs")
 
-    def __init__(self):
+    @staticmethod
+    def resolve_config_path():
+        """Resolve the active config file path, preferring config.json."""
+        configs_dir = os.environ.get("SPRACHERWERB_CONFIGS_DIR") or Config.CONFIGS_DIR_LOC
+        configs = [f.path for f in os.scandir(configs_dir) if f.is_file() and f.path.endswith(".json")]
+        config_path = None
+        for candidate in configs:
+            basename = os.path.basename(candidate)
+            if basename == "config.json":
+                config_path = candidate
+                break
+            if basename != "config_example.json":
+                config_path = candidate
+        if config_path is None:
+            config_path = os.path.join(Config.CONFIGS_DIR_LOC, "config_example.json")
+        return config_path
+
+    def __init__(self, config_path=None):
         self.dict = {}
         self.foreground_color = "white"
         self.background_color = "#2596BE"
@@ -87,19 +104,9 @@ class Config:
         }
         self.ignore_missing_api_keys = False  # Set to True to skip API-dependent tests
 
-        # Load configuration from file
-        configs = [f.path for f in os.scandir(Config.CONFIGS_DIR_LOC) if f.is_file() and f.path.endswith(".json")]
-        self.config_path = None
-
-        for c in configs:
-            if os.path.basename(c) == "config.json":
-                self.config_path = c
-                break
-            elif os.path.basename(c) != "config_example.json":
-                self.config_path = c
-
+        self.config_path = config_path
         if self.config_path is None:
-            self.config_path = os.path.join(Config.CONFIGS_DIR_LOC, "config_example.json")
+            self.config_path = Config.resolve_config_path()
 
         try:
             self.dict = json.load(open(self.config_path, "r", encoding="utf-8"))
@@ -161,12 +168,24 @@ class Config:
         )
 
         if self.backup_dir is not None:
-            self.backup_dir = self.validate_and_set_directory("backup_dir")
+            try:
+                self.backup_dir = self.validate_and_set_directory("backup_dir")
+            except Exception as e:
+                logger.warning(e)
+                logger.warning(
+                    "Failed to set backup_dir from config.json file. Ensure the key is set."
+                )
+                self.backup_dir = None
 
         self.coqui_tts_model = tuple(self.coqui_tts_model)
 
         if self.source_language is None:
             self.source_language = Utils.get_default_user_language()
+
+    @property
+    def forvo_api_key(self):
+        """Backward-compatible accessor used by extension tests."""
+        return self.api_keys.get("forvo")
 
     def validate_and_set_directory(self, key, override=False):
         loc = key if override else self.dict[key]
