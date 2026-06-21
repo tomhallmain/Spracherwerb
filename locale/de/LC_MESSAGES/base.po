@@ -46,7 +46,7 @@ msgstr "Typ der nicht unterstützten Bilderzeugung: {_type}"
 
 #: .\tts\text_cleaner_ruleset.py:78
 msgid "Number \\1"
-msgstr "Anzahl \\1"
+msgstr "Zahl \\1"
 
 #: .\ui\extensions_window.py:22 .\ui\extensions_window.py:31
 #: .\ui\extensions_window.py:294

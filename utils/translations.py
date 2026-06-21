@@ -30,6 +30,21 @@ class I18N:
             return s
 
     @staticmethod
+    def N_(msgid: str) -> str:
+        """Return *msgid* unchanged; marks the string for gettext extraction."""
+        return msgid
+
+    @staticmethod
+    def get_translation_override(msgid: str, locale=None) -> str:
+        """Translate *msgid* for *locale*, or the installed locale when omitted."""
+        if locale is None:
+            return I18N._(msgid)
+        translation = gettext.translation(
+            "base", I18N.localedir, languages=[locale], fallback=True
+        )
+        return translation.gettext(msgid)
+
+    @staticmethod
     def day_of_the_week(day_index=0):
         if day_index == 0:
             return I18N._('Monday')

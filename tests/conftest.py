@@ -252,3 +252,10 @@ def mock_wikimedia_commons():
     from extensions.wikimedia_commons import WikimediaCommons
 
     return WikimediaCommons()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Remove disposable TTS artifacts left in tts_output by integration tests."""
+    from tts.output_cleanup import cleanup_default_output_directory
+
+    cleanup_default_output_directory()

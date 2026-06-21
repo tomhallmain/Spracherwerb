@@ -1,122 +1,138 @@
-
-# TODO UPDATE THIS FILE TO NEW VERSION FROM MUSE APP
-
+from dataclasses import dataclass, field
 from datetime import datetime
 import os
-import re
 import subprocess
-import sys
+import threading
 import time
+from typing import Optional, Callable
+import uuid
 
-import torch
 import music_tag
 
+from tts.output_cleanup import cleanup_default_output_directory, is_orphaned_output_wav
+from tts.providers import BaseTTSProvider, TTSProviderType, get_provider
+from tts.chunker import Chunker
 from utils.config import config
 from utils.job_queue import JobQueue
-from utils.utils import Utils
 from utils.logging_setup import get_logger
+from utils.utils import Utils
+from utils.vlc_plugin_cache import ensure_vlc_plugin_cache_if_stale
+
+ensure_vlc_plugin_cache_if_stale()
+import vlc
 
 logger = get_logger(__name__)
 
-# Check if TTS is disabled
-if config.disable_tts:
-    logger.warning("TTS is disabled in config. Skipping TTS initialization.")
-    tts_available = False
-else:
-    try:
-        logger.info("Importing Coqui TTS...")
-        sys.path.insert(0, config.coqui_tts_location)
-        from TTS.api import TTS
-        tts_available = True
-    except ImportError:
-        logger.error("Failed to import Coqui TTS. Ensure the code is downloaded and the \"coqui_tts_location\" value is set in the config.")
-        tts_available = False
+@dataclass
+class TTSConfig:
+    """Configuration for TextToSpeechRunner and related classes."""
+    model: object  # provider-specific: Coqui uses (model_name, speaker, language) tuple
+    provider: TTSProviderType = TTSProviderType.COQUI
+    voice: Optional[str] = None     # per-invocation voice override (speaker name, voice ID, or file path)
+    language: str = "en"            # BCP-47 language code; used by Piper auto-download and passed to providers
+    filepath: str = "test"
+    overwrite: bool = False
+    delete_interim_files: bool = True
+    auto_play: bool = True
+    run_context: Optional[object] = None
+    skip_cjk: bool = True
+    skip_redundant: bool = True
 
-import vlc
+class TTSSpeakInvocation:
+    _tracking = {}  # Maps invocation_id to TTSSpeakInvocation
 
-# from ops.speakers import speakers
-from tts.text_cleaner_ruleset import TextCleanerRuleset
-from utils.config import config
-from utils.job_queue import JobQueue
-from utils.utils import Utils
+    @classmethod
+    def create(cls, speak_callback, config):
+        """Create a new invocation with a unique ID."""
+        return cls(str(uuid.uuid4()), speak_callback, config)
 
-# Get device
-device = "cuda" if torch.cuda.is_available() else "cpu"
+    def __init__(self, invocation_id: str, speak_callback: Callable, config: TTSConfig):
+        self.invocation_id = invocation_id
+        self.error_count = 0
+        self.total_chunks = 0
+        self.chunker = Chunker(skip_cjk=config.skip_cjk, skip_redundant=config.skip_redundant)
+        self.speak_callback = speak_callback
+        self.config = config  # Store config to access run_context
+        self._tracking[invocation_id] = self
 
-# List available 🐸TTS models
-# pprint.pprint(TTS().list_models())
+    def increment_error(self):
+        self.error_count += 1
 
+    def increment_chunks(self):
+        self.total_chunks += 1
 
-class Chunker:
-    MAX_CHUNK_TOKENS = config.max_chunk_tokens
-    cleaner = TextCleanerRuleset()
+    def all_chunks_failed(self) -> bool:
+        return self.error_count > 0 and self.error_count == self.total_chunks
 
-    @staticmethod
-    def _clean(text, locale=None):
-        cleaned = Chunker.cleaner.clean(text, locale)
-        if Chunker.count_tokens(cleaned) > 200 and cleaned.startswith("\"") and cleaned.endswith("\""):
-            # The sentence segmentation algorithm does not break on quotes even if they are long.
-            return cleaned[1:-1]
-        return cleaned
+    def _process_chunks(self, chunks):
+        """
+        Process chunks through the chunker and generate speech for each chunk.
+        
+        Args:
+            chunks: Iterable of text chunks to process
+            
+        Returns:
+            str: The full processed text
+        """
+        full_text = ""
+        for chunk in chunks:
+            # Check for skip before processing each chunk
+            if self.config.run_context and self.config.run_context.should_skip():
+                logger.info("Skipping remaining TTS chunks due to skip request")
+                break
+                
+            logger.info("-------------------\n" + chunk)
+            if full_text:
+                full_text += "\n\n"
+            full_text += chunk
+            self.increment_chunks()
+            self.speak_callback(chunk, self)
+            
+        if self.all_chunks_failed():
+            raise Exception(f"All {self.total_chunks} chunks failed to generate speech")
+            
+        return full_text
 
-    @staticmethod
-    def contains_alphanumeric(text):
-        return bool(re.search(r'\w', text))
+    def process_text(self, text, locale=None):
+        """
+        Process text through the chunker and generate speech for each chunk.
+        
+        Args:
+            text: The text to process
+            locale: Optional locale for text processing
+            
+        Returns:
+            str: The full processed text
+        """
+        if not text or not text.strip():
+            raise Exception("Empty text provided to process")
+            
+        return self._process_chunks(
+            self.chunker.get_str_chunks(text, locale=locale)
+        )
 
-    @staticmethod
-    def _yield_chunks(lines_iterable, is_str=False, split_on_each_line=False, locale=None):
-        last_chunk = ""
-        chunk = ""
-        for line in lines_iterable:
-            if split_on_each_line:
-                if Chunker.contains_alphanumeric(line):
-                    yield Chunker._clean(line.strip(), locale)
-                continue
-            if line.strip() == "":
-                if chunk.strip() != "":
-                    if Chunker.contains_alphanumeric(chunk):
-                        yield Chunker._clean(chunk.strip(), locale)
-                last_chunk = chunk
-                chunk = ""
-                continue
-            if line.startswith("[") or line.startswith("("):
-                continue
-            if is_str and len(chunk) > 0 and chunk[-1] != " ":
-                chunk += " "
-            chunk += line
-        if chunk != last_chunk and chunk.strip() != "":
-            if Chunker.contains_alphanumeric(chunk):
-                yield Chunker._clean(chunk.strip(), locale)
+    def process_file(self, filepath, split_on_each_line=False, locale=None):
+        """
+        Process a file through the chunker and generate speech for each chunk.
+        
+        Args:
+            filepath: Path to the file to process
+            split_on_each_line: Whether to split on each line
+            locale: Optional locale for text processing
+            
+        Returns:
+            str: The full processed text
+        """
+        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+            raise Exception("Empty or non-existent file provided to process")
+            
+        return self._process_chunks(
+            self.chunker.get_chunks(filepath, split_on_each_line, locale=locale)
+        )
 
-    @staticmethod
-    def count_tokens(chunk):
-        return len(chunk.strip().split(" "))
-
-    @staticmethod
-    def split_tokens(chunk, size):
-        chunk_tokens = chunk.strip().split(" ")
-        return [" ".join(chunk_tokens[i: i + size]) for i in range(0, len(chunk_tokens), size)]
-
-    @staticmethod
-    def yield_chunks(lines_iterable, is_str=False, split_on_each_line=False, locale=None):
-        for chunk in Chunker._yield_chunks(lines_iterable, is_str=is_str, split_on_each_line=split_on_each_line, locale=locale):
-            if Chunker.count_tokens(chunk) > Chunker.MAX_CHUNK_TOKENS:
-                for subchunk in Chunker.split_tokens(chunk, size=Chunker.MAX_CHUNK_TOKENS - 1):
-                    yield subchunk
-            else:
-                yield chunk
-
-    @staticmethod
-    def get_chunks(filepath, split_on_each_line=False, locale=None):
-        with open(filepath, 'r', encoding="utf8") as f:
-            yield from Chunker.yield_chunks(f, split_on_each_line=split_on_each_line, locale=locale)
-
-    @staticmethod
-    def get_str_chunks(text, split_on_each_line=False, locale=None):
-        yield from Chunker.yield_chunks(text.split("\n"), is_str=True, split_on_each_line=split_on_each_line, locale=locale)
-
-
-
+    def cleanup(self):
+        if self.invocation_id in self._tracking:
+            del self._tracking[self.invocation_id]
 
 class TextToSpeechRunner:
     QUEUES = [] # TODO multiple named queues
@@ -124,23 +140,46 @@ class TextToSpeechRunner:
     output_directory = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tts_output")
     lib_sounds = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lib", "sounds")
 
-    def __init__(self, model, filepath="test", overwrite=False, delete_interim_files=True, auto_play=True, run_context=None):
+    def __init__(self, config: TTSConfig):
+        self.config = config
+        os.makedirs(TextToSpeechRunner.output_directory, exist_ok=True)
+        self._provider: BaseTTSProvider = get_provider(config)
+        if not self._provider.is_available():
+            raise Exception(
+                f"TTS provider '{config.provider}' is not available on this system. "
+                "Check that the required package is installed and configured correctly."
+            )
+        # WARNING: The speech queue is shared across all TTSRunner instances.
+        # When skip is triggered, it will cancel ALL pending speech jobs, not just
+        # the current one. This means if multiple TTS invocations are running
+        # simultaneously (e.g. from different parts of the application), they will
+        # all be cancelled when skip is pressed. This is currently acceptable since
+        # the DJ's speech is supplementary to the music experience, but this should
+        # be reviewed if more critical TTS functionality is added in the future.
         self.speech_queue = JobQueue("Speech Queue")
-        self.output_path = os.path.splitext(os.path.basename(filepath))[0]
+        self._generation_condition = threading.Condition()
+        self._active_generations = 0
+        self.output_path = os.path.splitext(os.path.basename(config.filepath))[0]
         self.output_path_normalized = Utils.ascii_normalize(self.output_path)
-        self.model = model
-        self.overwrite = overwrite
+        self.overwrite = config.overwrite
         self.counter = 0
         self.audio_paths = []
         self.used_audio_paths = []
-        self.delete_interim_files = delete_interim_files if auto_play else False
-        self.auto_play = auto_play
-        self.run_context = run_context
+        self.delete_interim_files = config.delete_interim_files if config.auto_play else False
+        self.auto_play = config.auto_play
+        self.run_context = config.run_context
+
+    is_orphaned_output_wav = staticmethod(is_orphaned_output_wav)
+
+    @staticmethod
+    def cleanup_orphaned_output_files(directory: Optional[str] = None) -> int:
+        """Remove unnamed interim WAV files left in tts_output."""
+        return cleanup_default_output_directory(directory)
 
     def clean(self):
         if len(self.used_audio_paths) > 0:
             def _clean(files_to_delete=[]):
-                logger.info("Cleaning used TTS audio files")
+                logger.info(f"Cleaning used TTS audio files")
                 fail_count = 0
                 while len(files_to_delete) > 0:
                     if fail_count > 6:
@@ -181,26 +220,8 @@ class TextToSpeechRunner:
         if os.path.exists(final_output_path_mp3) and not self.overwrite:
             logger.info("Using existing generation file: " + final_output_path_mp3)
             return
-        logger.info("Generating speech file: " + output_path)
-        try:
-            # Init TTS with the target model name
-            tts = TTS(model_name=self.model[0], progress_bar=False).to(device)
-            # Run TTS with error handling
-            try:
-                tts.tts_to_file(text=text,
-                              speaker=self.model[1],
-                              file_path=output_path,
-                              language=self.model[2])
-            except Exception as e:
-                logger.error(f"TTS generation failed: {str(e)}")
-                # Check if the file was created despite the error
-                if not os.path.exists(output_path):
-                    raise Exception("TTS failed to generate audio file")
-                # If file exists, we can continue despite the error
-                logger.info("TTS generated file despite error, continuing...")
-        except Exception as e:
-            logger.error(f"TTS initialization failed: {str(e)}")
-            raise
+        logger.info(f"Generating speech file [{self.config.provider.value}]: {output_path}")
+        self._provider.generate_speech_file(text, output_path)
 
     def play_async(self, filepath):
         if self.run_context and self.run_context.should_skip():
@@ -234,6 +255,14 @@ class TextToSpeechRunner:
                         time.sleep(.5)
             self.clean()
         else:
+            # Wait for any in-progress speak() call to finish generating all its
+            # chunks before checking the queue.  Without this, save_for_last=True
+            # callers (e.g. extension announcements) could see an empty queue,
+            # proceed immediately, and land before the chunks that are about to
+            # be added by a concurrently running speak().
+            with self._generation_condition:
+                while self._active_generations > 0:
+                    self._generation_condition.wait()
             while self.speech_queue.has_pending():
                 time.sleep(.5)
             while self.speech_queue.job_running:
@@ -253,43 +282,69 @@ class TextToSpeechRunner:
         TextToSpeechRunner.VLC_MEDIA_PLAYER = vlc.MediaPlayer(filepath)
         TextToSpeechRunner.VLC_MEDIA_PLAYER.play()
 
-    def _speak(self, text):
+    def _speak(self, text, invocation: TTSSpeakInvocation):
         output_path = self.generate_output_path()
-        self.audio_paths.append(output_path)
-        self.generate_speech_file(text, output_path)
-        self.add_speech_file_to_queue(output_path)
+        try:
+            self.generate_speech_file(text, output_path)
+            self.audio_paths.append(output_path)
+            self.add_speech_file_to_queue(output_path)
+        except Exception as e:
+            invocation.increment_error()
+            logger.error(f"TTS generation error: {str(e)}")
+            # Clean up the output file if it was created
+            if os.path.exists(output_path):
+                try:
+                    os.remove(output_path)
+                except:
+                    pass
 
     def speak(self, text, save_mp3=False, locale=None):
         if self.run_context and self.run_context.should_skip():
-            return
-        full_text = ""
-        for chunk in Chunker.get_str_chunks(text, locale=locale):
-            logger.info("-------------------\n" + chunk)
-            if full_text:
-                full_text += "\n\n"
-            full_text += chunk
-            self._speak(chunk)
-        while self.speech_queue.job_running:
-            if self.run_context and self.run_context.should_skip():
-                return
-            time.sleep(0.5)
-        self.combine_audio_files(save_mp3, text_content=full_text)
+            # Clear the speech queue when skipping
+            return self.speech_queue.cancel()
+
+        with self._generation_condition:
+            self._active_generations += 1
+
+        invocation = TTSSpeakInvocation.create(self._speak, self.config)
+
+        try:
+            full_text = invocation.process_text(text, locale)
+
+            while self.speech_queue.job_running:
+                if self.run_context and self.run_context.should_skip():
+                    # Clear the speech queue when skipping
+                    return self.speech_queue.cancel()
+                time.sleep(0.5)
+            return self.combine_audio_files(save_mp3, text_content=full_text)
+        finally:
+            invocation.cleanup()
+            with self._generation_condition:
+                self._active_generations -= 1
+                self._generation_condition.notify_all()
 
     def speak_file(self, filepath, save_mp3=True, split_on_each_line=False, locale=None):
         if self.run_context and self.run_context.should_skip():
-            return
-        full_text = ""
-        for chunk in Chunker.get_chunks(filepath, split_on_each_line, locale=locale):
-            logger.info("-------------------\n" + chunk)
-            if full_text:
-                full_text += "\n\n"
-            full_text += chunk
-            self._speak(chunk)
-        while self.speech_queue.job_running:
-            if self.run_context and self.run_context.should_skip():
-                return
-            time.sleep(0.5)
-        self.combine_audio_files(save_mp3, text_content=full_text)
+            return self.speech_queue.cancel()
+
+        with self._generation_condition:
+            self._active_generations += 1
+
+        invocation = TTSSpeakInvocation.create(self._speak, self.config)
+
+        try:
+            full_text = invocation.process_file(filepath, split_on_each_line, locale)
+
+            while self.speech_queue.job_running:
+                if self.run_context and self.run_context.should_skip():
+                    return self.speech_queue.cancel()
+                time.sleep(0.5)
+            return self.combine_audio_files(save_mp3, text_content=full_text)
+        finally:
+            invocation.cleanup()
+            with self._generation_condition:
+                self._active_generations -= 1
+                self._generation_condition.notify_all()
 
     def convert_to_mp3(self, file_path, text_content=None):
         if not os.path.exists(file_path):
@@ -309,36 +364,26 @@ class TextToSpeechRunner:
             raise Exception("Could not convert file to MP3: " + str(e))
 
     def add_metadata(self, output_path, text_content):
-        # Add metadata if the MP3 file was successfully created
         try:
             f = music_tag.load_file(output_path)
-            
-            # Basic track info
-            if text_content and text_content.strip() != "":
+
+            if text_content and text_content.strip():
                 f['lyrics'] = text_content
-                # Use first line of text as title if available
-                first_line = text_content.split('\n')[0][:50]  # Limit length for title
-                f['tracktitle'] = first_line
+                f['tracktitle'] = text_content.split('\n')[0][:50]
             else:
                 f['tracktitle'] = "Unknown"
-            
-            # Artist and source info
-            speaker_name = self.model[1] if self.model[1] else "Unknown Speaker"
-            f['artist'] = f"{speaker_name} (CoquiAI)"
-            f['album'] = "Muse app output"
-            
-            # Additional metadata for identification
-            f['albumartist'] = "CoquiAI TTS"
-            f['genre'] = "Text-to-Speech"
-            f['comment'] = f"Generated using CoquiAI TTS model: {self.model[0]}"
-            if self.model[2]:  # If language is specified
-                f['comment'] = f"{f['comment']} (Language: {self.model[2]})"
 
-            f['year'] = datetime.now().year
+            meta = self._provider.metadata_info()
+            f['artist']      = meta.get("artist", "Unknown Speaker")
+            f['album']       = "Spracherwerb output"
+            f['albumartist'] = meta.get("albumartist", "TTS")
+            f['genre']       = "Text-to-Speech"
+            f['comment']     = meta.get("comment", "")
+            f['year']        = datetime.now().year
             f.save()
-            logger.info(f"Added metadata to {output_path}")
+            logger.info("Added metadata to %s", output_path)
         except Exception as e:
-            logger.warning(f"Could not add metadata: {e}")
+            logger.warning("Could not add metadata: %s", e)
 
     def get_output_path_no_unicode(self):
         output_path = os.path.join(TextToSpeechRunner.output_directory, self.output_path + '.wav')
@@ -396,9 +441,9 @@ class TextToSpeechRunner:
             self.speech_queue.job_running = True
             Utils.start_thread(self.play_async, use_asyncio=False, args=[filepath])
 
-
 def main(model, text):
-    runner = TextToSpeechRunner(model)
+    config = TTSConfig(model=model)
+    runner = TextToSpeechRunner(config)
     try:
         runner.speak(text)
     except KeyboardInterrupt:
@@ -410,12 +455,13 @@ def main(model, text):
             break
 
 if __name__ == "__main__":
-    # speaker = list(filter(lambda x: x if x.startswith(sys.argv[2]) else None, speakers))[0] if len(sys.argv)>2 else "Royston Min"
-    # de_model = ("tts_models/de/thorsten/tacotron2-DDC", None, None)
-    # multi_model = ("tts_models/multilingual/multi-dataset/xtts_v2", speaker, "en")
-    # model = multi_model
+    speaker = list(filter(lambda x: x if x.startswith(sys.argv[2]) else None, speakers))[0] if len(sys.argv)>2 else "Royston Min"
+    de_model = ("tts_models/de/thorsten/tacotron2-DDC", None, None)
+    multi_model = ("tts_models/multilingual/multi-dataset/xtts_v2", speaker, "en")
+    model = multi_model
+    text = ""
 
-    # main(model, text)
+    main(model, text)
 
-    for chunk in Chunker.get_str_chunks("""Hello and welcome to our news show! Today, we have some exciting stories for you. First up, Tesla stock jumps on Q3 earnings beat. This is a major story as investors are always looking out for the latest updates from companies in their portfolios. The live briefing by Blinken says 'more progress' from Israel needed on Gaza aid flow shows that there is still tension between Israel and Palestine, with both countries blaming each other for the lack of aid to Gaza. The North Korean troops are in Russia, would be 'legitimate targets' in Ukraine, US says is a worrying story as we don't know what the United States plans to do if Russia invades Ukraine. The DOJ warns Elon Musk's America PAC that $1 million giveaway may break the law shows that money can buy influence and the DOJ is taking action against it. The Dragon Undocks from Station, Crew-8 Heads Toward Earth is a positive story as we finally have more astronauts going to space again! Chiefs finalizing trade to get DeAndre Hopkins from Titans shows that there are still trades happening in the NFL despite COVID-19 concerns. The Israeli strikes pound Lebanese coastal city after residents evacuate is a sad story as we don't know how many people were injured or killed during the attack. Wall Street closes down, pressured by tech losses and worries about rates shows that investors are still nervous about the economy despite the new stimulus package. The McDonald's takes Quarter Pounder off the menu at 1 in 5 restaurants due to E. coli outbreak is a scary story as we don't know where it came from or how many people got sick. Olivia Munn bares mastectomy scars in new SKIMS campaign shows that celebrities are still sharing their personal stories despite the pandemic. The Troops deployed to Jewish community center in Sri Lanka surfing town after US warns of possible attack in area is a worrying story as we don't know what will happen if this attack happens. The Panthers' Young to start after Dalton hurt in crash shows that there are still injuries happening despite the new safety measures. The New guidance for stroke prevention includes Ozempic, other weight loss drugs shows that healthcare professionals are trying to find new ways to help their patients and make it easier on them. The Iranian hacker group aims at US election websites and media before vote, Microsoft says is a worrying story as we don't know how serious this attack was or if any data was compromised. At least 4 dead in 'terrorist attack' on aerospace facility in Turkey shows that there are still terrorist attacks happening despite the pandemic. The Existing home sales fall to lowest level since 2010 shows that we need more affordable housing options for people who can't afford homes right now. And finally, How long can you stand like a flamingo? The answer may reflect your age, new study says is an interesting story as it gives us something fun to think about during these difficult times."""):
-        logger.info(chunk)
+    # for chunk in Chunker.get_str_chunks(""""""):
+    #     logger.info(chunk)

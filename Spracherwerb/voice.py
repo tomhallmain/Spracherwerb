@@ -1,7 +1,9 @@
 import datetime
 import traceback
 
-from utils.config import config
+from typing import Optional
+
+from utils.config import config as app_config
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -9,43 +11,90 @@ logger = get_logger(__name__)
 tts_runner_imported = False
 
 try:
-    from tts.tts_runner import TextToSpeechRunner, tts_available
-    tts_runner_imported = True and tts_available and not config.disable_tts
+    logger.info("Importing tts_runner...")
+    from tts.tts_runner import TextToSpeechRunner, TTSConfig
+    from tts.providers import TTSProviderType
+    tts_runner_imported = True
 except Exception as e:
     logger.error(str(e))
     logger.warning("Failed to import tts_runner.")
 
+
+def _resolve_provider() -> "TTSProviderType":
+    """Read the active TTS provider from config, defaulting to Coqui."""
+    provider_str = getattr(app_config, "tts_provider", "coqui") or "coqui"
+    try:
+        return TTSProviderType(provider_str.lower())
+    except (ValueError, NameError):
+        logger.warning("Unknown tts_provider '%s', falling back to coqui.", provider_str)
+        return TTSProviderType.COQUI
+
+
 class Voice:
     MULTI_MODEL = "tts_models/multilingual/multi-dataset/xtts_v2"
 
-    def __init__(self, coqui_named_voice="Royston Min", run_context=None):
-        self.can_speak = tts_runner_imported and not config.disable_tts
-        self._coqui_named_voice = coqui_named_voice
-        self.model_args = (Voice.MULTI_MODEL, self._coqui_named_voice, "en")
+    def __init__(
+        self,
+        voice_name: str = "Royston Min",
+        language: str = "en",
+        run_context=None,
+        coqui_named_voice: Optional[str] = None,
+    ) -> None:
+        if coqui_named_voice is not None:
+            voice_name = coqui_named_voice
+        self._voice_name = voice_name
+        self._language = language
         self.run_context = run_context
-        if self.can_speak:
-            self._tts = TextToSpeechRunner(self.model_args,
-                                           filepath="muse_voice",
-                                           delete_interim_files=False,
-                                           auto_play=False,
-                                           run_context=self.run_context)
-        else:
-            self._tts = None
-            if config.disable_tts:
-                logger.warning("TTS is disabled in config. Voice functionality will be limited.")
-            else:
-                logger.warning("TTS is not available. Voice functionality will be limited.")
+        self._tts = None
+        self.can_speak = False
+        self._provider = None
 
-    def say(self, text="", topic="", save_mp3=False, locale=None):
-        # Say immediately
+        if app_config.disable_tts:
+            logger.warning("TTS is disabled in config. Voice functionality will be limited.")
+            return
+
+        if tts_runner_imported:
+            try:
+                self._provider = _resolve_provider()
+                tts_config = self._make_config(
+                    delete_interim_files=False,
+                    auto_play=False,
+                )
+                self._tts = TextToSpeechRunner(tts_config)
+                self.can_speak = True
+            except Exception as e:
+                logger.error("Failed to initialise TTS runner: %s", e)
+                logger.warning("Voice synthesis disabled.")
+        else:
+            logger.warning("TTS is not available. Voice functionality will be limited.")
+
+    def _make_config(self, overwrite: bool = False, **extra) -> "TTSConfig":
+        """Build a TTSConfig for the active provider and this persona's voice."""
+        coqui_model = None
+        if self._provider == TTSProviderType.COQUI:
+            coqui_tuple = getattr(app_config, "coqui_tts_model", None)
+            model_name = coqui_tuple[0] if coqui_tuple else Voice.MULTI_MODEL
+            lang = self._language or (coqui_tuple[2] if coqui_tuple else "en")
+            coqui_model = (model_name, self._voice_name, lang)
+
+        return TTSConfig(
+            model=coqui_model,
+            provider=self._provider,
+            voice=self._voice_name,
+            language=self._language,
+            filepath="spracherwerb_voice",
+            overwrite=overwrite,
+            run_context=self.run_context,
+            **extra,
+        )
+
+    def say(self, text: str = "", topic: str = "", save_mp3: bool = False, locale=None):
         if not self.can_speak or self._tts is None:
             logger.warning("Cannot speak.")
             return
-        logger.info(f"Saying: {text}")
-        temp_tts = TextToSpeechRunner(self.model_args, filepath="muse_voice", overwrite=True, run_context=self.run_context)
-        current_time_str = str(datetime.datetime.now().timestamp())
-        if "." in current_time_str:
-            current_time_str = current_time_str.split(".")[0]
+        logger.info("Saying: %s", text)
+        temp_tts = TextToSpeechRunner(self._make_config(overwrite=True))
+        current_time_str = str(datetime.datetime.now().timestamp()).split(".")[0]
         self._tts.set_output_path(topic + "_" + current_time_str + "_")
         try:
             return temp_tts.speak(text, save_mp3=save_mp3, locale=locale)
@@ -53,20 +102,50 @@ class Voice:
             logger.error(str(e))
             traceback.print_exc()
 
-    def prepare_to_say(self, text="", topic="", save_mp3=False, save_for_last=False, locale=None):
-        # Generate speech files from text, but don't play them yet
+    def prepare_to_say(
+        self,
+        text: str = "",
+        topic: str = "",
+        save_mp3: bool = False,
+        save_for_last: bool = False,
+        locale=None,
+    ):
         if not self.can_speak or self._tts is None:
             logger.warning("Cannot speak.")
             return
-        logger.info(f"Preparing to say: {text}")
+        logger.info("Preparing to say: %s", text)
         if save_for_last:
             self._tts.await_pending_speech_jobs(run_jobs=False)
-        current_time_str = str(datetime.datetime.now().timestamp())
-        if "." in current_time_str:
-            current_time_str = current_time_str.split(".")[0]
+        current_time_str = str(datetime.datetime.now().timestamp()).split(".")[0]
         self._tts.set_output_path(topic + "_" + current_time_str + "_")
         try:
             return self._tts.speak(text, save_mp3=save_mp3, locale=locale)
+        except Exception as e:
+            logger.error(str(e))
+            traceback.print_exc()
+
+    def speak_file(
+        self,
+        filepath: str,
+        topic: str = "",
+        save_mp3: bool = False,
+        split_on_each_line: bool = False,
+        locale=None,
+    ):
+        if not self.can_speak or self._tts is None:
+            logger.warning("Cannot speak.")
+            return
+        logger.info("Speaking file: %s", filepath)
+        temp_tts = TextToSpeechRunner(self._make_config(overwrite=True))
+        current_time_str = str(datetime.datetime.now().timestamp()).split(".")[0]
+        self._tts.set_output_path(topic + "_" + current_time_str + "_")
+        try:
+            return temp_tts.speak_file(
+                filepath,
+                save_mp3=save_mp3,
+                split_on_each_line=split_on_each_line,
+                locale=locale,
+            )
         except Exception as e:
             logger.error(str(e))
             traceback.print_exc()
@@ -77,14 +156,19 @@ class Voice:
             return
         self._tts.await_pending_speech_jobs()
 
-    def add_speech_file_to_queue(self, filepath):
+    def clear_queue(self):
+        if not self.can_speak or self._tts is None:
+            return
+        self._tts.speech_queue.cancel()
+
+    def add_speech_file_to_queue(self, filepath: str):
         if not self.can_speak or self._tts is None:
             logger.warning("Cannot speak.")
             return
         self._tts.add_speech_file_to_queue(filepath)
 
     def set_language(self, language_code: str) -> None:
-        self._language_code = language_code
+        self._language = language_code
 
     def set_speed(self, speed: float) -> None:
         self._speech_speed = speed
@@ -92,7 +176,7 @@ class Voice:
     def generate_speech(self, text: str, topic: str = "learning"):
         if not text or not self.can_speak:
             return None
-        locale = getattr(self, "_language_code", None)
+        locale = getattr(self, "_language", None)
         return self.prepare_to_say(text, topic=topic, save_mp3=True, locale=locale)
 
     def pause(self) -> None:
@@ -104,5 +188,3 @@ class Voice:
     def cleanup(self) -> None:
         if self.can_speak and self._tts is not None:
             self.finish_speaking()
-
-

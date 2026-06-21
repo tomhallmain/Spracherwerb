@@ -67,7 +67,24 @@ class Config:
         self.disable_tts = False  # Set to True to disable TTS functionality for testing
 
         self.text_cleaner_ruleset = []
+        self.number_words = {}
         self.coqui_tts_model = ("tts_models/multilingual/multi-dataset/xtts_v2", "Royston Min", "en")
+        self.tts_provider = "coqui"
+        self.kokoro_model = "kokoro-v1.0"
+        self.kokoro_voice = "af_heart"
+        self.f5tts_model = "F5TTS_v1_Base"
+        self.f5tts_reference_audio = None
+        self.f5tts_reference_text = ""
+        self.maskgct_reference_audio = None
+        self.maskgct_language = "en"
+        self.piper_model_path = None
+        self.piper_voices_dir = None
+        self.piper_quality = "medium"
+        self.piper_auto_download = True
+        self.zonos_model = "Zyphra/Zonos-v0.1-transformer"
+        self.zonos_reference_audio = None
+        self.zonos_language = "en"
+        self.auto_fix_vlc_plugin_cache = True
         self.max_chunk_tokens = 200
         
         # Learning content configuration
@@ -131,6 +148,15 @@ class Config:
             "ui_language",
             "blacklist_file",
             "backup_dir",
+            "tts_provider",
+            "kokoro_model",
+            "kokoro_voice",
+            "f5tts_model",
+            "f5tts_reference_text",
+            "maskgct_language",
+            "zonos_model",
+            "zonos_language",
+            "piper_quality",
         )
         
         # Set API keys from config
@@ -168,11 +194,24 @@ class Config:
             "llm_use_streaming",
             "llm_stream_redundancy",
             "llm_track_prompts_and_responses",
+            "piper_auto_download",
+            "auto_fix_vlc_plugin_cache",
+        )
+        
+        self.set_values(dict,
+            "number_words",
         )
         
         self.set_directories(
             "prompts_directory",
             "coqui_tts_location",
+            "piper_voices_dir",
+        )
+        self.set_filepaths(
+            "f5tts_reference_audio",
+            "maskgct_reference_audio",
+            "zonos_reference_audio",
+            "piper_model_path",
         )
 
         if self.backup_dir is not None:
@@ -207,6 +246,24 @@ class Config:
             return loc
         return None
 
+    def validate_and_set_filepath(self, key):
+        filepath = self.dict[key]
+        if filepath and filepath.strip() != "":
+            if "{HOME}" in filepath:
+                filepath = filepath.strip().replace("{HOME}", os.path.expanduser("~"))
+            elif not os.path.isfile(filepath):
+                try_path = os.path.join(configs_dir, filepath)
+                if os.path.isfile(try_path):
+                    filepath = try_path
+                else:
+                    try_path = os.path.join(library_data_dir, filepath)
+                    if os.path.isfile(try_path):
+                        filepath = try_path
+            if not os.path.isfile(filepath):
+                raise Exception(f"Invalid location provided for {key}: {filepath}")
+            return filepath
+        return None
+
     def set_directories(self, *directories):
         for directory in directories:
             try:
@@ -214,6 +271,14 @@ class Config:
             except Exception as e:
                 logger.warning(e)
                 logger.warning(f"Failed to set {directory} from config.json file. Ensure the key is set.")
+
+    def set_filepaths(self, *filepaths):
+        for filepath in filepaths:
+            try:
+                setattr(self, filepath, self.validate_and_set_filepath(filepath))
+            except Exception as e:
+                logger.warning(e)
+                logger.warning(f"Failed to set {filepath} from config.json file. Ensure the key is set.")
 
     def set_values(self, type, *names):
         for name in names:
