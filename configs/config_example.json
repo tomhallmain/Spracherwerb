@@ -27,6 +27,10 @@
     },
     
     "llm_model_name": "deepseek-r1:14b",
+    "llm_use_streaming": true,
+    "llm_stream_redundancy": true,
+    "llm_thinking_budget_chars": 8000,
+    "llm_track_prompts_and_responses": false,
     "coqui_tts_location": "{HOME}\\TTS-dev",
     "disable_tts": false,
     "coqui_tts_model": ["tts_models/multilingual/multi-dataset/xtts_v2", "Royston Min", "en"],

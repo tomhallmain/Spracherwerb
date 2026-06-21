@@ -2,21 +2,68 @@
 
 from dataclasses import dataclass
 import json
+import math
+import os
 import random
 import threading
 import time
-from typing import Optional, List
+from typing import Callable, Iterator, List, Optional, Tuple
 from urllib import request
 
+from extensions.llm_redundancy import (
+    DefaultRedundancyPolicy,
+    RedundancyPolicy,
+    strip_thinking_blocks,
+    streaming_visible_response,
+)
 from utils.logging_setup import get_logger
 from utils import Utils
 
 logger = get_logger(__name__)
 
+# Sentinel: omit *redundancy_policy* to follow :attr:`LLM.use_redundancy_elimination`.
+_USE_INSTANCE_REDUNDANCY = object()
 
 class LLMResponseException(Exception):
     """Raised when LLM call fails"""
     pass
+
+
+class LLMGenerationCancelled(Exception):
+    """Generation stopped by the caller (skip, cancel_generation, stream close)."""
+    pass
+
+
+@dataclass
+class StreamChunk:
+    """One increment of a streaming Ollama ``/api/generate`` response."""
+    text: str
+    accumulated: str
+    done: bool
+
+
+def accumulate_ollama_stream_events(
+    lines: Iterator[bytes],
+) -> Tuple[str, dict]:
+    """Parse NDJSON *lines* into full text and the final metadata object.
+
+    Exported for unit tests.  Each non-empty line must be a JSON object with an
+    optional ``response`` delta; the last object with ``done: true`` supplies
+    timing and context fields for :class:`LLMResult`.
+    """
+    accumulated = ""
+    final: dict = {}
+    for raw in lines:
+        raw = raw.strip()
+        if not raw:
+            continue
+        event = json.loads(raw.decode("utf-8"))
+        accumulated += event.get("response", "") or ""
+        if event.get("done"):
+            final = event
+    if not final:
+        final = {"done": True, "response": accumulated}
+    return accumulated, final
 
 
 @dataclass
@@ -34,6 +81,8 @@ class LLMResult:
     prompt_eval_duration: int
     eval_count: int
     eval_duration: int
+    truncated: bool = False
+    truncation_reason: str = ""
 
     @classmethod
     def from_json(cls, data: dict, context_provided=False) -> 'LLMResult':
@@ -78,66 +127,223 @@ class LLMResult:
             self.response = json_obj[attr_name]
             return self
         except Exception as e:
-            logger.error(f"{e} - Failed to get json attr {attr_name} from json response: {json}")
+            logger.error(f"{e} - Failed to get json attr {attr_name} from json response: {json_str}")
             return None
 
 
 class LLM:
-    """
-    Interface for interacting with the Ollama LLM API.
-    
-    TODO: Consider implementing redundancy elimination during response generation.
-    This would require:
-    1. Setting up streaming responses from the LLM
-    2. Checking each chunk as it arrives
-    3. Short-circuiting response generation if redundancy is detected
-    4. This would save both processing time and API costs
+    """Interface for interacting with the Ollama LLM API.
+
+    Optional streaming and redundancy elimination — see
+    docs/llm-streaming-redundancy-elimination.md.
     """
     ENDPOINT = "http://localhost:11434/api/generate"
     DEFAULT_TIMEOUT = 180
     DEFAULT_SYSTEM_PROMPT_DROP_RATE = 0.9  # 90% chance to drop system prompt
     CHECK_INTERVAL = 0.1  # How often to check for cancellation
+    FAILURE_THRESHOLD = 3  # Number of consecutive failures before considering LLM unavailable
+    DEFAULT_STATE = "local"  # Default state key for instances without a specific state
+    PROMPT_RESPONSE_HISTORY_MAX_ITEMS = 200
+    
+    # Class-level failure tracking: maps state keys to failure counts
+    _failure_counts = {}
 
-    def __init__(self, model_name="deepseek-r1:14b", run_context=None):
+    def __init__(
+        self,
+        model_name="deepseek-r1:14b",
+        run_context=None,
+        state_key=None,
+        track_prompts_and_responses=False,
+        use_streaming: bool = False,
+        use_redundancy_elimination: bool = False,
+        thinking_budget_chars: Optional[int] = None,
+    ):
         self.model_name = model_name
         self.run_context = run_context
+        self.state_key = state_key if state_key is not None else LLM.DEFAULT_STATE
+        self.track_prompts_and_responses = bool(track_prompts_and_responses)
+        self.use_streaming = bool(use_streaming)
+        self.use_redundancy_elimination = bool(use_redundancy_elimination)
+        self.thinking_budget_chars = thinking_budget_chars
+        self.prompt_response_history = []
+        self._prompt_response_lock = threading.Lock()
+        state_suffix = "".join(
+            c if (c.isalnum() or c in ("-", "_")) else "_" for c in str(self.state_key)
+        )
+        self.prompt_response_history_file = os.path.join(
+            os.getcwd(), f"temp_llm_prompt_response_history_{state_suffix}.json"
+        )
         self._cancelled = False
         self._result = None
         self._exception = None
         self._thread = None
-        self.failure_count = 0  # Track consecutive LLM failures
-        logger.info(f"Using LLM model: {self.model_name}")
+        self._active_http_response = None
+        logger.info(
+            "Using LLM model: %s (state: %s, stream=%s, redundancy=%s)",
+            self.model_name,
+            self.state_key,
+            self.use_streaming,
+            self.use_redundancy_elimination,
+        )
+        if self.track_prompts_and_responses:
+            logger.info(
+                "LLM prompt/response tracking is enabled (file: %s)",
+                self.prompt_response_history_file,
+            )
+
+    @classmethod
+    def from_config(
+        cls,
+        config_obj=None,
+        *,
+        state_key: Optional[str] = None,
+        run_context=None,
+        track_prompts_and_responses: Optional[bool] = None,
+    ) -> "LLM":
+        """Build an :class:`LLM` from a host-application config object.
+
+        Reads optional attributes (all default to off when absent):
+
+        - ``llm_model_name``
+        - ``llm_use_streaming``
+        - ``llm_stream_redundancy``
+        - ``llm_thinking_budget_chars``
+        - ``llm_track_prompts_and_responses``
+        """
+        if config_obj is None:
+            from utils.config import config as config_obj
+        raw_budget = getattr(config_obj, "llm_thinking_budget_chars", None)
+        thinking_budget = int(raw_budget) if raw_budget is not None else None
+        return cls(
+            model_name=getattr(config_obj, "llm_model_name", "deepseek-r1:14b"),
+            run_context=run_context,
+            state_key=state_key,
+            track_prompts_and_responses=(
+                bool(getattr(config_obj, "llm_track_prompts_and_responses", False))
+                if track_prompts_and_responses is None
+                else track_prompts_and_responses
+            ),
+            use_streaming=bool(getattr(config_obj, "llm_use_streaming", False)),
+            use_redundancy_elimination=bool(
+                getattr(config_obj, "llm_stream_redundancy", False)
+            ),
+            thinking_budget_chars=thinking_budget,
+        )
+
+    @classmethod
+    def _get_failure_count_for_state(cls, state_key):
+        """Get the failure count for a specific state."""
+        return cls._failure_counts.get(state_key, 0)
+
+    @classmethod
+    def _increment_failure_count_for_state(cls, state_key):
+        """Increment the failure count for a specific state."""
+        if state_key not in cls._failure_counts:
+            cls._failure_counts[state_key] = 0
+        cls._failure_counts[state_key] += 1
+        logger.warning(f"LLM failure count increased to {cls._failure_counts[state_key]} for state '{state_key}'")
+
+    @classmethod
+    def _reset_failure_count_for_state(cls, state_key):
+        """Reset the failure count for a specific state."""
+        if state_key in cls._failure_counts and cls._failure_counts[state_key] > 0:
+            logger.info(f"Resetting LLM failure count from {cls._failure_counts[state_key]} to 0 for state '{state_key}'")
+        cls._failure_counts[state_key] = 0
+
+    @classmethod
+    def _is_failing_for_state(cls, state_key):
+        """Check if the LLM is in a failing state for a specific state key."""
+        return cls._get_failure_count_for_state(state_key) >= cls.FAILURE_THRESHOLD
 
     def get_failure_count(self):
-        return self.failure_count
+        """Get the failure count for this instance's state."""
+        return self._get_failure_count_for_state(self.state_key)
 
     def increment_failure_count(self):
-        self.failure_count += 1
+        """Increment the failure count for this instance's state."""
+        self._increment_failure_count_for_state(self.state_key)
 
     def reset_failure_count(self):
-        self.failure_count = 0
+        """Reset the failure count for this instance's state."""
+        self._reset_failure_count_for_state(self.state_key)
+
+    def is_failing(self):
+        """Check if the LLM is in a failing state for this instance's state."""
+        return self._is_failing_for_state(self.state_key)
+
+    @classmethod
+    def is_failing_for_state(cls, state_key=None):
+        """Check if the LLM is in a failing state for a specific state (or default)."""
+        if state_key is None:
+            state_key = cls.DEFAULT_STATE
+        return cls._is_failing_for_state(state_key)
 
     def get_llm_penalty(self):
-        import math
-        return 1.0 / (1.0 + math.log2(1.0 + self.failure_count))
+        """Get penalty value based on failure count for this instance's state."""
+        return 1.0 / (1.0 + math.log2(1.0 + self.get_failure_count()))
 
-    def ask(self, query, json_key=None, timeout=DEFAULT_TIMEOUT, context=None, system_prompt=None, system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE):
+    def ask(
+        self,
+        query,
+        json_key=None,
+        timeout=DEFAULT_TIMEOUT,
+        context=None,
+        system_prompt=None,
+        system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE,
+        stream: Optional[bool] = None,
+        on_stream_chunk: Optional[Callable[[StreamChunk], None]] = None,
+        redundancy_policy=_USE_INSTANCE_REDUNDANCY,
+        interrupt_on_skip: bool = True,
+    ):
         """Ask the LLM a question and optionally extract a JSON value."""
         logger.debug(f"LLM.ask called with query length: {len(query)}, json_key: {json_key}")
         if json_key is not None:
-            return self.generate_json_get_value(query, json_key, timeout=timeout, context=context, system_prompt=system_prompt, system_prompt_drop_rate=system_prompt_drop_rate)
-        return self.generate_response_async(query, timeout=timeout, context=context, system_prompt=system_prompt, system_prompt_drop_rate=system_prompt_drop_rate)
+            return self.generate_json_get_value(
+                query,
+                json_key,
+                timeout=timeout,
+                context=context,
+                system_prompt=system_prompt,
+                system_prompt_drop_rate=system_prompt_drop_rate,
+                interrupt_on_skip=interrupt_on_skip,
+            )
+        return self.generate_response_async(
+            query,
+            timeout=timeout,
+            context=context,
+            system_prompt=system_prompt,
+            system_prompt_drop_rate=system_prompt_drop_rate,
+            stream=stream,
+            on_stream_chunk=on_stream_chunk,
+            redundancy_policy=redundancy_policy,
+            interrupt_on_skip=interrupt_on_skip,
+        )
 
-    def generate_response(self, query, timeout=DEFAULT_TIMEOUT, context=None, system_prompt=None, system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE):
-        """Generate a response from the LLM."""
-        logger.debug(f"LLM.generate_response called with query length: {len(query)}")
-        query = self._sanitize_query(query)
-        timeout = self._get_timeout(timeout)
-        logger.info(f"Asking LLM {self.model_name}:\n{query}")
+    def _resolve_redundancy_policy(self, redundancy_policy) -> Optional[RedundancyPolicy]:
+        """Resolve policy: sentinel → instance flag; ``None`` → off; else use policy."""
+        if redundancy_policy is _USE_INSTANCE_REDUNDANCY:
+            if self.use_redundancy_elimination:
+                kwargs = {}
+                if self.thinking_budget_chars is not None:
+                    kwargs["thinking_budget_chars"] = self.thinking_budget_chars
+                return DefaultRedundancyPolicy(**kwargs)
+            return None
+        return redundancy_policy
+
+    def _build_generate_payload(
+        self,
+        query: str,
+        *,
+        stream: bool,
+        context=None,
+        system_prompt=None,
+        system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE,
+    ) -> Tuple[dict, bool]:
+        """Return (request body, system_prompt_included)."""
         data = {
             "model": self.model_name,
             "prompt": query,
-            "stream": False,
+            "stream": stream,
             # "options": { # TODO enable more options for LLM queries
             #     "temperature": 0.7,
             #     "top_p": 0.9,
@@ -147,43 +353,314 @@ class LLM:
             #     "timeout": timeout * 1000  # Convert to milliseconds
             # }
         }
-        
         if context is not None:
             data["context"] = context
             logger.debug(f"Adding context to LLM request, length: {len(context)}")
-            
-        # Randomly decide whether to include system prompt
+
+        system_prompt_included = False
         if system_prompt is not None and random.random() > system_prompt_drop_rate:
             data["system"] = system_prompt
+            system_prompt_included = True
             logger.debug("Including system prompt in LLM request")
         elif system_prompt is not None:
             logger.debug("Dropping system prompt from LLM request")
-            
-        req = request.Request(
+        return data, system_prompt_included
+
+    def _make_generate_request(self, data: dict) -> request.Request:
+        return request.Request(
             LLM.ENDPOINT,
             headers={"Content-Type": "application/json"},
             data=json.dumps(data).encode("utf-8"),
         )
+
+    def _finalize_result(
+        self,
+        result: LLMResult,
+        *,
+        query: str,
+        context_provided: bool,
+        system_prompt_included: bool,
+    ) -> LLMResult:
+        result.response = self._clean_response_for_models(result.response)
+        self._track_prompt_response(
+            prompt=query,
+            response=result.response,
+            context_provided=context_provided,
+            system_prompt_included=system_prompt_included,
+            truncated=result.truncated,
+            truncation_reason=result.truncation_reason,
+        )
+        logger.debug(f"LLM response received, length: {len(result.response)}")
+        if result.validate():
+            self.reset_failure_count()
+        else:
+            raise LLMResponseException("LLM response is invalid!")
+        return result
+
+    def _iter_ollama_stream_events(self, req: request.Request, timeout: float) -> Iterator[dict]:
+        """Yield parsed JSON objects from an Ollama streaming response."""
+        with request.urlopen(req, timeout=timeout) as resp:
+            self._active_http_response = resp
+            try:
+                for raw in resp:
+                    if self._cancelled:
+                        logger.debug("Stopping Ollama stream read (cancelled)")
+                        break
+                    raw = raw.strip()
+                    if not raw:
+                        continue
+                    yield json.loads(raw.decode("utf-8"))
+            finally:
+                self._active_http_response = None
+
+    def _generate_response_buffered(
+        self,
+        query: str,
+        timeout: float,
+        context,
+        system_prompt,
+        system_prompt_drop_rate,
+    ) -> LLMResult:
+        data, system_prompt_included = self._build_generate_payload(
+            query,
+            stream=False,
+            context=context,
+            system_prompt=system_prompt,
+            system_prompt_drop_rate=system_prompt_drop_rate,
+        )
+        req = self._make_generate_request(data)
+        logger.debug("Making LLM request (buffered)...")
+        response = request.urlopen(req, timeout=timeout).read().decode("utf-8")
+        resp_json = json.loads(response)
+        result = LLMResult.from_json(resp_json, context_provided=context is not None)
+        return self._finalize_result(
+            result,
+            query=query,
+            context_provided=context is not None,
+            system_prompt_included=system_prompt_included,
+        )
+
+    def _close_active_stream(self) -> None:
+        if self._active_http_response is not None:
+            try:
+                self._active_http_response.close()
+            except Exception as exc:
+                logger.debug("Error closing LLM stream: %s", exc)
+
+    def _generate_response_streaming(
+        self,
+        query: str,
+        timeout: float,
+        context,
+        system_prompt,
+        system_prompt_drop_rate,
+        on_stream_chunk: Optional[Callable[[StreamChunk], None]] = None,
+        redundancy_policy: Optional[RedundancyPolicy] = None,
+    ) -> LLMResult:
+        data, system_prompt_included = self._build_generate_payload(
+            query,
+            stream=True,
+            context=context,
+            system_prompt=system_prompt,
+            system_prompt_drop_rate=system_prompt_drop_rate,
+        )
+        req = self._make_generate_request(data)
+        logger.debug("Making LLM request (streaming)...")
+
+        accumulated_raw = ""
+        final: dict = {}
+        truncated = False
+        truncation_reason = ""
+        for event in self._iter_ollama_stream_events(req, timeout):
+            delta = event.get("response", "") or ""
+            if delta:
+                accumulated_raw += delta
+            done = bool(event.get("done"))
+            # streaming_visible_response is a no-op when no thinking tags are
+            # present, so calling it unconditionally is safe for all models.
+            accumulated_visible = streaming_visible_response(accumulated_raw)
+            stream_chunk = StreamChunk(
+                text=delta,
+                accumulated=accumulated_visible,
+                done=done,
+            )
+            if on_stream_chunk is not None:
+                on_stream_chunk(stream_chunk)
+            if redundancy_policy is not None and not done:
+                policy_chunk = StreamChunk(
+                    text=delta,
+                    accumulated=accumulated_raw,
+                    done=done,
+                )
+                verdict = redundancy_policy.on_chunk(policy_chunk)
+                if verdict.should_stop:
+                    if verdict.truncate_to is not None:
+                        accumulated_raw = verdict.truncate_to
+                    truncation_reason = verdict.reason or "redundancy"
+                    truncated = True
+                    final = dict(event)
+                    final["done"] = True
+                    final["done_reason"] = truncation_reason
+                    logger.info(
+                        "LLM stream stopped early (%s); %d chars kept",
+                        truncation_reason,
+                        len(accumulated_raw),
+                    )
+                    self._close_active_stream()
+                    break
+            if done:
+                final = event
+                break
+
+        if self._cancelled:
+            raise LLMGenerationCancelled()
+
+        if not final:
+            final = {"done": True, "response": accumulated_raw}
+        elif not accumulated_raw and final.get("response"):
+            accumulated_raw = final.get("response", "") or ""
+
+        result = LLMResult.from_json(
+            {**final, "response": accumulated_raw},
+            context_provided=context is not None,
+        )
+        result.truncated = truncated
+        result.truncation_reason = truncation_reason
+        return self._finalize_result(
+            result,
+            query=query,
+            context_provided=context is not None,
+            system_prompt_included=system_prompt_included,
+        )
+
+    def generate_response(
+        self,
+        query,
+        timeout=DEFAULT_TIMEOUT,
+        context=None,
+        system_prompt=None,
+        system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE,
+        stream: Optional[bool] = None,
+        on_stream_chunk: Optional[Callable[[StreamChunk], None]] = None,
+        redundancy_policy=_USE_INSTANCE_REDUNDANCY,
+    ):
+        """Generate a response from the LLM.
+
+        When *stream* is ``True`` (or :attr:`use_streaming` / a redundancy
+        *redundancy_policy* is set), reads Ollama's NDJSON stream and assembles
+        the full text before returning.  *on_stream_chunk* is called after each
+        delta.  *redundancy_policy* may stop generation early on repetition.
+
+        Pass ``redundancy_policy=None`` explicitly to disable redundancy even
+        when :attr:`use_redundancy_elimination` is on (e.g. JSON extraction).
+        """
+        logger.debug(f"LLM.generate_response called with query length: {len(query)}")
+        query = self._sanitize_query(query)
+        timeout = self._get_timeout(timeout)
+        policy = self._resolve_redundancy_policy(redundancy_policy)
+        use_stream = self.use_streaming if stream is None else stream
+        if policy is not None:
+            use_stream = True
+        logger.info(
+            f"Asking LLM {self.model_name} (stream={use_stream}, "
+            f"redundancy={'on' if policy else 'off'}):\n{query}"
+        )
         try:
-            logger.debug("Making LLM request...")
-            response = request.urlopen(req, timeout=timeout).read().decode("utf-8")
-            resp_json = json.loads(response)
-            result = LLMResult.from_json(resp_json, context_provided=context is not None)
-            result.response = self._clean_response_for_models(result.response)
-            logger.debug(f"LLM response received, length: {len(result.response)}")
-            if result.validate():
-                # Reset LLM failure count on success
-                self.reset_failure_count()
-            else:
-                raise LLMResponseException("LLM response is invalid!")
-            return result
+            if use_stream:
+                return self._generate_response_streaming(
+                    query,
+                    timeout,
+                    context,
+                    system_prompt,
+                    system_prompt_drop_rate,
+                    on_stream_chunk=on_stream_chunk,
+                    redundancy_policy=policy,
+                )
+            return self._generate_response_buffered(
+                query,
+                timeout,
+                context,
+                system_prompt,
+                system_prompt_drop_rate,
+            )
+        except LLMGenerationCancelled:
+            raise
+        except LLMResponseException:
+            raise
         except Exception as e:
             logger.error(f"Failed to generate LLM response: {e}")
-            self.increment_failure_count()  # Increment on LLM failure
+            self.increment_failure_count()
             raise LLMResponseException(f"Failed to generate LLM response: {e}")
 
-    def generate_response_async(self, query, timeout=DEFAULT_TIMEOUT, context=None, system_prompt=None, system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE):
-        """Generate a response from the LLM in a separate thread with cancellation support."""
+    def _track_prompt_response(
+        self,
+        prompt,
+        response,
+        context_provided=False,
+        system_prompt_included=False,
+        truncated=False,
+        truncation_reason="",
+    ):
+        """Record prompt/response pairs for debugging when enabled."""
+        if not self.track_prompts_and_responses:
+            return
+        entry = {
+            "timestamp": time.time(),
+            "model": self.model_name,
+            "prompt": prompt,
+            "response": response,
+            "context_provided": bool(context_provided),
+            "system_prompt_included": bool(system_prompt_included),
+            "truncated": bool(truncated),
+            "truncation_reason": truncation_reason or "",
+        }
+        with self._prompt_response_lock:
+            self.prompt_response_history.append(entry)
+            if len(self.prompt_response_history) > self.PROMPT_RESPONSE_HISTORY_MAX_ITEMS:
+                self.prompt_response_history = self.prompt_response_history[
+                    -self.PROMPT_RESPONSE_HISTORY_MAX_ITEMS:
+                ]
+            self._persist_prompt_response_history()
+            logger.debug(
+                "Tracked LLM prompt/response pair (history size: %s)",
+                len(self.prompt_response_history),
+            )
+
+    def _persist_prompt_response_history(self):
+        """Persist tracked prompt/response history to a readable temp JSON file."""
+        payload = {
+            "model": self.model_name,
+            "state_key": self.state_key,
+            "updated_at": time.time(),
+            "max_items": self.PROMPT_RESPONSE_HISTORY_MAX_ITEMS,
+            "items": self.prompt_response_history,
+        }
+        try:
+            with open(self.prompt_response_history_file, "w", encoding="utf-8") as out_file:
+                json.dump(payload, out_file, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.warning("Failed to persist LLM prompt/response history: %s", e)
+
+    def generate_response_async(
+        self,
+        query,
+        timeout=DEFAULT_TIMEOUT,
+        context=None,
+        system_prompt=None,
+        system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE,
+        stream: Optional[bool] = None,
+        on_stream_chunk: Optional[Callable[[StreamChunk], None]] = None,
+        redundancy_policy=_USE_INSTANCE_REDUNDANCY,
+        interrupt_on_skip: bool = True,
+    ):
+        """Generate a response from the LLM in a separate thread with cancellation support.
+
+        When *interrupt_on_skip* is ``False`` the generation thread is allowed to
+        run to completion even if a skip is requested mid-generation.  The caller
+        is still responsible for checking whether to use the result after returning.
+        Use this for content that should be delivered complete-or-not-at-all
+        (topic commentary, track context, etc.).
+        """
         logger.debug(f"LLM.generate_response_async called with query length: {len(query)}")
         self._cancelled = False
         self._result = None
@@ -193,15 +670,27 @@ class LLM:
         def run_generation():
             try:
                 logger.debug("Starting LLM generation in thread")
-                result = self.generate_response(query, timeout, context, system_prompt, system_prompt_drop_rate)
+                result = self.generate_response(
+                    query,
+                    timeout,
+                    context,
+                    system_prompt,
+                    system_prompt_drop_rate,
+                    stream=stream,
+                    on_stream_chunk=on_stream_chunk,
+                    redundancy_policy=redundancy_policy,
+                )
                 if not self._cancelled:
                     self._result = result
                     logger.debug("LLM generation completed successfully")
                 else:
                     logger.debug("LLM generation cancelled before completion")
+            except LLMGenerationCancelled:
+                logger.debug("LLM generation cancelled during streaming")
             except Exception as e:
-                self._exception = e
-                logger.error(f"Exception in LLM generation thread: {e}")
+                if not self._cancelled:
+                    self._exception = e
+                    logger.error(f"Exception in LLM generation thread: {e}")
 
         # Start the generation in a separate thread
         self._thread = threading.Thread(target=run_generation)
@@ -212,14 +701,9 @@ class LLM:
         # Wait for completion or cancellation
         try:
             while self._thread and self._thread.is_alive():
-                if self.run_context and self.run_context.should_skip():
+                if interrupt_on_skip and self.run_context and self.run_context.should_skip():
                     logger.debug("Cancelling LLM generation due to skip request")
-                    self._cancelled = True
-                    # Give the thread a moment to clean up
-                    self._thread.join(timeout=1.0)
-                    if self._thread.is_alive():
-                        logger.error("Thread did not terminate gracefully, forcing cleanup")
-                    self._thread = None  # Force cleanup even if thread is still alive
+                    self.cancel_generation()
                     return None
                 time.sleep(self.CHECK_INTERVAL)
         except Exception as e:
@@ -235,16 +719,42 @@ class LLM:
         
         return self._result
 
-    def generate_json_get_value(self, query, json_key, timeout=DEFAULT_TIMEOUT, context=None, system_prompt=None, system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE):
-        """Generate a response and extract a specific JSON value."""
-        self.generate_response_async(query, timeout=timeout, context=context, system_prompt=system_prompt, system_prompt_drop_rate=system_prompt_drop_rate)
-        if self._result is None:
+    def generate_json_get_value(
+        self,
+        query,
+        json_key,
+        timeout=DEFAULT_TIMEOUT,
+        context=None,
+        system_prompt=None,
+        system_prompt_drop_rate=DEFAULT_SYSTEM_PROMPT_DROP_RATE,
+        interrupt_on_skip: bool = True,
+    ):
+        """Generate a response and extract a specific JSON value.
+
+        Always uses buffered (non-streaming) mode without redundancy so partial
+        JSON is never returned.
+        """
+        result = self.generate_response_async(
+            query,
+            timeout=timeout,
+            context=context,
+            system_prompt=system_prompt,
+            system_prompt_drop_rate=system_prompt_drop_rate,
+            stream=False,
+            redundancy_policy=None,
+            interrupt_on_skip=interrupt_on_skip,
+        )
+        if result is None:
             raise LLMResponseException("Failed to generate LLM response - Result is None")
-        return self._result._get_json_attr(json_key)
+        return result._get_json_attr(json_key)
+
+    # Model name prefixes known to use <think>…</think> reasoning blocks.
+    _THINKING_MODEL_PREFIXES = ("deepseek-r1", "qwen3", "qwq")
 
     def _is_thinking_model(self) -> bool:
-        """Check if the current model is a thinking model that uses internal prompts."""
-        return self.model_name.startswith("deepseek-r1")
+        """Return True if the model is known to emit thinking-block wrapper tags."""
+        name_lower = self.model_name.lower()
+        return any(name_lower.startswith(p) for p in self._THINKING_MODEL_PREFIXES)
 
     def _clean_response_for_models(self, response_text, accept_mostly_cjk_response=False):
         """
@@ -252,19 +762,19 @@ class LLM:
         
         Args:
             response_text: The raw response text from the model
-            accept_mostly_cjk_response: If False, responses containing mostly CJK (Chinese, Japanese, Korean) will be rejected.
+            accept_mostly_cjk_response: If False, responses containing mostly CJK (Chinese, Japanese, Korean)
+                                      characters will be rejected as they are not compatible with the TTS system.
                                       If True, these responses will be allowed through.
         
         Returns:
             str: Cleaned response text, or empty string if the response is invalid
+            
+        Note:
+            CJK characters are rejected by default because they are not supported by the Coqui TTS model
+            used in this application. This includes Chinese (Han), Japanese (Hiragana, Katakana, Kanji),
+            and Korean (Hangul) characters.
         """
-        # First handle thinking model specific cleaning
-        if self._is_thinking_model():
-            if response_text.strip().startswith("<think>") and "</think>" in response_text:
-                response_text = response_text[response_text.rfind("</think>") + len("</think>"):].strip()
-            if "<think>" in response_text:
-                # Sometimes the model will return extra misplaced <think> tags in the non-thinking section of the response.
-                response_text = response_text.replace("<think>", "").replace("</think>", "").strip()
+        response_text = strip_thinking_blocks(response_text)
 
         # Remove "Final Answer:" prefix if present
         if response_text.strip().startswith("Final Answer:"):
@@ -303,9 +813,10 @@ class LLM:
 
     def cancel_generation(self):
         """Cancel any ongoing LLM generation."""
-        logger.info("Cancelling LLM generation")
+        self._cancelled = True
+        self._close_active_stream()
         if self._thread and self._thread.is_alive():
-            self._cancelled = True
+            logger.info("Cancelling LLM generation")
             self._thread.join(timeout=1.0)
             if self._thread.is_alive():
                 logger.error("Thread did not terminate gracefully, forcing cleanup")

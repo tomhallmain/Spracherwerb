@@ -59,6 +59,10 @@ class Config:
         
         # LLM and TTS configuration
         self.llm_model_name = "deepseek-r1:14b"
+        self.llm_use_streaming = False
+        self.llm_stream_redundancy = False
+        self.llm_thinking_budget_chars = None
+        self.llm_track_prompts_and_responses = False
         self.coqui_tts_location = os.path.join(os.path.expanduser("~"), "TTS-dev")  # Default location
         self.disable_tts = False  # Set to True to disable TTS functionality for testing
 
@@ -140,6 +144,7 @@ class Config:
             "daily_goal_minutes",
             "font_size",
             "server_port",
+            "llm_thinking_budget_chars",
         )
         
         self.set_values(list,
@@ -160,6 +165,9 @@ class Config:
             "debug",
             "disable_tts",
             "ignore_missing_api_keys",
+            "llm_use_streaming",
+            "llm_stream_redundancy",
+            "llm_track_prompts_and_responses",
         )
         
         self.set_directories(

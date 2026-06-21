@@ -80,6 +80,7 @@ def _patch_config_singleton(monkeypatch, config_instance) -> None:
         "Spracherwerb.voice",
         "Spracherwerb.prompter",
         "Spracherwerb.language_tutor",
+        "extensions.gutenberg_selector",
         "Spracherwerb.learning_spot_profile",
         "Spracherwerb.session_config",
         "Spracherwerb.session_context",
@@ -91,7 +92,6 @@ def _patch_config_singleton(monkeypatch, config_instance) -> None:
         "ui.gutenberg_search_window",
         "ui.extensions_window",
         "extensions.sd_runner_client",
-        "extensions.gutenberg_selector",
         "tts.tts_runner",
         "tts.text_cleaner_ruleset",
         "library_data.blacklist",
@@ -186,8 +186,9 @@ def temp_cache_dir():
 @pytest.fixture(scope="session")
 def mock_llm():
     from extensions.llm import LLM
+    from utils.config import config
 
-    return LLM()
+    return LLM.from_config(config, state_key="tests")
 
 
 @pytest.fixture(scope="session")
