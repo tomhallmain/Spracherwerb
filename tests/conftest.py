@@ -81,6 +81,7 @@ def _patch_config_singleton(monkeypatch, config_instance) -> None:
         "Spracherwerb.learning_spot_profile",
         "Spracherwerb.session_config",
         "Spracherwerb.session_context",
+        "Spracherwerb.session_controller",
         "ui.app_style",
         "ui.config_panel",
         "ui.interaction_panel",

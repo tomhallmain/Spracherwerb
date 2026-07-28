@@ -3,16 +3,29 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QComboBox,
                              QListWidget, QLabel)
 from PySide6.QtCore import Qt, Signal
 
+from Spracherwerb.activity_types import ActivityType
 from ui.gutenberg_search_window import GutenbergSearchWindow
 from utils.config import config
 from utils.translations import I18N
 from utils.globals import Language
+
+# Modes offered in the UI today, in display order. Add a tuple here to offer
+# a new activity once its module exists -- no other ConfigPanel change needed.
+ACTIVITY_MODES = [
+    ("Vocabulary Building", ActivityType.VOCABULARY_BUILDER),
+    ("Grammar Practice", ActivityType.GRAMMAR_PRACTICE),
+    ("Conversation", ActivityType.CONVERSATION_PRACTICE),
+    ("Writing Practice", ActivityType.WRITING_PRACTICE),
+    ("Cultural Learning", ActivityType.CULTURAL_CONTEXT),
+]
 
 
 class ConfigPanel(QWidget):
     """Left sidebar for configuration options"""
     # Signal emitted when languages change
     languages_changed = Signal()
+    # Signal emitted with the new ActivityType value when the learning mode changes
+    activity_mode_changed = Signal(str)
     
     def __init__(self, parent=None, app_actions=None):
         super().__init__(parent)
@@ -60,14 +73,10 @@ class ConfigPanel(QWidget):
         mode_layout = QFormLayout()
         
         self.mode_combo = QComboBox()
-        self.mode_combo.addItems([
-            "Vocabulary Building",
-            "Grammar Practice",
-            "Conversation",
-            "Writing Practice",
-            "Cultural Learning"
-        ])
-        
+        for label, activity_type in ACTIVITY_MODES:
+            self.mode_combo.addItem(label, activity_type.value)
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+
         mode_layout.addRow("Current Mode:", self.mode_combo)
         mode_group.setLayout(mode_layout)
         
@@ -149,7 +158,17 @@ class ConfigPanel(QWidget):
     def on_proficiency_level_changed(self, level):
         """Handle proficiency level change."""
         config.proficiency_level = level.lower()
-    
+
+    def _on_mode_changed(self, index):
+        """Handle learning mode change."""
+        activity_type = self.mode_combo.itemData(index)
+        if activity_type:
+            self.activity_mode_changed.emit(activity_type)
+
+    def current_activity_type(self):
+        """The ActivityType value of the currently selected mode."""
+        return self.mode_combo.currentData()
+
     def get_selected_books(self):
         """Get the list of selected Gutenberg books."""
         return self.selected_books 

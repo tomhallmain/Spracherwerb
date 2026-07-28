@@ -15,6 +15,7 @@ from .learning_spot_profile import LearningSpotProfile
 from .prompter import Prompter
 from .session_config import SessionConfig
 from .session_context import SessionContext
+from .session_controller import SessionController
 from .session_manager import SessionManager
 from .stub_learning_module import StubLearningModule
 from .voice import Voice
@@ -49,6 +50,7 @@ __all__ = [
     'Prompter',
     'SessionConfig',
     'SessionContext',
+    'SessionController',
     'SessionManager',
     'StubLearningModule',
     'Voice',

@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PySide6.QtCore import Qt
 
 from lib.multi_display import SmartMainWindow
+from Spracherwerb.session_controller import SessionController
 from ui.media_frame import MediaFrame
 from ui.interaction_panel import InteractionPanel
 from ui.config_panel import ConfigPanel
@@ -45,11 +46,22 @@ class MainWindow(SmartMainWindow):
             }
         """)
         
+        # Session/engine wiring for the interaction panel
+        self.session_controller = SessionController()
+
         # Create panels
         self.config_panel = ConfigPanel(app_actions=self.app_actions)
         self.media_frame = MediaFrame()
-        self.interaction_panel = InteractionPanel()
-        
+        self.interaction_panel = InteractionPanel(session_controller=self.session_controller)
+
+        # Switching modes starts that activity; changing language resets the
+        # session so the next activity picks up the new language pair.
+        self.config_panel.activity_mode_changed.connect(self.interaction_panel.start_activity)
+        self.config_panel.languages_changed.connect(self.session_controller.reset)
+        initial_mode = self.config_panel.current_activity_type()
+        if initial_mode:
+            self.interaction_panel.start_activity(initial_mode)
+
         # Add panels to splitter
         splitter.addWidget(self.config_panel)
         splitter.addWidget(self.media_frame)

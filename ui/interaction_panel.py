@@ -5,9 +5,10 @@ from utils.config import config
 
 class InteractionPanel(QWidget):
     """Right sidebar for user interaction with the language agent"""
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, session_controller=None):
         super().__init__(parent)
         self.setMinimumWidth(300)
+        self.session_controller = session_controller
         
         # Create layout
         layout = QVBoxLayout(self)
@@ -93,8 +94,38 @@ class InteractionPanel(QWidget):
     def send_message(self):
         """Handle sending messages to the language agent"""
         message = self.input_field.text()
-        if message:
-            self.append_message("You", message)
-            self.input_field.clear()
-            # TODO: Process message with language agent
-            self.append_message("Agent", "[Response will appear here]") 
+        if not message:
+            return
+        self.append_message("You", message)
+        self.input_field.clear()
+
+        if self.session_controller is None or not self.session_controller.has_active_activity():
+            self.append_message("Agent", "Select a learning mode to begin.")
+            return
+
+        try:
+            result = self.session_controller.send_message(message)
+        except Exception as e:
+            self.append_message("Agent", f"Error: {e}")
+            return
+        self._render_turn_result(result)
+
+    def start_activity(self, activity_type):
+        """Start (or switch to) an activity and show its opening message."""
+        if self.session_controller is None:
+            return
+        try:
+            result = self.session_controller.start_activity(activity_type)
+        except Exception as e:
+            self.append_message("Agent", f"Error starting activity: {e}")
+            return
+        self._render_turn_result(result)
+
+    def _render_turn_result(self, result):
+        """Render an ActivityStartResult/ActivityTurnResult dict into the log."""
+        text = result.get('text_response')
+        if text:
+            self.append_message("Agent", text)
+        media_path = result.get('media_path')
+        if media_path:
+            self.append_media_message("Agent", media_path)

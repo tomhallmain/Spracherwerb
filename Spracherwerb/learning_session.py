@@ -30,9 +30,7 @@ class LearningSession:
         
     def _setup_callbacks(self, callbacks: Optional[Dict[str, Callable]]) -> None:
         """Setup callbacks for session events"""
-        if not callbacks:
-            return
-            
+        callbacks = callbacks or {}
         self.callbacks = {
             'activity_started': callbacks.get('activity_started'),
             'activity_completed': callbacks.get('activity_completed'),
@@ -53,7 +51,7 @@ class LearningSession:
             
         except Exception as e:
             logger.error(f"Failed to start learning session: {str(e)}")
-            if self.callbacks and 'error_occurred' in self.callbacks:
+            if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise
             
@@ -65,14 +63,14 @@ class LearningSession:
                 
             result = self.learning_engine.start_activity(activity_type)
             
-            if self.callbacks and 'activity_started' in self.callbacks:
+            if self.callbacks.get('activity_started'):
                 self.callbacks['activity_started'](activity_type, result)
                 
             return result
             
         except Exception as e:
             logger.error(f"Failed to start activity {activity_type}: {str(e)}")
-            if self.callbacks and 'error_occurred' in self.callbacks:
+            if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise
             
@@ -84,14 +82,14 @@ class LearningSession:
                 
             result = self.learning_engine.process_user_response(response)
             
-            if self.callbacks and 'user_response_processed' in self.callbacks:
+            if self.callbacks.get('user_response_processed'):
                 self.callbacks['user_response_processed'](result)
                 
             return result
             
         except Exception as e:
             logger.error(f"Failed to process user response: {str(e)}")
-            if self.callbacks and 'error_occurred' in self.callbacks:
+            if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise
             
@@ -103,14 +101,14 @@ class LearningSession:
                 
             media_path = self.learning_engine.generate_media(content)
             
-            if media_path and self.callbacks and 'media_generated' in self.callbacks:
+            if media_path and self.callbacks.get('media_generated'):
                 self.callbacks['media_generated'](media_path)
                 
             return media_path
             
         except Exception as e:
             logger.error(f"Failed to generate media: {str(e)}")
-            if self.callbacks and 'error_occurred' in self.callbacks:
+            if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             return None
             
@@ -122,14 +120,14 @@ class LearningSession:
                 
             results = self.learning_engine.complete_activity()
             
-            if self.callbacks and 'activity_completed' in self.callbacks:
+            if self.callbacks.get('activity_completed'):
                 self.callbacks['activity_completed'](results)
                 
             return results
             
         except Exception as e:
             logger.error(f"Failed to complete activity: {str(e)}")
-            if self.callbacks and 'error_occurred' in self.callbacks:
+            if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise
             
@@ -144,7 +142,7 @@ class LearningSession:
                 
         except Exception as e:
             logger.error(f"Failed to handle user action {action}: {str(e)}")
-            if self.callbacks and 'error_occurred' in self.callbacks:
+            if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise
             
