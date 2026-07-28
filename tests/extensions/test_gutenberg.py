@@ -33,7 +33,7 @@ class TestGutenberg:
         # Test search with language filter
         books = gutenberg.search_books(
             language="German",
-            min_words=1000,
+            min_word_count=1000,
             limit=5
         )
         assert isinstance(books, list)
@@ -45,13 +45,22 @@ class TestGutenberg:
         # Test search with subject filter
         books = gutenberg.search_books(
             subject="history",
-            min_words=1000,
+            min_word_count=1000,
             limit=5
         )
         assert isinstance(books, list)
         assert len(books) <= 5
         assert all(isinstance(book, GutenbergBook) for book in books)
-        assert all("history" in book.subjects for book in books)
+        # Gutendex's topic filter matches bookshelf categories as well as
+        # subjects (e.g. a book with no "history" in its subjects can still
+        # carry the bookshelf "Category: History - Ancient"), and matching
+        # is case-insensitive ("History", not "history") -- checking
+        # subjects alone for an exact lowercase substring doesn't reflect
+        # what the search actually matched on.
+        assert all(
+            any("history" in text.lower() for text in book.subjects + book.bookshelves)
+            for book in books
+        )
         assert all(book.word_count >= 1000 for book in books)
 
     def test_get_book_details(self):
@@ -61,7 +70,7 @@ class TestGutenberg:
         # First get a book ID from a search
         books = gutenberg.search_books(
             language="German",
-            min_words=1000,
+            min_word_count=1000,
             limit=1
         )
         assert len(books) > 0, "No books found for testing"
@@ -84,7 +93,7 @@ class TestGutenberg:
         # First get a book ID from a search
         books = gutenberg.search_books(
             language="German",
-            min_words=1000,
+            min_word_count=1000,
             limit=1
         )
         assert len(books) > 0, "No books found for testing"
@@ -105,7 +114,7 @@ class TestGutenberg:
         # Test invalid search parameters
         books = gutenberg.search_books(
             language="InvalidLanguage",
-            min_words=1000000,
+            min_word_count=1000000,
             limit=5
         )
         assert isinstance(books, list)

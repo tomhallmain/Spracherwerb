@@ -8,6 +8,7 @@ import json
 import time
 import re
 
+from utils.globals import AppInfo
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -35,6 +36,10 @@ class Wiktionary:
     CACHE_DIR = Path("cache/wiktionary")
     CACHE_FILE = CACHE_DIR / "entries.json"
     CACHE_DURATION = 86400  # 24 hours in seconds
+    # Wikimedia's API rejects requests with no descriptive User-Agent (403,
+    # "Please set a user-agent and respect our robot policy") -- the default
+    # one `requests` sends isn't enough.
+    HEADERS = {"User-Agent": f"{AppInfo.APP_IDENTIFIER}/1.0 (personal language-learning app)"}
     
     def __init__(self):
         """Initialize the Wiktionary client with caching."""
@@ -127,7 +132,7 @@ class Wiktionary:
             logger.info(f"Complete API URL: {complete_url}")
             
             logger.info(f"Fetching entry from {self.BASE_URL}")
-            response = requests.get(self.BASE_URL, params=params)
+            response = requests.get(self.BASE_URL, params=params, headers=self.HEADERS)
             response.raise_for_status()
             logger.debug(f"Response status: {response.status_code}")
             

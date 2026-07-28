@@ -1,5 +1,7 @@
 __pycache__
 *.swp
+*.log
+*.html
 .coverage
 .cursorignore
 api.md

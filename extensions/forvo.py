@@ -32,8 +32,8 @@ class Forvo:
     CACHE_FILE = CACHE_DIR / "pronunciations.json"
     CACHE_DURATION = 86400  # 24 hours in seconds
     
-    def __init__(self, api_key: str):
-        """Initialize the Forvo client with API key and caching."""
+    def __init__(self, api_key: Optional[str] = None):
+        """Initialize the Forvo client with optional API key and caching."""
         self.api_key = api_key
         self.pronunciations: Dict[str, List[Pronunciation]] = {}
         self._load_cache()

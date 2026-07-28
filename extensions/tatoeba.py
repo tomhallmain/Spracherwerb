@@ -261,13 +261,19 @@ class Tatoeba:
         try:
             logger.info(f"Getting random sentence with params: language={language}, min_length={min_length}, max_length={max_length}, has_audio={has_audio}")
             
+            # min_length/max_length are applied client-side against whatever
+            # the API happens to hand back, so a plain limit=10 has a real
+            # chance of missing a narrow window by chance alone -- widen the
+            # candidate pool when either filter is in play.
+            search_limit = 50 if (min_length or max_length) else 10
+
             # First, get a list of sentences
             sentences = self.search_sentences(
                 language=language,
                 min_length=min_length,
                 max_length=max_length,
                 has_audio=has_audio,
-                limit=10
+                limit=search_limit
             )
             
             logger.info(f"Found {len(sentences)} sentences")
