@@ -68,6 +68,14 @@ The application integrates with AI image generation software to create visual le
   - Cultural lessons with visual context
   - Visual vocabulary builder
 
+## Testing
+
+- Run the full test suite with `pytest`
+- The `tests/extensions` tests hit live external APIs (Gutenberg, Forvo, LibriVox, Tatoeba, Wiktionary, …) and can be slow or require API keys; to run everything else, use:
+  ```bash
+  pytest -vv --ignore=tests/extensions
+  ```
+
 ## Learning Activities
 
 The application offers various learning activities through prompts in the prompts folder:
