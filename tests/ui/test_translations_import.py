@@ -205,3 +205,134 @@ class TestIndexBareNounFallback:
         by_bare_noun = translation_import.index_bare_noun_fallback([first, second], 'de')
 
         assert by_bare_noun == {'hupe': first}
+
+
+class TestCoerceStr:
+    def test_none_becomes_empty_string(self):
+        assert translation_import.coerce_str(None) == ''
+
+    def test_strips_surrounding_whitespace(self):
+        assert translation_import.coerce_str('  gehen  ') == 'gehen'
+
+    def test_non_string_is_stringified(self):
+        assert translation_import.coerce_str(5) == '5'
+
+
+class TestPrimaryLanguageTag:
+    @pytest.mark.parametrize(
+        ("language_code", "expected"),
+        [
+            (None, ''),
+            ('', ''),
+            ('en', 'en'),
+            ('en-US', 'en'),
+            ('DE_de', 'de'),
+            ('fr', 'fr'),
+        ],
+    )
+    def test_extracts_primary_subtag(self, language_code, expected):
+        assert translation_import.primary_language_tag(language_code) == expected
+
+
+class TestLanguageUsesTargetArticles:
+    @pytest.mark.parametrize(
+        ("language_code", "expected"),
+        [
+            ('en', False),
+            ('en-US', False),
+            ('de', True),
+            ('fr', True),
+            ('es', True),
+        ],
+    )
+    def test_only_english_is_excluded(self, language_code, expected):
+        assert translation_import.language_uses_target_articles(language_code) == expected
+
+
+class TestLinesToRowDicts:
+    def test_converts_splitable_lines_and_skips_the_rest(self):
+        lines = [
+            'der Hund - the dog',
+            'no separator here',
+            '',
+            'die Katze - cat, feline',
+        ]
+
+        rows = translation_import.lines_to_row_dicts(lines)
+
+        assert rows == [
+            {'translated_text': 'der Hund', 'source_text': 'the dog'},
+            {'translated_text': 'die Katze', 'source_text': 'cat, feline'},
+        ]
+
+    def test_empty_input_yields_no_rows(self):
+        assert translation_import.lines_to_row_dicts([]) == []
+
+
+class TestExtractLineFromRow:
+    def test_returns_the_single_non_empty_value(self):
+        row = {'col1': 'gehen', 'col2': ''}
+        assert translation_import.extract_line_from_row(row) == 'gehen'
+
+    def test_returns_none_when_multiple_values_are_non_empty(self):
+        row = {'col1': 'gehen', 'col2': 'walk'}
+        assert translation_import.extract_line_from_row(row) is None
+
+    def test_returns_none_for_non_dict_rows(self):
+        assert translation_import.extract_line_from_row(['gehen']) is None
+        assert translation_import.extract_line_from_row('gehen') is None
+
+    def test_flattens_list_values(self):
+        row = {'col1': ['', 'gehen', '']}
+        assert translation_import.extract_line_from_row(row) == 'gehen'
+
+    def test_returns_none_when_all_values_are_blank(self):
+        row = {'col1': '', 'col2': '   '}
+        assert translation_import.extract_line_from_row(row) is None
+
+
+class TestRowsHaveTranslationFields:
+    def test_true_when_a_row_has_source_or_translated_text(self):
+        rows = [{'foo': 'bar'}, {'source_text': 'dog'}]
+        assert translation_import.rows_have_translation_fields(
+            rows, row_is_blank=lambda r: False) is True
+
+    def test_false_when_no_row_has_translation_fields(self):
+        rows = [{'foo': 'bar'}, {'baz': 'qux'}]
+        assert translation_import.rows_have_translation_fields(
+            rows, row_is_blank=lambda r: False) is False
+
+    def test_blank_rows_are_skipped(self):
+        rows = [{'source_text': 'dog'}]
+        assert translation_import.rows_have_translation_fields(
+            rows, row_is_blank=lambda r: True) is False
+
+    def test_non_dict_rows_are_skipped(self):
+        rows = ['not a row']
+        assert translation_import.rows_have_translation_fields(
+            rows, row_is_blank=lambda r: False) is False
+
+
+class TestIndexExistingByTarget:
+    def test_indexes_by_casefolded_article_and_text(self):
+        existing = [
+            {'translated_text': 'Hund', 'target_article': 'der', 'source_text': 'dog'},
+        ]
+
+        by_target = translation_import.index_existing_by_target(existing)
+
+        assert by_target[('der', 'hund')] is existing[0]
+
+    def test_merges_duplicate_targets_case_insensitively(self):
+        first = {'translated_text': 'Hund', 'target_article': 'der', 'source_text': 'dog'}
+        second = {'translated_text': 'hund', 'target_article': 'Der', 'source_text': 'canine'}
+
+        by_target = translation_import.index_existing_by_target([first, second])
+
+        assert len(by_target) == 1
+        assert by_target[('der', 'hund')] is first
+        assert first['source_text'] == 'dog, canine'
+
+    def test_skips_rows_with_no_translated_text(self):
+        existing = [{'translated_text': '', 'source_text': 'x'}]
+        assert translation_import.index_existing_by_target(existing) == {}

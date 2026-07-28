@@ -15,6 +15,7 @@ from utils.globals import Language, TranslationSortOrder
 from utils.translations import I18N
 from utils.translation_data_manager import TranslationDataManager
 from utils import translation_import
+from utils import translation_listing
 from ui.translation_dialog import TranslationDialog
 
 
@@ -214,30 +215,16 @@ class TranslationsWindow(SmartWindow):
         against the underlying data (not table cells) so search still finds
         entries that aren't on the currently displayed page.
         """
-        search_text = self.search_input.text().strip().lower()
-        if not search_text:
-            return list(range(len(self.translations)))
-
-        matches = []
-        for i, t in enumerate(self.translations):
-            haystack = ' '.join([
-                t.get('source_text', ''),
-                self._translation_display_target(t),
-                t.get('notes', ''),
-            ]).lower()
-            if search_text in haystack:
-                matches.append(i)
-        return matches
+        return translation_listing.compute_search_matches(
+            self.translations, self.search_input.text(), config.target_language)
 
     def update_table(self):
         """Recompute the active view and (re)populate the table with its current page."""
         self.current_view = self._compute_current_view()
         total = len(self.current_view)
-        page_count = max(1, (total + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
-        self.current_page = max(0, min(self.current_page, page_count - 1))
-
-        start = self.current_page * self.PAGE_SIZE
-        page_indices = self.current_view[start:start + self.PAGE_SIZE]
+        self.current_page, page_count, start, end = translation_listing.paginate(
+            total, self.current_page, self.PAGE_SIZE)
+        page_indices = self.current_view[start:end]
 
         self.table.setRowCount(len(page_indices))
         for row, idx in enumerate(page_indices):
@@ -271,18 +258,16 @@ class TranslationsWindow(SmartWindow):
             remove_button.clicked.connect(lambda checked, real_idx=idx: self.remove_translation(real_idx))
             self.table.setCellWidget(row, 4, remove_button)
 
-        self._update_pagination_controls(total, page_count)
+        self._update_pagination_controls(total, page_count, start, end)
 
-    def _update_pagination_controls(self, total, page_count):
+    def _update_pagination_controls(self, total, page_count, start, end):
         """Refresh the page label and enable/disable the prev/next buttons."""
         if total == 0:
             self.page_label.setText("No translations")
         else:
-            start = self.current_page * self.PAGE_SIZE + 1
-            end = min(start + self.PAGE_SIZE - 1, total)
             self.page_label.setText(
                 f"Page {self.current_page + 1} of {page_count} "
-                f"({start}-{end} of {total})"
+                f"({start + 1}-{end} of {total})"
             )
         self.prev_page_button.setEnabled(self.current_page > 0)
         self.next_page_button.setEnabled(self.current_page < page_count - 1)
