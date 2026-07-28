@@ -157,6 +157,8 @@ class Config:
             "zonos_model",
             "zonos_language",
             "piper_quality",
+            "server_host",
+            "server_password",
         )
         
         # Set API keys from config

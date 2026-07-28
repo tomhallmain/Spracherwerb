@@ -13,6 +13,7 @@ from utils.globals import Language
 # a new activity once its module exists -- no other ConfigPanel change needed.
 ACTIVITY_MODES = [
     ("Vocabulary Building", ActivityType.VOCABULARY_BUILDER),
+    ("Visual Vocabulary", ActivityType.VISUAL_VOCABULARY),
     ("Grammar Practice", ActivityType.GRAMMAR_PRACTICE),
     ("Conversation", ActivityType.CONVERSATION_PRACTICE),
     ("Writing Practice", ActivityType.WRITING_PRACTICE),

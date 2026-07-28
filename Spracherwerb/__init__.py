@@ -18,6 +18,7 @@ from .session_context import SessionContext
 from .session_controller import SessionController
 from .session_manager import SessionManager
 from .stub_learning_module import StubLearningModule
+from .visual_vocabulary import VisualVocabulary
 from .vocabulary_builder import VocabularyBuilder
 from .voice import Voice
 # TODO: Implement the following modules
@@ -30,7 +31,6 @@ from .voice import Voice
 # from .idioms_and_expressions import IdiomsAndExpressions
 # from .reading_comprehension import ReadingComprehension
 # from .situational_dialogues import SituationalDialogues
-# from .visual_vocabulary import VisualVocabulary
 
 __all__ = [
     'ActivityNotRegisteredError',
@@ -53,6 +53,7 @@ __all__ = [
     'SessionController',
     'SessionManager',
     'StubLearningModule',
+    'VisualVocabulary',
     'VocabularyBuilder',
     'Voice',
 ]

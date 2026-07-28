@@ -1,10 +1,14 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QLineEdit, QPushButton, QFrame
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from utils.config import config
 
 class InteractionPanel(QWidget):
     """Right sidebar for user interaction with the language agent"""
+    # Signal emitted with a file path whenever an activity turn includes media,
+    # so MainWindow can route it to the dedicated MediaFrame panel.
+    media_ready = Signal(str)
+
     def __init__(self, parent=None, session_controller=None):
         super().__init__(parent)
         self.setMinimumWidth(300)
@@ -127,4 +131,4 @@ class InteractionPanel(QWidget):
             self.append_message("Agent", text)
         media_path = result.get('media_path')
         if media_path:
-            self.append_media_message("Agent", media_path)
+            self.media_ready.emit(media_path)

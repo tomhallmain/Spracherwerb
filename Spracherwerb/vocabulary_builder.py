@@ -12,16 +12,20 @@ from .activity_registry import ActivityRegistry
 from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleServices
 from .activity_types import ActivityType
 from .base_learning_module import BaseLearningModule
+from .bilingual_phrasing import bilingual_phrase
 from .learning_memory import LearningMemory
+from .recall_matching import check_recall_answer, resolve_recall_direction
 
 _ = I18N._
 
 # Short target-language phrasings for the languages translation_import already
 # special-cases for article detection (_ARTICLE_PREFIXES_BY_LANGUAGE). Paired
-# with an English gloss in parentheses (see _bilingual) so the session reads
-# immersively without leaving an unfamiliar target language illegible.
-# Unlisted target languages just get the English-only fallback text.
-_TARGET_PHRASES = {
+# with an English gloss in parentheses (see bilingual_phrasing.bilingual_phrase)
+# so the session reads immersively without leaving an unfamiliar target
+# language illegible. Unlisted target languages just get the English-only
+# fallback text. Not underscore-prefixed: VisualVocabulary reuses this for
+# its own text-only fallback (same feedback/prompt wording, no image).
+TARGET_PHRASES = {
     'de': {
         'produce_target': 'Wie sagt man „{word}“ auf Deutsch?',
         'recall_source': 'Was bedeutet „{word}“?',
@@ -79,7 +83,7 @@ class VocabularyBuilder(BaseLearningModule):
         candidates = services.vocabulary_pool.get_review_candidates(
             source_language, target_language, limit=limit)
 
-        self._direction = self._resolve_direction(services.session_config.proficiency_level)
+        self._direction = resolve_recall_direction(services.session_config.proficiency_level)
         self._known_before = {
             word.casefold()
             for word in LearningMemory.vocabulary_learned.get(target_language, [])
@@ -114,15 +118,16 @@ class VocabularyBuilder(BaseLearningModule):
             )
 
         source_language, target_language = services.language_pair()
-        is_correct, expected = self._check_answer(self._current, user_text, target_language)
+        is_correct, expected = check_recall_answer(
+            self._current, user_text, target_language, self._direction)
         self._record_result(self._current, is_correct, target_language, services)
 
         if is_correct:
-            feedback = self._bilingual(target_language, 'correct', _("Correct!"))
+            feedback = bilingual_phrase(target_language, TARGET_PHRASES, 'correct', _("Correct!"))
         else:
             english_feedback = _("Not quite -- the answer was \"{0}\".").format(expected)
-            feedback = self._bilingual(
-                target_language, 'incorrect', english_feedback, expected=expected)
+            feedback = bilingual_phrase(
+                target_language, TARGET_PHRASES, 'incorrect', english_feedback, expected=expected)
 
         if self._queue:
             self._current = self._queue.pop(0)
@@ -138,8 +143,8 @@ class VocabularyBuilder(BaseLearningModule):
         total = len(self._reviewed_words) + len(self._new_words)
         english_summary = _("Session complete -- reviewed {0} word(s), {1} correct.").format(
             total, self._correct_count)
-        summary = self._bilingual(
-            target_language, 'session_complete', english_summary,
+        summary = bilingual_phrase(
+            target_language, TARGET_PHRASES, 'session_complete', english_summary,
             total=total, correct=self._correct_count)
         return ActivityTurnResult(
             text_response=f"{feedback}\n\n{summary}",
@@ -157,41 +162,18 @@ class VocabularyBuilder(BaseLearningModule):
             "accuracy": accuracy,
         }
 
-    def _resolve_direction(self, proficiency_level: Any) -> str:
-        level = translation_import.coerce_str(proficiency_level).lower()
-        return "recall_source" if level == "beginner" else "produce_target"
-
     def _build_prompt(self, entry: Dict[str, Any], target_language: str) -> str:
         if self._direction == "produce_target":
             source_text = translation_import.coerce_str(entry.get('source_text', ''))
             english = _("Translate to {0}: {1}").format(
                 Language.get_language_name(target_language), source_text)
-            return self._bilingual(target_language, 'produce_target', english, word=source_text)
+            return bilingual_phrase(
+                target_language, TARGET_PHRASES, 'produce_target', english, word=source_text)
         displayed = translation_import.format_target_for_display(
             entry.get('translated_text', ''), entry.get('target_article', ''), target_language)
         english = _("What does \"{0}\" mean?").format(displayed)
-        return self._bilingual(target_language, 'recall_source', english, word=displayed)
-
-    def _bilingual(self, target_language: str, key: str, english_text: str, **kwargs) -> str:
-        """Prefix a target-language phrasing before the English gloss, when available."""
-        primary = translation_import.primary_language_tag(target_language)
-        template = _TARGET_PHRASES.get(primary, {}).get(key)
-        if not template:
-            return english_text
-        return f"{template.format(**kwargs)} ({english_text})"
-
-    def _check_answer(self, entry: Dict[str, Any], user_text: str, target_language: str):
-        """Returns (is_correct, expected_answer_for_display)."""
-        user_norm = translation_import.coerce_str(user_text).casefold()
-        if self._direction == "produce_target":
-            bare = translation_import.coerce_str(entry.get('translated_text', ''))
-            displayed = translation_import.format_target_for_display(
-                entry.get('translated_text', ''), entry.get('target_article', ''), target_language)
-            is_correct = user_norm in (bare.casefold(), displayed.casefold())
-            return is_correct, displayed
-        source_text = translation_import.coerce_str(entry.get('source_text', ''))
-        alternatives = [part.strip().casefold() for part in source_text.split(',') if part.strip()]
-        return user_norm in alternatives, source_text
+        return bilingual_phrase(
+            target_language, TARGET_PHRASES, 'recall_source', english, word=displayed)
 
     def _record_result(
         self,

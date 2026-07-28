@@ -65,6 +65,7 @@ class ModuleServices:
     session_config: Any
     session_context: Any
     vocabulary_pool: Any = None
+    sd_client: Any = None
 
     def language_pair(self) -> tuple[str, str]:
         return self.session_config.source_language, self.session_config.target_language

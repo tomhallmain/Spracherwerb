@@ -55,9 +55,12 @@ class MainWindow(SmartMainWindow):
         self.interaction_panel = InteractionPanel(session_controller=self.session_controller)
 
         # Switching modes starts that activity; changing language resets the
-        # session so the next activity picks up the new language pair.
+        # session so the next activity picks up the new language pair; any
+        # media an activity turn produces (e.g. VisualVocabulary images)
+        # goes to the dedicated media frame.
         self.config_panel.activity_mode_changed.connect(self.interaction_panel.start_activity)
         self.config_panel.languages_changed.connect(self.session_controller.reset)
+        self.interaction_panel.media_ready.connect(self.media_frame.display_image)
         initial_mode = self.config_panel.current_activity_type()
         if initial_mode:
             self.interaction_panel.start_activity(initial_mode)

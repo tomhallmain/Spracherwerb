@@ -1,23 +1,36 @@
+import glob
+import os
 import queue
 import threading
 import time
 from multiprocessing.connection import Client
+from typing import Optional
 
-from image.image_data_extractor import image_data_extractor
 from utils.config import config
-from utils.constants import ImageGenerationType
+from utils.globals import ImageGenerationType
 from utils.logging_setup import get_logger
 from utils.translations import _
+
 logger = get_logger("sd_runner_client")
+
+# Extensions polled for when waiting for a generated file to appear -- the
+# server chooses the actual format, this client doesn't dictate it.
+_IMAGE_EXTENSIONS = ("png", "jpg", "jpeg", "webp")
+
 
 class SDRunnerClient:
     COMMAND_CLOSE_SERVER = 'close server'
     COMMAND_CLOSE_CONNECTION = 'close connection'
     COMMAND_VALIDATE = 'validate'
 
-    def __init__(self, host='localhost', port=config.sd_runner_client_port):
-        self._host = host
-        self._port = port
+    def __init__(self, host=None, port=None):
+        # Resolved at call time rather than bound as a signature default:
+        # a default is evaluated once at import time, so it would never see
+        # a config swapped in afterwards (tests patch utils.config.config
+        # per test; see extensions.sd_runner_client in the config-patch list
+        # in tests/conftest.py).
+        self._host = host if host is not None else config.server_host
+        self._port = port if port is not None else config.server_port
         self._conn = None
         self._request_queue = queue.Queue()
         self._worker_thread = None
@@ -36,7 +49,7 @@ class SDRunnerClient:
             try:
                 self._conn = Client(
                     (self._host, self._port),
-                    authkey=str.encode(config.sd_runner_client_password),
+                    authkey=str.encode(config.server_password),
                 )
                 logger.info("Started SDRunner Client")
                 return
@@ -97,11 +110,19 @@ class SDRunnerClient:
             return False
 
     def validate_image_for_type(self, _type, base_image):
+        """Pre-flight validation before sending a run request.
+
+        REDO_PROMPT normally extracts an existing prompt from *base_image*
+        locally before sending it server-side. That extractor depends on
+        image-classification machinery that wasn't carried over when this
+        client was adapted from Weidr, so REDO_PROMPT isn't supported by
+        this client -- every other type is a plain passthrough.
+        """
         if _type == ImageGenerationType.REDO_PROMPT:
-            prompt, software_type = image_data_extractor.extract_prompt(base_image)
-            if prompt is None:
-                self.close()
-                raise Exception(_('Image does not contain a prompt to redo!'))
+            raise NotImplementedError(
+                "REDO_PROMPT is not supported by this client -- it requires "
+                "an image-prompt extractor that isn't part of this project."
+            )
 
     def _start_worker(self):
         """Start the worker thread that processes queued requests (lazy initialization)."""
@@ -119,9 +140,9 @@ class SDRunnerClient:
                 request = self._request_queue.get(timeout=1.0)
                 if request is None:  # Shutdown signal
                     break
-                
+
                 request_type, args, result_container, condition = request
-                
+
                 try:
                     if request_type == 'run':
                         result = self._run_internal(*args)
@@ -131,11 +152,11 @@ class SDRunnerClient:
                         result_container['result'] = result
                 except Exception as e:
                     result_container['exception'] = e
-                
+
                 result_container['done'] = True
                 with condition:
                     condition.notify()
-                
+
                 self._request_queue.task_done()
             except queue.Empty:
                 continue
@@ -151,8 +172,15 @@ class SDRunnerClient:
         negative_prompt=None,
         edit_suffix=None,
         target_dir=None,
+        filename=None,
     ):
-        """Internal method that performs the actual run operation."""
+        """Internal method that performs the actual run operation.
+
+        The server acknowledges and returns immediately -- it does not wait
+        for generation to finish, so the response here is just "the request
+        was accepted", not a path to a finished image. See generate_image()
+        for fire-then-poll-for-the-file usage.
+        """
         if not isinstance(_type, ImageGenerationType):
             raise TypeError(f'{_type} is not a valid ImageGenerationType')
         self.start()
@@ -168,6 +196,8 @@ class SDRunnerClient:
                 args['edit_suffix'] = edit_suffix
             if target_dir is not None:
                 args['target_dir'] = target_dir
+            if filename is not None:
+                args['filename'] = filename
             command  = {'command': 'run', 'type': _type.value, 'args': args}
             resp = self.send(command)
             if "error" in resp:
@@ -192,29 +222,92 @@ class SDRunnerClient:
         negative_prompt=None,
         edit_suffix=None,
         target_dir=None,
+        filename=None,
     ):
-        """Queue a run request and wait for it to complete."""
+        """Queue a run request and wait for the server to acknowledge it.
+
+        Note this does not wait for generation itself to finish -- see
+        generate_image() when a resulting file path is needed.
+        """
         self._start_worker()  # Lazy initialization
         result_container = {'done': False, 'result': None, 'exception': None}
         condition = threading.Condition()
         self._request_queue.put(
             (
                 'run',
-                (_type, base_image, append, positive_prompt, negative_prompt, edit_suffix, target_dir),
+                (_type, base_image, append, positive_prompt, negative_prompt,
+                 edit_suffix, target_dir, filename),
                 result_container,
                 condition,
             )
         )
-        
+
         # Wait for completion
         with condition:
             while not result_container['done']:
                 condition.wait()
-        
+
         if result_container['exception'] is not None:
             raise result_container['exception']
-        
+
         return result_container['result']
+
+    def generate_image(
+        self,
+        positive_prompt: str,
+        target_dir: str,
+        filename: str,
+        negative_prompt: Optional[str] = None,
+        timeout: float = 120.0,
+        poll_interval: float = 1.0,
+    ) -> Optional[str]:
+        """Request a plain new-image generation and wait for the file to land on disk.
+
+        The server acknowledges the request immediately and generates in the
+        background (see run()), so this fires the request via
+        REVERT_TO_SIMPLE_GEN (no base image / workflow override -- whatever
+        model and settings are already active server-side) and then polls
+        *target_dir* for a file named *filename* (any of _IMAGE_EXTENSIONS)
+        to appear.
+
+        Returns the found path, or None if the request failed or no matching
+        file appeared within *timeout* seconds -- never raises, so callers
+        can treat "no image" as a normal, gracefully-degraded outcome.
+        """
+        try:
+            self.run(
+                ImageGenerationType.REVERT_TO_SIMPLE_GEN,
+                base_image=None,
+                positive_prompt=positive_prompt,
+                negative_prompt=negative_prompt,
+                target_dir=target_dir,
+                filename=filename,
+            )
+        except Exception as e:
+            logger.warning(f"SD Runner generate_image request failed: {e}")
+            return None
+        return self._wait_for_file(target_dir, filename, timeout, poll_interval)
+
+    def _wait_for_file(
+        self,
+        target_dir: str,
+        filename: str,
+        timeout: float,
+        poll_interval: float,
+    ) -> Optional[str]:
+        """Poll *target_dir* for a *filename*.<ext> to appear, up to *timeout* seconds."""
+        deadline = time.time() + timeout
+        patterns = [os.path.join(target_dir, f"{filename}.{ext}") for ext in _IMAGE_EXTENSIONS]
+        while True:
+            for pattern in patterns:
+                matches = glob.glob(pattern)
+                if matches:
+                    return matches[0]
+            if time.time() >= deadline:
+                logger.warning(
+                    f"Timed out after {timeout}s waiting for {filename} in {target_dir}")
+                return None
+            time.sleep(poll_interval)
 
     def _run_on_directory_internal(self, _type, directory_path, append=False):
         """Internal method that performs the actual run_on_directory operation."""
@@ -249,15 +342,15 @@ class SDRunnerClient:
         result_container = {'done': False, 'result': None, 'exception': None}
         condition = threading.Condition()
         self._request_queue.put(('run_on_directory', (_type, directory_path, append), result_container, condition))
-        
+
         # Wait for completion
         with condition:
             while not result_container['done']:
                 condition.wait()
-        
+
         if result_container['exception'] is not None:
             raise result_container['exception']
-        
+
         return result_container['result']
 
     def run_batch(self, _type, requests: list[dict]) -> int:
@@ -312,4 +405,3 @@ class SDRunnerClient:
                 self._conn.close()
             except Exception:
                 pass
-
