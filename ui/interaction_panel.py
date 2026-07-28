@@ -63,10 +63,9 @@ class InteractionPanel(QWidget):
         
     def append_message(self, sender, content, is_html=False):
         """Append a message to the log area with optional HTML content"""
-        if is_html:
-            self.log_area.append(f"<b>{sender}:</b><br>{content}")
-        else:
-            self.log_area.append(f"<b>{sender}:</b><br>{content}")
+        if not is_html:
+            content = content.replace("\n", "<br>")
+        self.log_area.append(f"<b>{sender}:</b><br>{content}")
         self.log_area.verticalScrollBar().setValue(
             self.log_area.verticalScrollBar().maximum()
         )

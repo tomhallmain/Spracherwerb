@@ -18,9 +18,9 @@ from .session_context import SessionContext
 from .session_controller import SessionController
 from .session_manager import SessionManager
 from .stub_learning_module import StubLearningModule
+from .vocabulary_builder import VocabularyBuilder
 from .voice import Voice
 # TODO: Implement the following modules
-# from .vocabulary_builder import VocabularyBuilder
 # from .grammar_practice import GrammarPractice
 # from .conversation_practice import ConversationPractice
 # from .listening_comprehension import ListeningComprehension
@@ -53,5 +53,6 @@ __all__ = [
     'SessionController',
     'SessionManager',
     'StubLearningModule',
+    'VocabularyBuilder',
     'Voice',
 ]
