@@ -409,6 +409,7 @@ class TranslationsWindow(SmartWindow):
             translation_import.normalize_target_article_fields(row, target_language)
 
         existing_by_target = translation_import.index_existing_by_target(existing)
+        existing_bare_nouns = translation_import.index_bare_noun_fallback(existing, target_language)
         existing_keys = {
             TranslationsWindow._import_duplicate_key(
                 e.get('source_text'), e.get('translated_text'), e.get('target_article'))
@@ -427,6 +428,13 @@ class TranslationsWindow(SmartWindow):
             target_key = translation_import.target_identity_key(
                 t['translated_text'], t.get('target_article', ''))
             existing_row = existing_by_target.get(target_key)
+            if existing_row is None and t.get('target_article'):
+                # Same word, article learned since the existing row was saved
+                # (e.g. imported before target_article existed) -- fold it in
+                # rather than creating a second, now-redundant row for it.
+                existing_row = existing_bare_nouns.get(t['translated_text'].casefold())
+                if existing_row is not None:
+                    existing_row['target_article'] = t['target_article']
             if existing_row is not None:
                 merged_source = translation_import.merge_source_texts(
                     existing_row.get('source_text', ''), t['source_text'])

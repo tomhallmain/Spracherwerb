@@ -258,3 +258,31 @@ def index_existing_by_target(existing):
         else:
             by_target[target_key] = row
     return by_target
+
+
+def index_bare_noun_fallback(existing, target_language=None):
+    """Map casefolded target text to an existing row stored with no article.
+
+    Rows saved before ``target_article`` existed have an empty article even
+    when the word is a noun, so ``target_identity_key`` for e.g. ``('die',
+    'hupe')`` never matches their stored ``('', 'hupe')`` key -- a newly
+    imported ``die Hupe`` would create a second row instead of updating the
+    original one. This index is a same-word fallback for that case: a
+    capitalized ``translated_text`` on an article-less row is taken as
+    "probably a noun" and made available for casing-only lookup.
+
+    Restricted to languages that use target articles at all (see
+    ``language_uses_target_articles``); for others an empty article is just
+    normal and not a signal of anything.
+    """
+    if not language_uses_target_articles(target_language):
+        return {}
+    by_bare_noun = {}
+    for row in existing:
+        if coerce_str(row.get('target_article')):
+            continue
+        text = coerce_str(row.get('translated_text'))
+        if not text or not text[0].isupper():
+            continue
+        by_bare_noun.setdefault(text.casefold(), row)
+    return by_bare_noun

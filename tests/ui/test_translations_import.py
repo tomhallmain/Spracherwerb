@@ -165,3 +165,43 @@ class TestTargetArticle:
         translation_import.normalize_target_article_fields(t, 'en')
         assert 'target_article' not in t
         assert t['translated_text'] == 'the dog'
+
+
+class TestIndexBareNounFallback:
+    def test_indexes_article_less_capitalized_row(self):
+        existing = [{'translated_text': 'Hupe', 'source_text': 'horn'}]
+
+        by_bare_noun = translation_import.index_bare_noun_fallback(existing, 'de')
+
+        assert by_bare_noun == {'hupe': existing[0]}
+
+    def test_ignores_row_that_already_has_an_article(self):
+        existing = [
+            {'translated_text': 'Hupe', 'source_text': 'horn', 'target_article': 'die'},
+        ]
+
+        by_bare_noun = translation_import.index_bare_noun_fallback(existing, 'de')
+
+        assert by_bare_noun == {}
+
+    def test_ignores_lowercase_entries(self):
+        existing = [{'translated_text': 'gehen', 'source_text': 'to go'}]
+
+        by_bare_noun = translation_import.index_bare_noun_fallback(existing, 'de')
+
+        assert by_bare_noun == {}
+
+    def test_empty_for_languages_without_target_articles(self):
+        existing = [{'translated_text': 'Hupe', 'source_text': 'horn'}]
+
+        by_bare_noun = translation_import.index_bare_noun_fallback(existing, 'en')
+
+        assert by_bare_noun == {}
+
+    def test_keeps_first_row_when_multiple_share_a_bare_noun(self):
+        first = {'translated_text': 'Hupe', 'source_text': 'horn'}
+        second = {'translated_text': 'Hupe', 'source_text': 'car horn'}
+
+        by_bare_noun = translation_import.index_bare_noun_fallback([first, second], 'de')
+
+        assert by_bare_noun == {'hupe': first}
