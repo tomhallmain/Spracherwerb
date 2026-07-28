@@ -7,6 +7,7 @@ from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleSer
 from .activity_types import ActivityType, LearningActivity
 from .base_learning_module import ActivityNotRegisteredError, BaseLearningModule
 from .conversation_practice import ConversationPractice
+from .grammar_practice import GrammarPractice
 from .language_tutor import LanguageTutor
 from .learning_engine import LearningEngine
 from .learning_memory import LearningMemory
@@ -23,9 +24,8 @@ from .stub_learning_module import StubLearningModule
 from .visual_vocabulary import VisualVocabulary
 from .vocabulary_builder import VocabularyBuilder
 from .voice import Voice
+from .writing_practice import WritingPractice
 # TODO: Implement the following modules
-# from .grammar_practice import GrammarPractice
-# from .writing_practice import WritingPractice
 # from .cultural_context import CulturalContext
 # from .pronunciation_guide import PronunciationGuide
 # from .idioms_and_expressions import IdiomsAndExpressions
@@ -40,6 +40,7 @@ __all__ = [
     'ActivityType',
     'BaseLearningModule',
     'ConversationPractice',
+    'GrammarPractice',
     'LanguageTutor',
     'LearningActivity',
     'LearningEngine',
@@ -58,4 +59,5 @@ __all__ = [
     'VisualVocabulary',
     'VocabularyBuilder',
     'Voice',
+    'WritingPractice',
 ]
