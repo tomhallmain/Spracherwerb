@@ -20,15 +20,21 @@ from ui.translation_dialog import TranslationDialog
 
 class TranslationsWindow(SmartWindow):
     SORT_CACHE_KEY = "translations_sort_order"
+    PAGE_SIZE = 200
+
     def __init__(self, parent=None, **kwargs):
         super().__init__(persistent_parent=parent, title="Translation Notes", geometry="800x600", **kwargs)
         self.setMinimumSize(800, 600)
-        
+
         # Initialize data manager
         self.data_manager = TranslationDataManager()
-        
+
         # Initialize translations data
         self.translations = []
+        # Indices into self.translations for the active view (all of them,
+        # or a search-filtered subset), and which page of that view is shown.
+        self.current_view = []
+        self.current_page = 0
         self.load_translations()
         
         # Main layout on self (SmartWindow is QWidget, no setCentralWidget)
@@ -101,7 +107,25 @@ class TranslationsWindow(SmartWindow):
         
         self.table.setSortingEnabled(True)
         layout.addWidget(self.table)
-        
+
+        # Pagination controls -- the table only ever holds one page's worth
+        # of rows, since populating it with the full translation set (this
+        # can run into the thousands) is what was making the window slow to
+        # open.
+        pagination_layout = QHBoxLayout()
+        self.prev_page_button = QPushButton("< Previous")
+        self.prev_page_button.clicked.connect(self.go_to_previous_page)
+        pagination_layout.addWidget(self.prev_page_button)
+
+        self.page_label = QLabel("")
+        self.page_label.setAlignment(Qt.AlignCenter)
+        pagination_layout.addWidget(self.page_label, stretch=1)
+
+        self.next_page_button = QPushButton("Next >")
+        self.next_page_button.clicked.connect(self.go_to_next_page)
+        pagination_layout.addWidget(self.next_page_button)
+        layout.addLayout(pagination_layout)
+
         # Add keyboard shortcut for adding translations
         self.add_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
         self.add_shortcut.activated.connect(self.add_translation)
@@ -172,56 +196,116 @@ class TranslationsWindow(SmartWindow):
         self.source_language_label.setText(f"Source: {Language.get_language_name(config.source_language)}")
         self.target_language_label.setText(f"Target: {Language.get_language_name(config.target_language)}")
         self.load_translations()  # Reload translations with new language filter
+        self.current_page = 0
         self.update_table()
     
-    def update_table(self):
-        """Update the table with current translations"""
-        self.table.setRowCount(len(self.translations))
+    def _translation_display_target(self, t):
+        """The target text as shown in the table, with its article prefix if any."""
+        return translation_import.format_target_for_display(
+            t.get('translated_text', ''),
+            t.get('target_article', ''),
+            t.get('target_language', config.target_language),
+        )
+
+    def _compute_current_view(self):
+        """Indices into self.translations for the active search filter.
+
+        Returns every index, in order, when there's no search text; matching
+        against the underlying data (not table cells) so search still finds
+        entries that aren't on the currently displayed page.
+        """
+        search_text = self.search_input.text().strip().lower()
+        if not search_text:
+            return list(range(len(self.translations)))
+
+        matches = []
         for i, t in enumerate(self.translations):
+            haystack = ' '.join([
+                t.get('source_text', ''),
+                self._translation_display_target(t),
+                t.get('notes', ''),
+            ]).lower()
+            if search_text in haystack:
+                matches.append(i)
+        return matches
+
+    def update_table(self):
+        """Recompute the active view and (re)populate the table with its current page."""
+        self.current_view = self._compute_current_view()
+        total = len(self.current_view)
+        page_count = max(1, (total + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
+        self.current_page = max(0, min(self.current_page, page_count - 1))
+
+        start = self.current_page * self.PAGE_SIZE
+        page_indices = self.current_view[start:start + self.PAGE_SIZE]
+
+        self.table.setRowCount(len(page_indices))
+        for row, idx in enumerate(page_indices):
+            t = self.translations[idx]
+
             # Edit button
             edit_button = QPushButton("Edit")
             edit_button.setFixedSize(50, 20)  # Smaller button size
             edit_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             edit_button.setStyleSheet("QPushButton { padding: 0px; margin: 0px; }")
-            edit_button.clicked.connect(lambda checked, idx=i: self.edit_translation(idx))
-            self.table.setCellWidget(i, 0, edit_button)
-            
+            edit_button.clicked.connect(lambda checked, real_idx=idx: self.edit_translation(real_idx))
+            self.table.setCellWidget(row, 0, edit_button)
+
             # Source text
             source_item = QTableWidgetItem(t['source_text'])
-            self.table.setItem(i, 1, source_item)
-            
+            self.table.setItem(row, 1, source_item)
+
             # Translated text; optional article prefix when stored separately
-            display_target = translation_import.format_target_for_display(
-                t.get('translated_text', ''),
-                t.get('target_article', ''),
-                t.get('target_language', config.target_language),
-            )
-            t_item = QTableWidgetItem(display_target)
-            self.table.setItem(i, 2, t_item)
-            
+            t_item = QTableWidgetItem(self._translation_display_target(t))
+            self.table.setItem(row, 2, t_item)
+
             # Notes
             notes_item = QTableWidgetItem(t.get('notes', ''))
-            self.table.setItem(i, 3, notes_item)
-            
+            self.table.setItem(row, 3, notes_item)
+
             # Remove button
             remove_button = QPushButton("Remove")
             remove_button.setFixedSize(60, 20)  # Smaller button size
             remove_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             remove_button.setStyleSheet("QPushButton { padding: 0px; margin: 0px; }")
-            remove_button.clicked.connect(lambda checked, idx=i: self.remove_translation(idx))
-            self.table.setCellWidget(i, 4, remove_button)
+            remove_button.clicked.connect(lambda checked, real_idx=idx: self.remove_translation(real_idx))
+            self.table.setCellWidget(row, 4, remove_button)
+
+        self._update_pagination_controls(total, page_count)
+
+    def _update_pagination_controls(self, total, page_count):
+        """Refresh the page label and enable/disable the prev/next buttons."""
+        if total == 0:
+            self.page_label.setText("No translations")
+        else:
+            start = self.current_page * self.PAGE_SIZE + 1
+            end = min(start + self.PAGE_SIZE - 1, total)
+            self.page_label.setText(
+                f"Page {self.current_page + 1} of {page_count} "
+                f"({start}-{end} of {total})"
+            )
+        self.prev_page_button.setEnabled(self.current_page > 0)
+        self.next_page_button.setEnabled(self.current_page < page_count - 1)
+
+    def go_to_previous_page(self):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_table()
+
+    def go_to_next_page(self):
+        self.current_page += 1
+        self.update_table()
     
     def filter_translations(self):
-        """Filter translations based on search text"""
-        search_text = self.search_input.text().lower()
-        for i in range(self.table.rowCount()):
-            match = False
-            for j in range(1, 4):  # Skip edit and remove button columns
-                item = self.table.item(i, j)
-                if item and search_text in item.text().lower():
-                    match = True
-                    break
-            self.table.setRowHidden(i, not match)
+        """Recompute the view for the current search text and jump back to page 1.
+
+        Matches against the underlying translations (see
+        ``_compute_current_view``), not just the rows currently on screen,
+        so search still works across pages instead of only within whichever
+        page happened to be loaded already.
+        """
+        self.current_page = 0
+        self.update_table()
     
     def sort_translations(self):
         """Sort translations based on selected criteria"""
@@ -230,6 +314,7 @@ class TranslationsWindow(SmartWindow):
         )
         sort_order.apply_to(self.translations)
         app_info_cache.set(self.SORT_CACHE_KEY, sort_order.value)
+        self.current_page = 0
         self.update_table()
     
     def add_translation(self):
@@ -249,9 +334,10 @@ class TranslationsWindow(SmartWindow):
             if target_article:
                 new_t['target_article'] = target_article
             self.translations.insert(0, new_t)
+            self.current_page = 0
             self.save_translations()
             self.update_table()
-    
+
     def edit_translation(self, index):
         """Edit an existing translation"""
         dialog = TranslationDialog(self, self.translations[index])
@@ -465,6 +551,7 @@ class TranslationsWindow(SmartWindow):
 
         # Refresh the current view to surface the newly imported rows.
         self.load_translations()
+        self.current_page = 0
         self.update_table()
 
         result_lines = [
