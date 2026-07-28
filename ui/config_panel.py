@@ -16,6 +16,7 @@ ACTIVITY_MODES = [
     ("Visual Vocabulary", ActivityType.VISUAL_VOCABULARY),
     ("Grammar Practice", ActivityType.GRAMMAR_PRACTICE),
     ("Conversation", ActivityType.CONVERSATION_PRACTICE),
+    ("Listening Comprehension", ActivityType.LISTENING_COMPREHENSION),
     ("Writing Practice", ActivityType.WRITING_PRACTICE),
     ("Cultural Learning", ActivityType.CULTURAL_CONTEXT),
 ]

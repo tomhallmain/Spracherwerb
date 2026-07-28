@@ -134,8 +134,9 @@ class LLMResult:
 class LLM:
     """Interface for interacting with the Ollama LLM API.
 
-    Optional streaming and redundancy elimination — see
-    docs/llm-streaming-redundancy-elimination.md.
+    Supports optional response streaming and redundancy elimination (see
+    extensions/llm_redundancy.py) to stop generation early once the model
+    starts repeating itself.
     """
     ENDPOINT = "http://localhost:11434/api/generate"
     DEFAULT_TIMEOUT = 180

@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any, List
 import time
 import logging
 
+from extensions.llm import LLM
 from extensions.sd_runner_client import SDRunnerClient
 from utils.vocabulary_pool import VocabularyPool
 
@@ -33,6 +34,7 @@ class LearningEngine:
         self.voice = Voice()
         self.prompter = Prompter()
         self.sd_client = SDRunnerClient()
+        self.llm = LLM.from_config()
         self.current_activity: Optional[str] = None
         self.current_module = None
         self.activity_results: Dict[str, Any] = {}
@@ -50,6 +52,7 @@ class LearningEngine:
             session_context=self.state,
             vocabulary_pool=self.vocabulary_pool,
             sd_client=self.sd_client,
+            llm=self.llm,
         )
 
     def _maybe_generate_voice(self, text: str) -> Optional[str]:

@@ -6,12 +6,14 @@ from .activity_registry import ActivityRegistry
 from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleServices
 from .activity_types import ActivityType, LearningActivity
 from .base_learning_module import ActivityNotRegisteredError, BaseLearningModule
+from .conversation_practice import ConversationPractice
 from .language_tutor import LanguageTutor
 from .learning_engine import LearningEngine
 from .learning_memory import LearningMemory
 from .learning_progression import LearningProgression
 from .learning_session import LearningSession
 from .learning_spot_profile import LearningSpotProfile
+from .listening_comprehension import ListeningComprehension
 from .prompter import Prompter
 from .session_config import SessionConfig
 from .session_context import SessionContext
@@ -23,8 +25,6 @@ from .vocabulary_builder import VocabularyBuilder
 from .voice import Voice
 # TODO: Implement the following modules
 # from .grammar_practice import GrammarPractice
-# from .conversation_practice import ConversationPractice
-# from .listening_comprehension import ListeningComprehension
 # from .writing_practice import WritingPractice
 # from .cultural_context import CulturalContext
 # from .pronunciation_guide import PronunciationGuide
@@ -39,6 +39,7 @@ __all__ = [
     'ActivityTurnResult',
     'ActivityType',
     'BaseLearningModule',
+    'ConversationPractice',
     'LanguageTutor',
     'LearningActivity',
     'LearningEngine',
@@ -46,6 +47,7 @@ __all__ = [
     'LearningProgression',
     'LearningSession',
     'LearningSpotProfile',
+    'ListeningComprehension',
     'ModuleServices',
     'Prompter',
     'SessionConfig',

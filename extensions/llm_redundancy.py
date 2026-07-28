@@ -4,8 +4,6 @@ Pluggable redundancy detection for streaming LLM responses.
 Used by :class:`extensions.llm.LLM` to stop generation early when the model
 begins repeating itself.  Keeps Muse-specific rules (blacklist, CJK/TTS) out of
 this module — only generic text repetition heuristics live here.
-
-See docs/llm-streaming-redundancy-elimination.md.
 """
 
 from __future__ import annotations

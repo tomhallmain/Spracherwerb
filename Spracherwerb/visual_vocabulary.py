@@ -4,9 +4,7 @@ Extends VocabularyBuilder's drilling loop with a generated image as the
 stimulus instead of text. Generation is optional and best-effort: SD Runner
 reachability is checked once at session start, and any failure (unreachable,
 timed out, generation error) falls back to VocabularyBuilder-style text
-prompts for that turn rather than blocking or erroring out -- see the MVP
-acceptance criterion "skips gracefully when SD unavailable" in
-docs/main_modules/module_specifications.md.
+prompts for that turn rather than blocking or erroring out.
 """
 
 from __future__ import annotations
