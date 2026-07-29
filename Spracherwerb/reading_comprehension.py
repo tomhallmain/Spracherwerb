@@ -6,10 +6,10 @@ after stripping its standard boilerplate markers); falls back to an
 LLM-generated passage on any issue -- no book found, network failure, text
 too short to excerpt cleanly. Either way, a second LLM call writes the
 comprehension questions, so the same grading/parsing path works regardless
-of which source produced the passage. Does not attempt the spec's ~90-95%
-known-vocabulary-ratio targeting -- that needs vocabulary-difficulty scoring
-this project doesn't have yet, so passage difficulty isn't tuned to the
-learner's level beyond the proficiency instruction given to the LLM.
+of which source produced the passage. Does not target a specific
+known-vocabulary ratio for the passage -- that needs vocabulary-difficulty
+scoring this project doesn't have yet, so passage difficulty isn't tuned to
+the learner's level beyond the proficiency instruction given to the LLM.
 """
 
 from __future__ import annotations

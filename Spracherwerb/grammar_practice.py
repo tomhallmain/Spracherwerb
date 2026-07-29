@@ -1,10 +1,10 @@
 """Grammar practice: one topic, a brief explanation, and a few graded exercises.
 
-Topic and exercises are LLM-generated (per the spec, LLM is the only
-required extension for this MVP); the dictionary hint (see dictionary_hint.py)
-is an optional touch to ground an exercise in a word the learner already
-knows, not a requirement -- it's skipped whenever the dictionary is
-unavailable or doesn't have a part of speech for any of the candidate words.
+Topic and exercises are LLM-generated -- the only required extension for
+this MVP; the dictionary hint (see dictionary_hint.py) is an optional touch
+to ground an exercise in a word the learner already knows, not a
+requirement -- it's skipped whenever the dictionary is unavailable or
+doesn't have a part of speech for any of the candidate words.
 """
 
 from __future__ import annotations

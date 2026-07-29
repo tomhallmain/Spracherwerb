@@ -21,6 +21,7 @@ ACTIVITY_MODES = [
     ("Writing Practice", ActivityType.WRITING_PRACTICE),
     ("Situational Dialogues", ActivityType.SITUATIONAL_DIALOGUES),
     ("Cultural Learning", ActivityType.CULTURAL_CONTEXT),
+    ("Idioms & Expressions", ActivityType.IDIOMS_AND_EXPRESSIONS),
 ]
 
 

@@ -1,13 +1,12 @@
 """Situational dialogues: goal-oriented role-play in a fixed scenario.
 
 Structurally close to ConversationPractice (LLM dialogue, farewell/turn-limit
-ending), plus: a scenario picked from a small hardcoded catalog (not yet the
-richer library_data/dialogue_scenarios.json the spec describes), the goal
-stated up front, completion tied to the LLM signalling the goal was met (a
-marker in its own reply, stripped before display -- the same technique
-GrammarPractice/ListeningComprehension use for CORRECT/INCORRECT), and an
-optional scene image via SD Runner (see image_hint.py, shared with
-VisualVocabulary).
+ending), plus: a scenario picked from a small hardcoded catalog in this file
+(not an external scenario data file), the goal stated up front, completion
+tied to the LLM signalling the goal was met (a marker in its own reply,
+stripped before display -- the same technique GrammarPractice/
+ListeningComprehension use for CORRECT/INCORRECT), and an optional scene
+image via SD Runner (see image_hint.py, shared with VisualVocabulary).
 """
 
 from __future__ import annotations

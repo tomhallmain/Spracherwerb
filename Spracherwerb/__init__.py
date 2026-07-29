@@ -7,7 +7,9 @@ from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleSer
 from .activity_types import ActivityType, LearningActivity
 from .base_learning_module import ActivityNotRegisteredError, BaseLearningModule
 from .conversation_practice import ConversationPractice
+from .cultural_context import CulturalContext
 from .grammar_practice import GrammarPractice
+from .idioms_and_expressions import IdiomsAndExpressions
 from .language_tutor import LanguageTutor
 from .learning_engine import LearningEngine
 from .learning_memory import LearningMemory
@@ -28,9 +30,7 @@ from .vocabulary_builder import VocabularyBuilder
 from .voice import Voice
 from .writing_practice import WritingPractice
 # TODO: Implement the following modules
-# from .cultural_context import CulturalContext
 # from .pronunciation_guide import PronunciationGuide
-# from .idioms_and_expressions import IdiomsAndExpressions
 
 __all__ = [
     'ActivityNotRegisteredError',
@@ -40,7 +40,9 @@ __all__ = [
     'ActivityType',
     'BaseLearningModule',
     'ConversationPractice',
+    'CulturalContext',
     'GrammarPractice',
+    'IdiomsAndExpressions',
     'LanguageTutor',
     'LearningActivity',
     'LearningEngine',
