@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any, List
 import time
 import logging
 
+from extensions.gutenberg import Gutenberg
 from extensions.languagetool import LanguageTool
 from extensions.llm import LLM
 from extensions.sd_runner_client import SDRunnerClient
@@ -40,6 +41,7 @@ class LearningEngine:
         self.llm = LLM.from_config()
         self.word_reference = WordReference()
         self.language_tool = LanguageTool(api_key=config.api_keys.get("languagetool"))
+        self.gutenberg = Gutenberg()
         self.current_activity: Optional[str] = None
         self.current_module = None
         self.activity_results: Dict[str, Any] = {}
@@ -60,6 +62,7 @@ class LearningEngine:
             llm=self.llm,
             word_reference=self.word_reference,
             language_tool=self.language_tool,
+            gutenberg=self.gutenberg,
         )
 
     def _maybe_generate_voice(self, text: str) -> Optional[str]:

@@ -69,6 +69,7 @@ class ModuleServices:
     llm: Any = None
     word_reference: Any = None
     language_tool: Any = None
+    gutenberg: Any = None
 
     def language_pair(self) -> tuple[str, str]:
         return self.session_config.source_language, self.session_config.target_language

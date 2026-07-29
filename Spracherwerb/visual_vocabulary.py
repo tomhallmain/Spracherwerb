@@ -22,6 +22,7 @@ from .activity_registry import ActivityRegistry
 from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleServices
 from .activity_types import ActivityType
 from .base_learning_module import BaseLearningModule
+from . import image_hint
 from .bilingual_phrasing import bilingual_phrase
 from .learning_memory import LearningMemory
 from .recall_matching import check_recall_answer, resolve_recall_direction
@@ -31,7 +32,6 @@ _ = I18N._
 logger = logging.getLogger(__name__)
 
 IMAGE_CACHE_DIR = Path("cache/visual_vocabulary")
-_IMAGE_EXTENSIONS = ("png", "jpg", "jpeg", "webp")
 
 # Only the two prompt phrasings differ when an image is shown instead of
 # text; feedback/session-complete wording is identical either way, so those
@@ -86,7 +86,7 @@ class VisualVocabulary(BaseLearningModule):
         }
         self._sd_available = (
             bool(getattr(services.session_config, 'enable_visual_learning', True))
-            and self._check_sd_available(services)
+            and image_hint.is_sd_available(services)
         )
 
         if not candidates:
@@ -235,27 +235,10 @@ class VisualVocabulary(BaseLearningModule):
 
     # -- image generation --------------------------------------------------
 
-    def _check_sd_available(self, services: ModuleServices) -> bool:
-        sd_client = getattr(services, 'sd_client', None)
-        if sd_client is None:
-            return False
-        try:
-            return sd_client.is_reachable()
-        except Exception as e:
-            logger.warning(f"SD Runner reachability check failed: {e}")
-            return False
-
     def _slug_for(self, target_language: str, entry: Dict[str, Any]) -> str:
         word = translation_import.coerce_str(entry.get('translated_text', ''))
         slug = re.sub(r'[^a-z0-9]+', '_', word.casefold()).strip('_') or 'word'
         return f"{target_language}_{slug}"
-
-    def _find_cached_image(self, slug: str) -> Optional[str]:
-        for ext in _IMAGE_EXTENSIONS:
-            candidate = IMAGE_CACHE_DIR / f"{slug}.{ext}"
-            if candidate.exists():
-                return str(candidate)
-        return None
 
     def _get_or_generate_image(
         self, entry: Dict[str, Any], target_language: str, services: ModuleServices,
@@ -264,7 +247,7 @@ class VisualVocabulary(BaseLearningModule):
             return None
 
         slug = self._slug_for(target_language, entry)
-        cached = self._find_cached_image(slug)
+        cached = image_hint.find_cached_image(IMAGE_CACHE_DIR, slug)
         if cached:
             return cached
 
@@ -272,17 +255,8 @@ class VisualVocabulary(BaseLearningModule):
         if not gloss:
             return None
 
-        try:
-            IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            image_path = services.sd_client.generate_image(
-                positive_prompt=f"{gloss}, simple clear illustration, single subject, plain background",
-                target_dir=str(IMAGE_CACHE_DIR),
-                filename=slug,
-            )
-        except Exception as e:
-            logger.warning(f"VisualVocabulary image generation failed for {slug!r}: {e}")
-            return None
-
+        prompt = f"{gloss}, simple clear illustration, single subject, plain background"
+        image_path = image_hint.request_generation(services, IMAGE_CACHE_DIR, slug, prompt)
         if image_path:
             self._images_generated += 1
         return image_path

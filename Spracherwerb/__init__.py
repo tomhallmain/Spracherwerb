@@ -16,10 +16,12 @@ from .learning_session import LearningSession
 from .learning_spot_profile import LearningSpotProfile
 from .listening_comprehension import ListeningComprehension
 from .prompter import Prompter
+from .reading_comprehension import ReadingComprehension
 from .session_config import SessionConfig
 from .session_context import SessionContext
 from .session_controller import SessionController
 from .session_manager import SessionManager
+from .situational_dialogues import SituationalDialogues
 from .stub_learning_module import StubLearningModule
 from .visual_vocabulary import VisualVocabulary
 from .vocabulary_builder import VocabularyBuilder
@@ -29,8 +31,6 @@ from .writing_practice import WritingPractice
 # from .cultural_context import CulturalContext
 # from .pronunciation_guide import PronunciationGuide
 # from .idioms_and_expressions import IdiomsAndExpressions
-# from .reading_comprehension import ReadingComprehension
-# from .situational_dialogues import SituationalDialogues
 
 __all__ = [
     'ActivityNotRegisteredError',
@@ -51,10 +51,12 @@ __all__ = [
     'ListeningComprehension',
     'ModuleServices',
     'Prompter',
+    'ReadingComprehension',
     'SessionConfig',
     'SessionContext',
     'SessionController',
     'SessionManager',
+    'SituationalDialogues',
     'StubLearningModule',
     'VisualVocabulary',
     'VocabularyBuilder',
