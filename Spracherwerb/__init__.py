@@ -18,6 +18,7 @@ from .learning_session import LearningSession
 from .learning_spot_profile import LearningSpotProfile
 from .listening_comprehension import ListeningComprehension
 from .prompter import Prompter
+from .pronunciation_guide import PronunciationGuide
 from .reading_comprehension import ReadingComprehension
 from .session_config import SessionConfig
 from .session_context import SessionContext
@@ -29,8 +30,6 @@ from .visual_vocabulary import VisualVocabulary
 from .vocabulary_builder import VocabularyBuilder
 from .voice import Voice
 from .writing_practice import WritingPractice
-# TODO: Implement the following modules
-# from .pronunciation_guide import PronunciationGuide
 
 __all__ = [
     'ActivityNotRegisteredError',
@@ -53,6 +52,7 @@ __all__ = [
     'ListeningComprehension',
     'ModuleServices',
     'Prompter',
+    'PronunciationGuide',
     'ReadingComprehension',
     'SessionConfig',
     'SessionContext',

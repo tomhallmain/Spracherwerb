@@ -22,6 +22,7 @@ ACTIVITY_MODES = [
     ("Situational Dialogues", ActivityType.SITUATIONAL_DIALOGUES),
     ("Cultural Learning", ActivityType.CULTURAL_CONTEXT),
     ("Idioms & Expressions", ActivityType.IDIOMS_AND_EXPRESSIONS),
+    ("Pronunciation Guide", ActivityType.PRONUNCIATION_GUIDE),
 ]
 
 
