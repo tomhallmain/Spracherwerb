@@ -2,9 +2,9 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
-"POT-Creation-Date: 2025-04-21 13:50-0400\n"
-"PO-Revision-Date: 2025-04-21 13:50-0400\n"
-"Last-Translator: Thomas Hall <tomhall.main@gmail.com>\n"
+"POT-Creation-Date: 2026-08-25 10:56-0400\n"
+"PO-Revision-Date: 2026-08-25 10:56-0400\n"
+"Last-Translator: Translator Name <translator@example.com>\n"
 "Language-Team: en Team <<EMAIL>>\n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -12,11 +12,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: .\Spracherwerb\language_tutor.py:94
+#: Spracherwerb/language_tutor.py:96
 msgid "a man"
 msgstr "a man"
 
-#: .\Spracherwerb\language_tutor.py:96
+#: Spracherwerb/language_tutor.py:98
 msgid "a woman"
 msgstr "a woman"
 
@@ -251,142 +251,506 @@ msgstr "Clear schedules"
 msgid "Modify"
 msgstr "Modify"
 
-#: .\utils\globals.py:89
+#: utils/globals.py:219
 msgid "weather"
 msgstr "weather"
 
-#: .\utils\globals.py:91
+#: utils/globals.py:221
 msgid "news"
 msgstr "news"
 
-#: .\utils\globals.py:95
+#: utils/globals.py:225
 msgid "joke"
 msgstr "joke"
 
-#: .\utils\globals.py:97
+#: utils/globals.py:227
 msgid "fact"
 msgstr "fact"
 
-#: .\utils\globals.py:99
+#: utils/globals.py:229
 msgid "fable"
 msgstr "fable"
 
-#: .\utils\globals.py:101
+#: utils/globals.py:231
 msgid "truth and lie"
 msgstr "truth and lie"
 
-#: .\utils\globals.py:103
+#: utils/globals.py:233
 msgid "aphorism"
 msgstr "aphorism"
 
-#: .\utils\globals.py:105
+#: utils/globals.py:235
 msgid "poem"
 msgstr "poem"
 
-#: .\utils\globals.py:107
+#: utils/globals.py:237
 msgid "quote"
 msgstr "quote"
 
-#: .\utils\globals.py:109
+#: utils/globals.py:239
 msgid "tongue twister"
 msgstr "tongue twister"
 
-#: .\utils\globals.py:111
+#: utils/globals.py:241
 msgid "motivation"
 msgstr "motivation"
 
-#: .\utils\globals.py:113
+#: utils/globals.py:243
 msgid "calendar"
 msgstr "calendar"
 
-#: .\utils\globals.py:121
+#: utils/globals.py:245
 msgid "random wiki article"
 msgstr "random wiki article"
 
-#: .\utils\globals.py:123
+#: utils/globals.py:247
 msgid "funny story"
 msgstr "funny story"
 
-#: .\utils\globals.py:125
+#: utils/globals.py:249
 msgid "language learning"
 msgstr "language learning"
 
-#: .\utils\job_queue.py:35
+#: utils/job_queue.py:39
 msgid " (Pending runs: {0})"
 msgstr " (Pending runs: {0})"
 
-#: .\utils\translations.py:17
+#: utils/globals.py:62 utils/globals.py:80
 msgid "English"
 msgstr "English"
 
-#: .\utils\translations.py:19
+#: utils/globals.py:63 utils/globals.py:81
 msgid "German"
 msgstr "German"
 
-#: .\utils\translations.py:21
+#: utils/globals.py:64 utils/globals.py:82
 msgid "French"
 msgstr "French"
 
-#: .\utils\translations.py:23
+#: utils/globals.py:65 utils/globals.py:83
 msgid "Spanish"
 msgstr "Spanish"
 
-#: .\utils\translations.py:25
+#: utils/globals.py:66 utils/globals.py:84
 msgid "Italian"
 msgstr "Italian"
 
-#: .\utils\translations.py:48
+#: utils/translations.py:51
 msgid "Monday"
 msgstr "Monday"
 
-#: .\utils\translations.py:50
+#: utils/translations.py:53
 msgid "Tuesday"
 msgstr "Tuesday"
 
-#: .\utils\translations.py:52
+#: utils/translations.py:55
 msgid "Wednesday"
 msgstr "Wednesday"
 
-#: .\utils\translations.py:54
+#: utils/translations.py:57
 msgid "Thursday"
 msgstr "Thursday"
 
-#: .\utils\translations.py:56
+#: utils/translations.py:59
 msgid "Friday"
 msgstr "Friday"
 
-#: .\utils\translations.py:58
+#: utils/translations.py:61
 msgid "Saturday"
 msgstr "Saturday"
 
-#: .\utils\translations.py:60
+#: utils/translations.py:63
 msgid "Sunday"
 msgstr "Sunday"
 
-#: .\utils\translations.py:72
+#: utils/translations.py:75
 msgid "seconds"
 msgstr "seconds"
 
-#: .\utils\translations.py:74
+#: utils/translations.py:77
 msgid "minutes"
 msgstr "minutes"
 
-#: .\utils\translations.py:76
+#: utils/translations.py:79
 msgid "hours"
 msgstr "hours"
 
-#: .\utils\translations.py:78
+#: utils/translations.py:81
 msgid "days"
 msgstr "days"
 
-#: .\utils\translations.py:80
+#: utils/translations.py:83
 msgid "weeks"
 msgstr "weeks"
 
-#: .\utils\translations.py:82
+#: utils/translations.py:85
 msgid "months"
 msgstr "months"
 
-#: .\utils\translations.py:84
+#: utils/translations.py:87
 msgid "years"
 msgstr "years"
+
+#: Spracherwerb/conversation_practice.py:96
+msgid ""
+"The conversation partner isn't available right now -- make sure the local "
+"LLM (Ollama) is running and try again."
+msgstr ""
+"The conversation partner isn't available right now -- make sure the local "
+"LLM (Ollama) is running and try again."
+
+#: Spracherwerb/conversation_practice.py:113
+#: Spracherwerb/cultural_context.py:131 Spracherwerb/grammar_practice.py:138
+#: Spracherwerb/idioms_and_expressions.py:116
+#: Spracherwerb/listening_comprehension.py:117
+#: Spracherwerb/pronunciation_guide.py:113
+#: Spracherwerb/reading_comprehension.py:136
+#: Spracherwerb/situational_dialogues.py:130
+#: Spracherwerb/visual_vocabulary.py:117
+#: Spracherwerb/vocabulary_builder.py:115 Spracherwerb/writing_practice.py:102
+msgid "This activity has already finished."
+msgstr "This activity has already finished."
+
+#: Spracherwerb/conversation_practice.py:128
+msgid "Lost the connection to the conversation partner."
+msgstr "Lost the connection to the conversation partner."
+
+#: Spracherwerb/conversation_practice.py:139
+#: Spracherwerb/situational_dialogues.py:158
+msgid "Session complete after {0} turn(s)."
+msgstr "Session complete after {0} turn(s)."
+
+#: Spracherwerb/cultural_context.py:113
+msgid ""
+"This cultural note isn't available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+msgstr ""
+"This cultural note isn't available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+
+#: Spracherwerb/cultural_context.py:139 Spracherwerb/cultural_context.py:161
+msgid "Session complete: {0} question(s) discussed."
+msgstr "Session complete: {0} question(s) discussed."
+
+#: Spracherwerb/cultural_context.py:153
+msgid "Lost the connection, but thanks for exploring this topic!"
+msgstr "Lost the connection, but thanks for exploring this topic!"
+
+#: Spracherwerb/cultural_context.py:198
+msgid "Feel free to ask a follow-up question, or say \"done\" to finish."
+msgstr "Feel free to ask a follow-up question, or say \"done\" to finish."
+
+#: Spracherwerb/grammar_practice.py:120
+msgid ""
+"Grammar practice isn't available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+msgstr ""
+"Grammar practice isn't available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+
+#: Spracherwerb/grammar_practice.py:145
+#: Spracherwerb/reading_comprehension.py:157
+msgid "Could not check that answer right now, but let's continue."
+msgstr "Could not check that answer right now, but let's continue."
+
+#: Spracherwerb/grammar_practice.py:163
+msgid "Session complete: {0} exercise(s) completed."
+msgstr "Session complete: {0} exercise(s) completed."
+
+#: Spracherwerb/grammar_practice.py:209
+msgid "Use today's grammar point in a sentence of your own."
+msgstr "Use today's grammar point in a sentence of your own."
+
+#: Spracherwerb/idioms_and_expressions.py:95
+msgid ""
+"Idiom practice isn't available right now -- make sure the local LLM (Ollama)"
+" is running and try again."
+msgstr ""
+"Idiom practice isn't available right now -- make sure the local LLM (Ollama)"
+" is running and try again."
+
+#: Spracherwerb/idioms_and_expressions.py:106
+msgid ""
+"Try using one of these idioms in a sentence of your own, or say \"done\" to "
+"finish."
+msgstr ""
+"Try using one of these idioms in a sentence of your own, or say \"done\" to "
+"finish."
+
+#: Spracherwerb/idioms_and_expressions.py:124
+msgid "Session complete: {0} idiom(s) studied."
+msgstr "Session complete: {0} idiom(s) studied."
+
+#: Spracherwerb/idioms_and_expressions.py:132
+msgid "Nice try! Idioms take practice to feel natural -- keep at it."
+msgstr "Nice try! Idioms take practice to feel natural -- keep at it."
+
+#: Spracherwerb/listening_comprehension.py:87
+msgid ""
+"No listening passage is available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+msgstr ""
+"No listening passage is available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+
+#: Spracherwerb/listening_comprehension.py:100
+msgid "Listen to the passage, then answer the question below."
+msgstr "Listen to the passage, then answer the question below."
+
+#: Spracherwerb/listening_comprehension.py:135
+msgid "Passage: {0}"
+msgstr "Passage: {0}"
+
+#: Spracherwerb/listening_comprehension.py:187
+msgid "What was the passage about?"
+msgstr "What was the passage about?"
+
+#: Spracherwerb/listening_comprehension.py:211
+msgid "Could not grade your answer right now, but thanks for listening!"
+msgstr "Could not grade your answer right now, but thanks for listening!"
+
+#: Spracherwerb/pronunciation_guide.py:84
+msgid ""
+"No saved vocabulary to practice yet for {0} → {1}. Add some translations "
+"first."
+msgstr ""
+"No saved vocabulary to practice yet for {0} → {1}. Add some translations "
+"first."
+
+#: Spracherwerb/pronunciation_guide.py:143
+msgid "Session complete: {0} item(s) practiced."
+msgstr "Session complete: {0} item(s) practiced."
+
+#: Spracherwerb/pronunciation_guide.py:182
+msgid ""
+"Listen to the pronunciation, then type anything to continue (or \"replay\" "
+"to hear it again)."
+msgstr ""
+"Listen to the pronunciation, then type anything to continue (or \"replay\" "
+"to hear it again)."
+
+#: Spracherwerb/pronunciation_guide.py:192
+msgid "(Could not fetch articulation tips right now.)"
+msgstr "(Could not fetch articulation tips right now.)"
+
+#: Spracherwerb/reading_comprehension.py:104
+#: Spracherwerb/reading_comprehension.py:117
+msgid ""
+"No reading passage is available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+msgstr ""
+"No reading passage is available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+
+#: Spracherwerb/reading_comprehension.py:127
+msgid "Read the passage, then answer the questions below."
+msgstr "Read the passage, then answer the questions below."
+
+#: Spracherwerb/reading_comprehension.py:173
+msgid ""
+"Was there a word in the passage you didn't understand? Type it, or say "
+"\"no\" to finish."
+msgstr ""
+"Was there a word in the passage you didn't understand? Type it, or say "
+"\"no\" to finish."
+
+#: Spracherwerb/reading_comprehension.py:211
+msgid "Added \"{0}\" ({1}) to your translations."
+msgstr "Added \"{0}\" ({1}) to your translations."
+
+#: Spracherwerb/reading_comprehension.py:213
+msgid "Could not translate that right now, but noted \"{0}\"."
+msgstr "Could not translate that right now, but noted \"{0}\"."
+
+#: Spracherwerb/reading_comprehension.py:216
+msgid "Session complete: {0} question(s) answered."
+msgstr "Session complete: {0} question(s) answered."
+
+#: Spracherwerb/situational_dialogues.py:107
+msgid ""
+"This role-play isn't available right now -- make sure the local LLM (Ollama)"
+" is running and try again."
+msgstr ""
+"This role-play isn't available right now -- make sure the local LLM (Ollama)"
+" is running and try again."
+
+#: Spracherwerb/situational_dialogues.py:117
+msgid ""
+"Scenario: {0}\n"
+"Your goal: {1}"
+msgstr ""
+"Scenario: {0}\n"
+"Your goal: {1}"
+
+#: Spracherwerb/situational_dialogues.py:143
+msgid "Lost the connection to the role-play partner."
+msgstr "Lost the connection to the role-play partner."
+
+#: Spracherwerb/situational_dialogues.py:157
+msgid "Goal achieved!"
+msgstr "Goal achieved!"
+
+#: Spracherwerb/visual_vocabulary.py:95 Spracherwerb/vocabulary_builder.py:95
+msgid ""
+"No saved vocabulary to review yet for {0} → {1}. Add some translations "
+"first."
+msgstr ""
+"No saved vocabulary to review yet for {0} → {1}. Add some translations "
+"first."
+
+#: Spracherwerb/visual_vocabulary.py:128
+#: Spracherwerb/vocabulary_builder.py:126
+msgid "Correct!"
+msgstr "Correct!"
+
+#: Spracherwerb/visual_vocabulary.py:130
+#: Spracherwerb/vocabulary_builder.py:128
+msgid "Not quite -- the answer was \"{0}\"."
+msgstr "Not quite -- the answer was \"{0}\"."
+
+#: Spracherwerb/visual_vocabulary.py:147
+#: Spracherwerb/vocabulary_builder.py:144
+msgid "Session complete -- reviewed {0} word(s), {1} correct."
+msgstr "Session complete -- reviewed {0} word(s), {1} correct."
+
+#: Spracherwerb/visual_vocabulary.py:197
+msgid "What is this called in {0}?"
+msgstr "What is this called in {0}?"
+
+#: Spracherwerb/visual_vocabulary.py:200
+msgid "What does the picture show, in {0}?"
+msgstr "What does the picture show, in {0}?"
+
+#: Spracherwerb/visual_vocabulary.py:207
+#: Spracherwerb/vocabulary_builder.py:168
+msgid "Translate to {0}: {1}"
+msgstr "Translate to {0}: {1}"
+
+#: Spracherwerb/visual_vocabulary.py:213
+#: Spracherwerb/vocabulary_builder.py:174
+msgid "What does \"{0}\" mean?"
+msgstr "What does \"{0}\" mean?"
+
+#: Spracherwerb/writing_practice.py:86
+msgid ""
+"Writing practice isn't available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+msgstr ""
+"Writing practice isn't available right now -- make sure the local LLM "
+"(Ollama) is running and try again."
+
+#: Spracherwerb/writing_practice.py:121
+msgid "Nice work -- no issues found!"
+msgstr "Nice work -- no issues found!"
+
+#: Spracherwerb/writing_practice.py:164
+msgid "Corrections:"
+msgstr "Corrections:"
+
+#: tts/chunker.py:144
+msgid "Chinese"
+msgstr "Chinese"
+
+#: tts/chunker.py:145
+msgid "Japanese"
+msgstr "Japanese"
+
+#: tts/chunker.py:146
+msgid "Korean"
+msgstr "Korean"
+
+#: tts/chunker.py:148
+msgid " and "
+msgstr " and "
+
+#: tts/chunker.py:149
+msgid "*This text contains {0}, I can't read it but it looks interesting*"
+msgstr "*This text contains {0}, I can't read it but it looks interesting*"
+
+#: utils/app_info_cache.py:47
+msgid "Error compiling application cache: {}"
+msgstr "Error compiling application cache: {}"
+
+#: utils/app_info_cache.py:58
+msgid "Error encrypting cache: {}"
+msgstr "Error encrypting cache: {}"
+
+#: utils/app_info_cache.py:65
+msgid "Error storing application cache: {}"
+msgstr "Error storing application cache: {}"
+
+#: utils/app_info_cache.py:81
+msgid ""
+"Detected JSON-format application cache, will attempt migration to encrypted "
+"store"
+msgstr ""
+"Detected JSON-format application cache, will attempt migration to encrypted "
+"store"
+
+#: utils/app_info_cache.py:85
+msgid "Migrated application cache from {} to encrypted store"
+msgstr "Migrated application cache from {} to encrypted store"
+
+#: utils/app_info_cache.py:88
+msgid "Encrypted store of application cache failed; keeping JSON cache file"
+msgstr "Encrypted store of application cache failed; keeping JSON cache file"
+
+#: utils/app_info_cache.py:117
+msgid "Error loading cache: {}"
+msgstr "Error loading cache: {}"
+
+#: utils/globals.py:67 utils/globals.py:85
+msgid "Latin"
+msgstr "Latin"
+
+#: utils/globals.py:276
+msgid "Redo Prompt"
+msgstr "Redo Prompt"
+
+#: utils/globals.py:278
+msgid "Take Prompt"
+msgstr "Take Prompt"
+
+#: utils/globals.py:280
+msgid "Control Net"
+msgstr "Control Net"
+
+#: utils/globals.py:282
+msgid "IP Adapter"
+msgstr "IP Adapter"
+
+#: utils/globals.py:284
+msgid "Renoiser"
+msgstr "Renoiser"
+
+#: utils/globals.py:286
+msgid "Image to Image"
+msgstr "Image to Image"
+
+#: utils/globals.py:288
+msgid "Image Edit"
+msgstr "Image Edit"
+
+#: utils/globals.py:290
+msgid "Last Settings"
+msgstr "Last Settings"
+
+#: utils/globals.py:292
+msgid "Cancel"
+msgstr "Cancel"
+
+#: utils/globals.py:294
+msgid "Revert to Simple Generation"
+msgstr "Revert to Simple Generation"
+
+#: utils/translations.py:115
+msgid "Ctrl"
+msgstr "Ctrl"
+
+#: utils/translations.py:116
+msgid "Shift"
+msgstr "Shift"
+
+#: utils/translations.py:117
+msgid "Alt"
+msgstr "Alt"
