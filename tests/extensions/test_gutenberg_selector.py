@@ -5,6 +5,9 @@ from pathlib import Path
 from extensions.gutenberg_selector import GutenbergSelector
 from extensions.gutenberg import Gutenberg, GutenbergBook
 
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
+
 class MockLLM:
     """Mock LLM class for testing."""
     

@@ -1,8 +1,12 @@
 """Integration tests for the Wiktionary extension."""
 
+import pytest
 from pathlib import Path
 import shutil
 from extensions.wiktionary import Wiktionary, WiktionaryEntry
+
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
 
 class TestWiktionary:
     """Integration test suite for the Wiktionary extension."""

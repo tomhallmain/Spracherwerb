@@ -75,10 +75,18 @@ The application integrates with AI image generation software to create visual le
 
 ## Testing
 
-- Run the full test suite with `pytest`
-- The `tests/extensions` tests hit live external APIs (Gutenberg, Forvo, LibriVox, Tatoeba, Wiktionary, …) and can be slow or require API keys; to run everything else, use:
+- Run the test suite with `pytest`. Tests marked `network` are deselected, so a
+  default run needs no internet connection and no API keys.
+- The `network` tests hit live external APIs (Gutenberg, Forvo, LibriVox,
+  Tatoeba, Wiktionary, …) and an Ollama server. They are slow, some need API
+  keys, and they fail on the service's bad day rather than on a change of
+  yours, so run them deliberately:
   ```bash
-  pytest -vv --ignore=tests/extensions
+  pytest -m network
+  ```
+- To run everything, network tests included:
+  ```bash
+  pytest -m ""
   ```
 
 ## Learning Activities

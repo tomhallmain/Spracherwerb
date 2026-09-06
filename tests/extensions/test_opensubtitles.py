@@ -4,6 +4,9 @@ import pytest
 from extensions.opensubtitles import OpenSubtitles, Subtitle
 from utils.config import config
 
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
+
 class TestOpenSubtitles:
     """Integration test suite for the OpenSubtitles extension."""
 

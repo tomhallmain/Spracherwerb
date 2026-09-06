@@ -6,6 +6,9 @@ import json
 from extensions.forvo import Forvo, Pronunciation
 from utils.config import config
 
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
+
 class TestForvo:
     """Integration test suite for the Forvo extension."""
 

@@ -5,6 +5,9 @@ from pathlib import Path
 import json
 from extensions.gutenberg import Gutenberg, GutenbergBook
 
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
+
 class TestGutenberg:
     """Integration test suite for the Gutenberg extension."""
 

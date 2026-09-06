@@ -5,6 +5,9 @@ from pathlib import Path
 import json
 from extensions.tatoeba import Tatoeba, TatoebaSentence
 
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
+
 class TestTatoeba:
     """Integration test suite for the Tatoeba extension."""
 

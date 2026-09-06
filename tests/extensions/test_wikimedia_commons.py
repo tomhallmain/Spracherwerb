@@ -4,6 +4,9 @@ import pytest
 from extensions.wikimedia_commons import WikimediaCommons, MediaItem
 from utils.config import config
 
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
+
 class TestWikimediaCommons:
     """Integration test suite for the Wikimedia Commons extension."""
 

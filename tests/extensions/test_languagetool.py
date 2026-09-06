@@ -4,6 +4,9 @@ import pytest
 from extensions.languagetool import LanguageTool, LanguageError
 from utils.config import config
 
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
+
 class TestLanguageTool:
     """Integration test suite for the LanguageTool extension."""
 

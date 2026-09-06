@@ -5,6 +5,9 @@ from pathlib import Path
 import json
 from extensions.unilang import UniLang
 
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
+
 class TestUniLang:
     """Integration test suite for the UniLang extension."""
 

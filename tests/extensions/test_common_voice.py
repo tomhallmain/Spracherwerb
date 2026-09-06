@@ -10,6 +10,9 @@ from pathlib import Path
 import json
 from extensions.common_voice import CommonVoice, VoiceSample
 
+# Calls a live external service; deselected unless you run with -m network.
+pytestmark = pytest.mark.network
+
 class TestCommonVoice:
     """Integration test suite for the Common Voice extension."""
 
