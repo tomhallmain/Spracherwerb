@@ -146,6 +146,17 @@ class LearningSession:
                 self.callbacks['error_occurred'](str(e))
             raise
             
+    def add_media_listener(self, listener) -> bool:
+        """Forward this session's media generation events to *listener*.
+
+        Called on the generation worker's thread, so a UI consumer has to
+        marshal onto its own. Returns whether there was an engine to attach to.
+        """
+        if not self.learning_engine:
+            return False
+        self.learning_engine.media.add_listener(listener)
+        return True
+
     def get_session_progress(self) -> Dict[str, Any]:
         """Get the current progress of the session"""
         return {

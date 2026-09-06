@@ -165,6 +165,7 @@ class SituationalDialogues(BaseLearningModule):
         )
 
     def complete(self, services: ModuleServices) -> Dict[str, Any]:
+        image_hint.cancel_pending(services, self._media_group())
         scenario_id = self._scenario["id"] if self._scenario else None
         return {
             "scenario_id": scenario_id,
@@ -206,7 +207,12 @@ class SituationalDialogues(BaseLearningModule):
         if cached:
             return cached
         prompt = f"{self._scenario['setup']}, simple clear illustration, plain background"
-        return image_hint.request_generation(services, IMAGE_CACHE_DIR, slug, prompt)
+        return image_hint.generate_now(
+            services, IMAGE_CACHE_DIR, slug, prompt, group=self._media_group())
+
+    def _media_group(self) -> str:
+        """Groups this activity's requests so ending it cancels them."""
+        return f"situational_dialogues:{id(self)}"
 
 
 ActivityRegistry.register(SituationalDialogues)

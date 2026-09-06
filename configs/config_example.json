@@ -269,6 +269,7 @@
     "server_port": 6000,
     "server_password": "<PASSWORD>",
     "server_host": "localhost",
+    "sd_runner_client_id": null,
     
     "debug": false,
     "save_tts_output_topics": [

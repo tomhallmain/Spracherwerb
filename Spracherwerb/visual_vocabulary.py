@@ -105,6 +105,10 @@ class VisualVocabulary(BaseLearningModule):
         self._queue = candidates
         self._current = self._queue.pop(0)
         prompt_text, media_path = self._prepare_turn(self._current, services)
+        # Queued after the first word is settled, not before: generation is
+        # serial, so queueing the rest first would put the word on screen
+        # behind pictures nobody is waiting for yet.
+        self._pregenerate_queue(target_language, services)
         return ActivityStartResult(
             text_response=prompt_text,
             activity_type=self.activity_type.value,
@@ -157,6 +161,10 @@ class VisualVocabulary(BaseLearningModule):
         )
 
     def complete(self, services: ModuleServices) -> Dict[str, Any]:
+        # The rest of the queue was pre-generating; those words are not being
+        # asked about now, and leaving them queued makes the next activity's
+        # picture wait behind them.
+        image_hint.cancel_pending(services, self._media_group())
         total = len(self._reviewed_words) + len(self._new_words)
         accuracy = (self._correct_count / total) if total else 0.0
         return {
@@ -240,9 +248,23 @@ class VisualVocabulary(BaseLearningModule):
         slug = re.sub(r'[^a-z0-9]+', '_', word.casefold()).strip('_') or 'word'
         return f"{target_language}_{slug}"
 
+    def _prompt_for(self, entry: Dict[str, Any]) -> Optional[str]:
+        gloss = translation_import.coerce_str(entry.get('source_text', '')).split(',')[0].strip()
+        if not gloss:
+            return None
+        return f"{gloss}, simple clear illustration, single subject, plain background"
+
     def _get_or_generate_image(
         self, entry: Dict[str, Any], target_language: str, services: ModuleServices,
     ) -> Optional[str]:
+        """Picture for the word being asked about, waiting for it if need be.
+
+        This one is waited for: _build_prompt asks a different question with a
+        picture than without, so the wording cannot be settled until the answer
+        is known. Everything still in the queue is drawn in the background by
+        _pregenerate_queue, so the wait is once per new word rather than once
+        per turn.
+        """
         if not self._sd_available:
             return None
 
@@ -251,15 +273,35 @@ class VisualVocabulary(BaseLearningModule):
         if cached:
             return cached
 
-        gloss = translation_import.coerce_str(entry.get('source_text', '')).split(',')[0].strip()
-        if not gloss:
+        prompt = self._prompt_for(entry)
+        if not prompt:
             return None
 
-        prompt = f"{gloss}, simple clear illustration, single subject, plain background"
-        image_path = image_hint.request_generation(services, IMAGE_CACHE_DIR, slug, prompt)
+        image_path = image_hint.generate_now(
+            services, IMAGE_CACHE_DIR, slug, prompt, group=self._media_group())
         if image_path:
             self._images_generated += 1
         return image_path
+
+    def _media_group(self) -> str:
+        """Groups this activity's requests so switching away cancels them."""
+        return f"visual_vocabulary:{id(self)}"
+
+    def _pregenerate_queue(self, target_language: str, services: ModuleServices) -> None:
+        """Queue pictures for the words still ahead in this session.
+
+        Front-loading the plan: by the time the learner reaches them, the
+        pictures are already on disk and the turn costs a file read.
+        """
+        if not self._sd_available:
+            return
+        items = []
+        for entry in self._queue:
+            prompt = self._prompt_for(entry)
+            if prompt:
+                items.append((self._slug_for(target_language, entry), prompt))
+        image_hint.generate_ahead(
+            services, IMAGE_CACHE_DIR, items, group=self._media_group())
 
 
 ActivityRegistry.register(VisualVocabulary)

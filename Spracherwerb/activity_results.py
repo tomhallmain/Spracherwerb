@@ -66,6 +66,7 @@ class ModuleServices:
     session_context: Any
     vocabulary_pool: Any = None
     sd_client: Any = None
+    media: Any = None
     llm: Any = None
     word_reference: Any = None
     language_tool: Any = None

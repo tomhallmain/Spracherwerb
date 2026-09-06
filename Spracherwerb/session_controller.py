@@ -24,6 +24,20 @@ class SessionController:
         self.callbacks = callbacks
         self._session_id: Optional[str] = None
         self._current_activity_type: Optional[str] = None
+        self._media_listener: Optional[Callable] = None
+
+    def set_media_listener(self, listener: Optional[Callable]) -> None:
+        """Register a callback for media generation events.
+
+        A setter rather than a constructor argument because the UI that
+        consumes these is built after the controller, and because a session is
+        created lazily -- the listener is attached to whichever session exists
+        next, including the one after a reset().
+        """
+        self._media_listener = listener
+        session = self.session_manager.get_active_session()
+        if session is not None and listener is not None:
+            session.add_media_listener(listener)
 
     def _build_session_config(self) -> SessionConfig:
         return SessionConfig({
@@ -38,6 +52,10 @@ class SessionController:
         self._session_id = self.session_manager.create_session(
             self._build_session_config(), self.callbacks)
         self.session_manager.start_session(self._session_id)
+        if self._media_listener is not None:
+            session = self.session_manager.get_active_session()
+            if session is not None:
+                session.add_media_listener(self._media_listener)
 
     def has_active_activity(self) -> bool:
         return self._current_activity_type is not None

@@ -6,6 +6,7 @@ from Spracherwerb import situational_dialogues
 from Spracherwerb.activity_registry import ActivityRegistry
 from Spracherwerb.activity_results import ModuleServices
 from Spracherwerb.activity_types import ActivityType
+from Spracherwerb.media_generation import MediaGenerationService
 from Spracherwerb.session_config import SessionConfig
 from Spracherwerb.situational_dialogues import GOAL_MARKER, MAX_TURNS, SituationalDialogues
 
@@ -70,6 +71,19 @@ class FakeSDClient:
         return self._image_path
 
 
+#: Services built during a test, shut down by the autouse fixture below.
+_media_services = []
+
+
+@pytest.fixture(autouse=True)
+def shutdown_media_services():
+    """Stop each test's generation worker; they are daemon threads otherwise
+    left running for the rest of the session."""
+    yield
+    while _media_services:
+        _media_services.pop().shutdown()
+
+
 def make_services(llm, sd_client=None, proficiency_level="intermediate", target_language="de",
                    source_language="en"):
     session_config = SessionConfig({
@@ -77,6 +91,10 @@ def make_services(llm, sd_client=None, proficiency_level="intermediate", target_
         "target_language": target_language,
         "proficiency_level": proficiency_level,
     })
+    media = None
+    if sd_client is not None:
+        media = MediaGenerationService(sd_client=sd_client)
+        _media_services.append(media)
     return ModuleServices(
         prompter=FakePrompter(),
         voice=None,
@@ -84,6 +102,7 @@ def make_services(llm, sd_client=None, proficiency_level="intermediate", target_
         session_context=None,
         llm=llm,
         sd_client=sd_client,
+        media=media,
     )
 
 

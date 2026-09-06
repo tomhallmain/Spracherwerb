@@ -1,4 +1,5 @@
 import glob
+import hashlib
 import os
 import queue
 import threading
@@ -17,20 +18,55 @@ logger = get_logger("sd_runner_client")
 # server chooses the actual format, this client doesn't dictate it.
 _IMAGE_EXTENSIONS = ("png", "jpg", "jpeg", "webp")
 
+#: Name this application reports to SD Runner. Shown there as the origin of any
+#: run this client starts, in the progress label and the runs window.
+CLIENT_NAME = "spracherwerb"
+
+#: SD Runner bounds an id it receives to 64 characters; anything past that is
+#: cut there rather than here, where it would go unnoticed.
+MAX_CLIENT_ID_LEN = 64
+
+
+def _default_client_id() -> str:
+    """A name for this client that is stable across restarts.
+
+    SD Runner can only fall back to the peer host, and both ends of a loopback
+    connection share one address -- so an id that is not sent is an origin that
+    says nothing. Sending one is what makes that fallback irrelevant.
+
+    An explicit ``sd_runner_client_id`` in config wins. Otherwise the name is
+    qualified by a digest of this install's root, so a second copy on the same
+    machine reports something different while a restart of this one reports the
+    same thing it did before. The PID is deliberately not part of it: a request
+    staged by one session can be promoted in the next, and it should still be
+    attributed to the same client when it is.
+    """
+    configured = getattr(config, "sd_runner_client_id", None)
+    if configured:
+        return str(configured).strip()[:MAX_CLIENT_ID_LEN]
+    # The repo root, not this module's directory: it lives in extensions/, and
+    # a digest of that would change meaning if the module were ever moved.
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    digest = hashlib.sha1(root.encode("utf-8", "replace")).hexdigest()[:8]
+    return f"{CLIENT_NAME}-{digest}"[:MAX_CLIENT_ID_LEN]
+
 
 class SDRunnerClient:
     COMMAND_CLOSE_SERVER = 'close server'
     COMMAND_CLOSE_CONNECTION = 'close connection'
     COMMAND_VALIDATE = 'validate'
 
-    def __init__(self, host=None, port=None):
-        # Resolved at call time rather than bound as a signature default:
-        # a default is evaluated once at import time, so it would never see
-        # a config swapped in afterwards (tests patch utils.config.config
-        # per test; see extensions.sd_runner_client in the config-patch list
-        # in tests/conftest.py).
+    def __init__(self, host=None, port=None, client_id=None):
+        # Resolved at call time rather than bound as a signature default: a
+        # default is evaluated once at import time, so it would never see a
+        # config swapped in afterwards. The test suite isolates config by
+        # sweeping every module-level `config` binding, and a signature
+        # default is not one of those, so it would be unreachable there.
         self._host = host if host is not None else config.server_host
         self._port = port if port is not None else config.server_port
+        # Resolved once per client rather than per message: it must not change
+        # between the request that stages a run and the promotion that runs it.
+        self._client_id = client_id or _default_client_id()
         self._conn = None
         self._request_queue = queue.Queue()
         self._worker_thread = None
@@ -68,6 +104,13 @@ class SDRunnerClient:
         raise last_error
 
     def send(self, msg):
+        # Attached here rather than at each command so no message can go out
+        # anonymous, including any command added later. The server treats the
+        # field as optional and sticky for the connection, but this client opens
+        # a fresh connection per operation, so the first message of every one
+        # has to carry it. A copy, so a caller's dict is not mutated behind it.
+        if isinstance(msg, dict) and 'client_id' not in msg:
+            msg = {**msg, 'client_id': self._client_id}
         if config.debug:
             logger.debug(f"Sending {msg} to SD Runner")
         self._conn.send(msg)

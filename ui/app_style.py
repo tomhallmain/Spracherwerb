@@ -17,6 +17,10 @@ class AppStyle:
         DARK_HIGHLIGHT = "#3a3a3a"  # Even lighter for hover states
         DARK_TEXT = config.foreground_color
         DARK_DISABLED = "#666666"
+        # Behind displayed media. Near-black in both themes: a neutral,
+        # non-competing ground is what an image or video wants, and the
+        # configured window background follows the user's accent colour.
+        DARK_MEDIA_BG = "#1a1a1a"
         
         # Light theme colors (kept as fallback)
         LIGHT_BG = "#ffffff"
@@ -25,6 +29,7 @@ class AppStyle:
         LIGHT_HIGHLIGHT = "#e0e0e0"
         LIGHT_TEXT = "#333333"
         LIGHT_DISABLED = "#999999"
+        LIGHT_MEDIA_BG = "#202020"
         
         # Common colors
         PRIMARY = "#0078d4"
@@ -42,7 +47,8 @@ class AppStyle:
                 'accent': cls.Colors.DARK_ACCENT,
                 'highlight': cls.Colors.DARK_HIGHLIGHT,
                 'text': cls.Colors.DARK_TEXT,
-                'disabled': cls.Colors.DARK_DISABLED
+                'disabled': cls.Colors.DARK_DISABLED,
+                'media_bg': cls.Colors.DARK_MEDIA_BG
             }
         else:
             return {
@@ -51,7 +57,8 @@ class AppStyle:
                 'accent': cls.Colors.LIGHT_ACCENT,
                 'highlight': cls.Colors.LIGHT_HIGHLIGHT,
                 'text': cls.Colors.LIGHT_TEXT,
-                'disabled': cls.Colors.LIGHT_DISABLED
+                'disabled': cls.Colors.LIGHT_DISABLED,
+                'media_bg': cls.Colors.LIGHT_MEDIA_BG
             }
     
     @classmethod

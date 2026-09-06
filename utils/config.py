@@ -106,6 +106,10 @@ class Config:
         self.server_port = 6000
         self.server_password = "<PASSWORD>"
         self.server_host = "localhost"
+        # Name reported to SD Runner as the origin of a run. Leave unset for a
+        # default derived from this install's location; set it to tell two
+        # copies on one machine apart by something readable.
+        self.sd_runner_client_id = None
         
         # Debug settings
         self.debug = False
@@ -159,6 +163,7 @@ class Config:
             "piper_quality",
             "server_host",
             "server_password",
+            "sd_runner_client_id",
         )
         
         # Set API keys from config
@@ -286,7 +291,15 @@ class Config:
         for name in names:
             if type:
                 try:
-                    setattr(self, name, type(self.dict[name]))
+                    value = self.dict[name]
+                    # A JSON null means "not set", so the default assigned in
+                    # __init__ stands. Coercing it instead turns str(None) into
+                    # the string "None", which reads as a real value everywhere
+                    # downstream and defeats the `is None` fallbacks below --
+                    # source_language never reached Utils.get_default_user_language().
+                    if value is None:
+                        continue
+                    setattr(self, name, type(value))
                 except Exception as e:
                     logger.error(e)
                     logger.warning(f"Failed to set {name} from config.json file. Ensure the value is set and of the correct type.")

@@ -7,6 +7,7 @@ from Spracherwerb.activity_registry import ActivityRegistry
 from Spracherwerb.activity_results import ModuleServices
 from Spracherwerb.activity_types import ActivityType
 from Spracherwerb.learning_memory import LearningMemory
+from Spracherwerb.media_generation import MediaGenerationService
 from Spracherwerb.session_config import SessionConfig
 from Spracherwerb.visual_vocabulary import VisualVocabulary
 
@@ -68,6 +69,19 @@ class FakeSDClient:
         return self._image_path_by_prompt.get(positive_prompt)
 
 
+#: Services built during a test, shut down by the autouse fixture below.
+_media_services = []
+
+
+@pytest.fixture(autouse=True)
+def shutdown_media_services():
+    """Stop each test's generation worker; they are daemon threads otherwise
+    left running for the rest of the session."""
+    yield
+    while _media_services:
+        _media_services.pop().shutdown()
+
+
 def make_services(entries, sd_client=None, proficiency_level="intermediate",
                    source_language="en", target_language="de", enable_visual_learning=True):
     pool = FakeVocabularyPool(entries)
@@ -77,6 +91,10 @@ def make_services(entries, sd_client=None, proficiency_level="intermediate",
         "proficiency_level": proficiency_level,
         "enable_visual_learning": enable_visual_learning,
     })
+    media = None
+    if sd_client is not None:
+        media = MediaGenerationService(sd_client=sd_client)
+        _media_services.append(media)
     services = ModuleServices(
         prompter=None,
         voice=None,
@@ -84,6 +102,7 @@ def make_services(entries, sd_client=None, proficiency_level="intermediate",
         session_context=None,
         vocabulary_pool=pool,
         sd_client=sd_client,
+        media=media,
     )
     return services, pool
 

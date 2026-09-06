@@ -13,6 +13,7 @@ from utils.vocabulary_pool import VocabularyPool
 from .activity_registry import ActivityRegistry
 from .activity_results import ModuleServices
 from .activity_types import ActivityType
+from .media_generation import MediaGenerationService
 from .voice import Voice
 from .prompter import Prompter
 from .session_context import SessionContext, UserAction
@@ -38,6 +39,10 @@ class LearningEngine:
         self.voice = Voice()
         self.prompter = Prompter()
         self.sd_client = SDRunnerClient()
+        # Owns the generation worker for this session. Modules hand it requests
+        # rather than calling sd_client directly, so a slow picture holds up at
+        # most the item being asked about.
+        self.media = MediaGenerationService(sd_client=self.sd_client)
         self.llm = LLM.from_config()
         self.word_reference = WordReference()
         self.language_tool = LanguageTool(api_key=config.api_keys.get("languagetool"))
@@ -59,6 +64,7 @@ class LearningEngine:
             session_context=self.state,
             vocabulary_pool=self.vocabulary_pool,
             sd_client=self.sd_client,
+            media=self.media,
             llm=self.llm,
             word_reference=self.word_reference,
             language_tool=self.language_tool,
@@ -160,6 +166,7 @@ class LearningEngine:
 
     def cleanup(self) -> None:
         self.voice.cleanup()
+        self.media.shutdown()
         self.current_activity = None
         self.current_module = None
         self.activity_results = {}

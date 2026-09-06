@@ -59,8 +59,18 @@ class MainWindow(SmartMainWindow):
         # media an activity turn produces (e.g. VisualVocabulary images)
         # goes to the dedicated media frame.
         self.config_panel.activity_mode_changed.connect(self.interaction_panel.start_activity)
+        # Clear on a mode switch so one activity's image is not left stranded
+        # under the next activity's lesson.
+        self.config_panel.activity_mode_changed.connect(
+            lambda _activity_type: self.media_frame.clear())
         self.config_panel.languages_changed.connect(self.session_controller.reset)
-        self.interaction_panel.media_ready.connect(self.media_frame.display_image)
+        self.interaction_panel.media_ready.connect(self.media_frame.show_media)
+        # Progress for a picture the current turn is waiting on, so the frame
+        # says something while sd-runner works rather than sitting blank.
+        self.session_controller.set_media_listener(
+            self.interaction_panel.handle_media_event)
+        self.interaction_panel.media_pending.connect(self.media_frame.show_pending)
+        self.interaction_panel.media_unavailable.connect(self.media_frame.clear)
         initial_mode = self.config_panel.current_activity_type()
         if initial_mode:
             self.interaction_panel.start_activity(initial_mode)
@@ -118,6 +128,13 @@ class MainWindow(SmartMainWindow):
         """Handle window close event - ensure position_data is saved and app_info_cache is stored"""
         # Call parent closeEvent first so SmartMainWindow saves position_data into app_info_cache
         super().closeEvent(event)
+        # MediaFrame is a child in a splitter, so Qt delivers it no close
+        # event of its own -- it needs releasing from here or VLC keeps playing.
+        try:
+            self.media_frame.release_media()
+        except Exception as e:
+            from utils.logging_setup import get_logger
+            get_logger(__name__).error(f"Error releasing media frame on close: {e}")
         # Then persist the cache (including the position_data just saved by parent)
         try:
             app_info_cache.store()
