@@ -9,6 +9,11 @@ _ = I18N._
 class AppInfo:
     SERVICE_NAME = "MyPersonalApplicationsService"
     APP_IDENTIFIER = "Spracherwerb"
+    #: Identifiers this app has used before. Key material is filed per
+    #: identifier, so a rename orphans the old keys and everything encrypted
+    #: under them -- an old name listed here keeps scripts/key_material.py
+    #: reporting and backing it up.
+    LEGACY_APP_IDENTIFIERS = ()
 
 
 class Globals:

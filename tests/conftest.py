@@ -39,74 +39,37 @@ _blacklist_example_src = os.path.join(
 )
 
 
-def _patch_app_info_cache_singleton(monkeypatch, cache_instance) -> None:
-    """Patch the app_info_cache singleton everywhere tests may hold a reference."""
-    import utils
+def repoint_singleton_bindings(monkeypatch, attr_name, old_obj, new_obj) -> None:
+    """Repoint every module-level binding of *old_obj* to *new_obj*.
 
-    cache_module = importlib.import_module("utils.app_info_cache")
-    monkeypatch.setattr(cache_module, "app_info_cache", cache_instance)
-    monkeypatch.setattr(utils, "app_info_cache", cache_instance)
+    A module doing ``from utils.config import config`` at import time holds its
+    own reference, so patching the source module alone leaves that binding on
+    the un-isolated singleton -- which is never reset between tests, so its
+    values leak into whatever runs next and a test passes for the wrong reason.
 
-    for module_name in (
-        "Spracherwerb.prompter",
-        "ui.translations_window",
-    ):
+    Sweeping sys.modules covers every such binding, including the ``utils``
+    package's re-exports and the test modules themselves. A hand-maintained
+    list of modules to patch is the obvious alternative, and it goes out of
+    date silently: ``utils.translation_data_manager`` holds a ``config``
+    binding whose ``backup_dir`` is the user's real one, so missing it has a
+    test writing a translations backup there. The identity check touches only
+    bindings to the exact old object, and modules imported later reach the new
+    object through the already-patched source module.
+
+    Two things it cannot reach: a reference copied onto an instance attribute
+    (``self.config = config``), which needs its owner rebuilt; and a module
+    first imported *during* a test, which binds that test's instance --
+    monkeypatch never set that binding, so it survives teardown and later
+    sweeps no longer recognise it. That second one only bites a module reached
+    exclusively by a lazy import; anything a test module imports at the top is
+    in sys.modules before the first sweep runs.
+    """
+    for module in list(sys.modules.values()):
         try:
-            module = importlib.import_module(module_name)
+            if getattr(module, attr_name, None) is old_obj:
+                monkeypatch.setattr(module, attr_name, new_obj)
         except Exception:
             continue
-        if hasattr(module, "app_info_cache"):
-            monkeypatch.setattr(module, "app_info_cache", cache_instance)
-
-    for name, module in list(sys.modules.items()):
-        if not name.startswith("tests."):
-            continue
-        if hasattr(module, "app_info_cache"):
-            monkeypatch.setattr(module, "app_info_cache", cache_instance)
-
-
-def _patch_config_singleton(monkeypatch, config_instance) -> None:
-    """Patch the config singleton (same package shadowing issue as app_info_cache)."""
-    import utils
-
-    config_module = importlib.import_module("utils.config")
-    monkeypatch.setattr(config_module, "config", config_instance)
-    monkeypatch.setattr(utils, "config", config_instance)
-
-    for module_name in (
-        "Spracherwerb.voice",
-        "Spracherwerb.prompter",
-        "Spracherwerb.language_tutor",
-        "extensions.gutenberg_selector",
-        "Spracherwerb.learning_spot_profile",
-        "Spracherwerb.session_config",
-        "Spracherwerb.session_context",
-        "Spracherwerb.session_controller",
-        "Spracherwerb.learning_engine",
-        "ui.app_style",
-        "ui.config_panel",
-        "ui.interaction_panel",
-        "ui.translation_dialog",
-        "ui.translations_window",
-        "ui.gutenberg_search_window",
-        "extensions.sd_runner_client",
-        "tts.tts_runner",
-        "tts.text_cleaner_ruleset",
-        "library_data.blacklist",
-        "utils.vocabulary_pool",
-    ):
-        try:
-            module = importlib.import_module(module_name)
-        except Exception:
-            continue
-        if hasattr(module, "config"):
-            monkeypatch.setattr(module, "config", config_instance)
-
-    for name, module in list(sys.modules.items()):
-        if not name.startswith("tests."):
-            continue
-        if hasattr(module, "config"):
-            monkeypatch.setattr(module, "config", config_instance)
 
 
 def pytest_addoption(parser):
@@ -152,13 +115,30 @@ def isolated_singletons(tmp_path, monkeypatch, request):
 
     monkeypatch.setenv("SPRACHERWERB_CACHE_DIR", str(cache_dir))
     monkeypatch.setenv("SPRACHERWERB_CONFIGS_DIR", str(configs_dir))
+    monkeypatch.setenv("SPRACHERWERB_KEY_BACKUP_DIR", str(tmp_path / "key_backup"))
 
-    from utils.app_info_cache import AppInfoCache
+    # The encryptor caches key material and passphrases per (service, app) for
+    # the life of the process, so material written by one test would answer
+    # another's read. The fake keyring is emptied for the same reason: each test
+    # gets a fresh cache directory, and a passphrase left behind by an earlier
+    # test would look like "keys existed here once" and block key generation.
+    from utils.encryptor import clear_key_store_cache
 
-    new_cache = AppInfoCache()
-    _patch_app_info_cache_singleton(monkeypatch, new_cache)
+    clear_key_store_cache()
+    _bootstrap_mod.install_fake_keyring().clear()
 
+    # importlib rather than ``import utils.config as config_module``:
+    # utils/__init__.py re-exports both singletons, so the package attribute
+    # ``utils.config`` is the Config instance and shadows the submodule of the
+    # same name. import_module goes to sys.modules and returns the module.
+    cache_module = importlib.import_module("utils.app_info_cache")
     config_module = importlib.import_module("utils.config")
+
+    repoint_singleton_bindings(
+        monkeypatch, "app_info_cache",
+        cache_module.app_info_cache, cache_module.AppInfoCache(),
+    )
+
     config_instance = config_module.Config()
     config_instance.backup_dir = str(backup_dir)
     if os.path.isfile(_blacklist_example_src):
@@ -166,7 +146,9 @@ def isolated_singletons(tmp_path, monkeypatch, request):
     config_instance.ignore_missing_api_keys = True
     if request.config.getoption("--disable-tts"):
         config_instance.disable_tts = True
-    _patch_config_singleton(monkeypatch, config_instance)
+    repoint_singleton_bindings(
+        monkeypatch, "config", config_module.config, config_instance
+    )
 
     yield
 

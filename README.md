@@ -27,6 +27,11 @@ NOTE: This project is a work in progress, and the features listed below may not 
   - Language-specific prompts in subdirectories (e.g., 'en/', 'de/')
   - Automatic translation fallback when language-specific prompts aren't available
 
+The application cache is encrypted, and the keys for it are backed up
+automatically to an external drive (set `SPRACHERWERB_KEY_BACKUP_DIR` to choose
+where). Run `python scripts/key_material.py` to check that backup's state, or
+`python scripts/key_material.py backup` to take one by hand.
+
 ## Features
 
 - Interactive language lessons with real-time feedback
