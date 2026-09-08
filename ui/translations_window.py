@@ -73,11 +73,11 @@ class TranslationsWindow(SmartWindow):
         # Import translations button
         self.import_button = QPushButton("Import")
         self.import_button.setToolTip(
-            "Import translations from a CSV, TSV, or plain-text file into the "
-            "currently selected language pair. CSV/TSV rows may use "
+            "Import translations from a CSV, TSV, plain-text, or Markdown file "
+            "into the currently selected language pair. CSV/TSV rows may use "
             "source_text and translated_text columns, or a single "
-            "target - source line per row. Plain-text files use one "
-            "target - source entry per line (spaces around the hyphen are "
+            "target - source line per row. Plain-text and Markdown files use "
+            "one target - source entry per line (spaces around the hyphen are "
             "optional). Other fields (notes, date_added) are optional."
         )
         self.import_button.clicked.connect(self.import_translations)
@@ -239,7 +239,8 @@ class TranslationsWindow(SmartWindow):
             self.table.setCellWidget(row, 0, edit_button)
 
             # Source text
-            source_item = QTableWidgetItem(t['source_text'])
+            source_item = QTableWidgetItem(
+                translation_import.format_source_for_display(t['source_text']))
             self.table.setItem(row, 1, source_item)
 
             # Translated text; optional article prefix when stored separately
@@ -310,7 +311,7 @@ class TranslationsWindow(SmartWindow):
                 dialog.translated_text, config.target_language)
             new_t = {
                 'datetime': datetime.now(),
-                'source_text': dialog.source_text,
+                'source_text': translation_import.protect_prose_commas(dialog.source_text),
                 'translated_text': translated_text,
                 'notes': dialog.notes,
                 'source_language': config.source_language,
@@ -330,7 +331,7 @@ class TranslationsWindow(SmartWindow):
             target_article, translated_text = translation_import.extract_target_article(
                 dialog.translated_text, config.target_language)
             update = {
-                'source_text': dialog.source_text,
+                'source_text': translation_import.protect_prose_commas(dialog.source_text),
                 'translated_text': translated_text,
                 'notes': dialog.notes
             }
@@ -345,7 +346,7 @@ class TranslationsWindow(SmartWindow):
     def remove_translation(self, index):
         """Remove a translation"""
         translation = self.translations[index]
-        source_text = translation['source_text']
+        source_text = translation_import.format_source_for_display(translation['source_text'])
         target_text = translation_import.format_target_for_display(
             translation.get('translated_text', ''),
             translation.get('target_article', ''),
@@ -408,8 +409,8 @@ class TranslationsWindow(SmartWindow):
             self,
             "Import Translations",
             "",
-            "Translation files (*.csv *.tsv *.txt);;"
-            "CSV (*.csv);;TSV (*.tsv);;Plain text (*.txt);;All files (*)"
+            "Translation files (*.csv *.tsv *.txt *.md);;"
+            "CSV (*.csv);;TSV (*.tsv);;Plain text (*.txt *.md);;All files (*)"
         )
         if not file_path:
             return
@@ -566,10 +567,15 @@ class TranslationsWindow(SmartWindow):
             result_lines.append("The save did not complete; no changes were written.")
         QMessageBox.information(self, "Import Complete", "\n".join(result_lines))
 
-    def _parse_import_file(self, file_path):
-        """Parse a CSV/TSV/TXT import file into a list of row dicts.
+    # One ``target - source`` entry per line; no delimiter to interpret, so a
+    # comma in a gloss list stays part of the gloss.
+    _LINE_IMPORT_EXTENSIONS = ('.txt', '.md')
+    _DELIMITED_IMPORT_EXTENSIONS = ('.csv', '.tsv')
 
-        Plain-text and headerless files use one ``target - source`` entry per
+    def _parse_import_file(self, file_path):
+        """Parse a delimited or line-based import file into a list of row dicts.
+
+        Line-based and headerless files use one ``target - source`` entry per
         line (target on the left, source glosses on the right).
 
         Raises:
@@ -578,7 +584,7 @@ class TranslationsWindow(SmartWindow):
         """
         ext = os.path.splitext(file_path)[1].lower()
 
-        if ext not in ('.csv', '.tsv', '.txt'):
+        if ext not in self._LINE_IMPORT_EXTENSIONS + self._DELIMITED_IMPORT_EXTENSIONS:
             raise ValueError(f"Unsupported file extension: {ext}")
 
         with open(file_path, 'r', encoding='utf-8-sig', newline='') as f:
@@ -587,7 +593,7 @@ class TranslationsWindow(SmartWindow):
         if not content.strip():
             return []
 
-        if ext == '.txt':
+        if ext in self._LINE_IMPORT_EXTENSIONS:
             return translation_import.lines_to_row_dicts(content.splitlines())
 
         delimiter = '\t' if ext == '.tsv' else ','
@@ -725,6 +731,12 @@ class TranslationsWindow(SmartWindow):
 
             source_text = self._capitalize_first(source_text, source_language)
             translated_text = self._capitalize_first(translated_text, target_language)
+
+            # Protect commas that are a pause within one phrase (e.g. "are, in
+            # fact, those") rather than a separator between independent
+            # glosses, before merge_rows_by_target()/merge_source_texts() or
+            # any other split(',') consumer ever sees this row.
+            source_text = translation_import.protect_prose_commas(source_text)
 
             target_article, translated_text = translation_import.extract_target_article(
                 translated_text, target_language)

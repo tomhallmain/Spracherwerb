@@ -164,7 +164,7 @@ class VocabularyBuilder(BaseLearningModule):
 
     def _build_prompt(self, entry: Dict[str, Any], target_language: str) -> str:
         if self._direction == "produce_target":
-            source_text = translation_import.coerce_str(entry.get('source_text', ''))
+            source_text = translation_import.format_source_for_display(entry.get('source_text', ''))
             english = _("Translate to {0}: {1}").format(
                 Language.get_language_name(target_language), source_text)
             return bilingual_phrase(

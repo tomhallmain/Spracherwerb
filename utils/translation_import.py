@@ -6,6 +6,8 @@ phrases, and nouns imported without an article all store only ``translated_text`
 The ``target_article`` field is omitted unless a prefix is detected.
 """
 
+import re
+
 # Leading prefixes that *may* be split off when present. Detection is
 # best-effort only; absence of a match leaves the full text in translated_text.
 _ARTICLE_PREFIXES_BY_LANGUAGE = {
@@ -31,6 +33,134 @@ def coerce_str(value):
     if isinstance(value, str):
         return value.strip()
     return str(value).strip()
+
+
+_SENTENCE_END_RE = re.compile(r'[.!?]\s*$')
+_SENTENCE_WORD_THRESHOLD = 6  # a synonym-list "part" this long is a clause, not a gloss
+
+# Stands in for a comma that is not a gloss separator. Must contain no comma
+# of its own -- the whole point is that a naive split(',') passes over it --
+# and no bracket, brace or angle bracket either: those would confuse the
+# paren-depth scan below, str.format(), and Qt's rich-text autodetection.
+PROSE_COMMA_TAG = '~comma~'
+
+# Short parenthetical asides that read as a pause mid-phrase, never as a
+# standalone vocabulary gloss on their own -- catches short-part cases
+# ``looks_like_sentence`` misses, e.g. "are, in fact, those" (each part is
+# under the word threshold and there's no terminal punctuation). Matched
+# whole-part only (the entire text between two commas, casefolded), not as a
+# substring, to keep false positives rare.
+_DISCOURSE_MARKER_PHRASES = frozenset({
+    'in fact', 'of course', 'so to speak', 'as it were', 'that is',
+    'e.g.', 'i.e.', 'you know', 'at least', 'in other words',
+    'for instance', 'for example', 'by the way', 'after all',
+    'if anything', 'as expected', 'as usual', 'needless to say',
+})
+
+
+def has_comma_inside_parens(text):
+    """True if a ',' sits inside unmatched '(' '[' -- e.g. "cereal (e.g. oats, barley)".
+
+    A naive comma split doesn't know about parens, so a comma nested inside
+    one gets treated as a top-level separator, tearing the parenthetical
+    apart and leaving an orphaned closing paren on the next piece.
+    """
+    text = coerce_str(text)
+    depth = 0
+    for ch in text:
+        if ch in '([':
+            depth += 1
+        elif ch in ')]':
+            depth = max(0, depth - 1)
+        elif ch == ',' and depth > 0:
+            return True
+    return False
+
+
+def looks_like_sentence(text):
+    """True if text reads as prose rather than a short gloss list.
+
+    A trailing '.', '!', or '?' only counts on a text long enough to be a
+    real clause -- a single hedge word like "bray?" shouldn't trip this.
+    Also checked per comma-separated part, so a sentence fragment buried
+    among otherwise-short glosses still gets caught.
+    """
+    text = coerce_str(text)
+    if not text:
+        return False
+    if _SENTENCE_END_RE.search(text) and len(text.split()) > _SENTENCE_WORD_THRESHOLD:
+        return True
+    return any(len(part.split()) > _SENTENCE_WORD_THRESHOLD for part in text.split(','))
+
+
+def has_discourse_marker_part(text):
+    """True if one comma-separated part is a known parenthetical aside (see above)."""
+    text = coerce_str(text)
+    return any(part.strip().casefold() in _DISCOURSE_MARKER_PHRASES for part in text.split(','))
+
+
+def looks_like_prose(text):
+    """True if at least one comma in *text* is not a gloss separator.
+
+    Any of ``has_comma_inside_parens``, ``looks_like_sentence`` or
+    ``has_discourse_marker_part`` is reason enough that splitting *text* on
+    every comma would corrupt it. Heuristic, not a parser: telling a long
+    gloss apart from a prose clause needs the sentence's meaning, so a short
+    pause-comma phrase can still slip through and a lint pass should flag
+    remaining source-side commas for a human/LLM check.
+    """
+    return (
+        has_comma_inside_parens(text)
+        or looks_like_sentence(text)
+        or has_discourse_marker_part(text)
+    )
+
+
+def _protect_nested_commas(text):
+    """Tag only the commas sitting inside parens/brackets, leaving top-level ones."""
+    out = []
+    depth = 0
+    for ch in text:
+        if ch in '([':
+            depth += 1
+        elif ch in ')]':
+            depth = max(0, depth - 1)
+        out.append(PROSE_COMMA_TAG if ch == ',' and depth > 0 else ch)
+    return ''.join(out)
+
+
+def protect_prose_commas(text):
+    """Replace literal commas with a non-splitting tag where they are not separators.
+
+    Prose (a sentence, or a phrase with a parenthetical aside) has no gloss
+    separators at all, so every comma in it is tagged. A gloss list with a
+    parenthetical that itself contains a comma keeps its top-level
+    separators and tags only the nested one, so ``"rent, rental (fee, rate),
+    hire charge"`` still splits into its three glosses.
+
+    Every place that treats stored source text as a comma-separated gloss
+    list needs no special handling once this has run: a tagged comma is no
+    longer a literal comma to split on. Call ``restore_prose_commas`` (or
+    ``format_source_for_display``) wherever the text is shown to a user.
+    """
+    text = coerce_str(text)
+    if not text:
+        return text
+    if looks_like_sentence(text) or has_discourse_marker_part(text):
+        return text.replace(',', PROSE_COMMA_TAG)
+    if has_comma_inside_parens(text):
+        return _protect_nested_commas(text)
+    return text
+
+
+def restore_prose_commas(text):
+    """Undo ``protect_prose_commas`` for display."""
+    return coerce_str(text).replace(PROSE_COMMA_TAG, ',')
+
+
+def format_source_for_display(source_text):
+    """User-facing form of a stored source text, with any protected commas restored."""
+    return restore_prose_commas(source_text)
 
 
 def primary_language_tag(language_code):

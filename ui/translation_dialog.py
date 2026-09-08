@@ -144,7 +144,8 @@ class TranslationDialog(QDialog):
         
         # If editing existing translation, populate fields
         if translation:
-            self._source_text_edit.setPlainText(translation['source_text'])
+            self._source_text_edit.setPlainText(
+                translation_import.format_source_for_display(translation['source_text']))
             self._translated_text_edit.setPlainText(
                 translation_import.format_target_for_display(
                     translation.get('translated_text', ''),

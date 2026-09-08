@@ -336,3 +336,108 @@ class TestIndexExistingByTarget:
     def test_skips_rows_with_no_translated_text(self):
         existing = [{'translated_text': '', 'source_text': 'x'}]
         assert translation_import.index_existing_by_target(existing) == {}
+
+
+class TestLooksLikeProse:
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "are, in fact, those",                                   # parenthetical aside
+            "cereal (e.g. oats, barley)",                            # comma nested in parens
+            "Maybe it's because it's summer, but there are fewer.",  # terminal punctuation
+            "he needed an outlet for his rage, he needed to vent",   # over-long comma part
+        ],
+    )
+    def test_true_when_a_comma_is_not_a_separator(self, text):
+        assert translation_import.looks_like_prose(text) is True
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "cleaner, polish, cleaning agent",
+            "sideboard, credenza",
+            "bay, anchorage, cove",
+            "",
+        ],
+    )
+    def test_false_for_plain_gloss_lists(self, text):
+        assert translation_import.looks_like_prose(text) is False
+
+
+class TestProtectProseCommas:
+    def test_tags_every_comma_in_prose(self):
+        protected = translation_import.protect_prose_commas("are, in fact, those")
+
+        assert ',' not in protected
+        assert protected.count(translation_import.PROSE_COMMA_TAG) == 2
+
+    def test_leaves_a_gloss_list_untouched(self):
+        text = "cleaner, polish, cleaning agent"
+        assert translation_import.protect_prose_commas(text) == text
+
+    def test_tags_only_the_nested_comma_in_a_gloss_list(self):
+        protected = translation_import.protect_prose_commas(
+            "rent, rental (fee, rate), hire charge")
+
+        # The two top-level separators survive; only the parenthetical's is tagged.
+        assert protected.count(',') == 2
+        assert protected.count(translation_import.PROSE_COMMA_TAG) == 1
+
+    def test_tagged_list_still_splits_into_its_glosses(self):
+        protected = translation_import.protect_prose_commas(
+            "sole, bottom (river, valley), floor")
+
+        glosses = [
+            translation_import.restore_prose_commas(part).strip()
+            for part in protected.split(',')
+        ]
+
+        assert glosses == ['sole', 'bottom (river, valley)', 'floor']
+
+    def test_tagged_prose_survives_a_split_as_one_piece(self):
+        protected = translation_import.protect_prose_commas("are, in fact, those")
+
+        parts = protected.split(',')
+
+        assert len(parts) == 1
+        assert translation_import.restore_prose_commas(parts[0]) == "are, in fact, those"
+
+    def test_empty_text_is_returned_unchanged(self):
+        assert translation_import.protect_prose_commas('') == ''
+
+
+class TestProseCommaTag:
+    def test_tag_contains_no_comma(self):
+        """A comma in the tag would let split(',') tear it apart -- the one thing it must not do."""
+        assert ',' not in translation_import.PROSE_COMMA_TAG
+
+    @pytest.mark.parametrize("char", ['(', ')', '[', ']', '{', '}', '<', '>'])
+    def test_tag_avoids_characters_other_code_treats_specially(self, char):
+        assert char not in translation_import.PROSE_COMMA_TAG
+
+
+class TestRestoreProseCommas:
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "are, in fact, those",
+            "rent, rental (fee, rate), hire charge",
+            "cleaner, polish, cleaning agent",
+            "no commas here",
+        ],
+    )
+    def test_round_trips_exactly(self, text):
+        protected = translation_import.protect_prose_commas(text)
+        assert translation_import.restore_prose_commas(protected) == text
+
+    def test_leaves_untagged_text_alone(self):
+        assert translation_import.restore_prose_commas("dog, canine") == "dog, canine"
+
+
+class TestFormatSourceForDisplay:
+    def test_shows_a_protected_comma_as_a_comma(self):
+        protected = translation_import.protect_prose_commas("are, in fact, those")
+        assert translation_import.format_source_for_display(protected) == "are, in fact, those"
+
+    def test_none_becomes_empty_string(self):
+        assert translation_import.format_source_for_display(None) == ''

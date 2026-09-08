@@ -66,52 +66,16 @@ _GERMAN_MARKER_RE = re.compile(
 )
 
 # A comma-separated word/phrase list is safe for merge_source_texts() to
-# split on every comma. Anything below is a sign that at least one comma in
-# the text is doing something else, and the split would corrupt it.
-_SENTENCE_END_RE = re.compile(r'[.!?]\s*$')
-_SENTENCE_WORD_THRESHOLD = 6  # a synonym-list "part" this long is a clause, not a gloss
-
-
-def _has_comma_inside_parens(text):
-    """True if a ',' sits inside unmatched '(' '[' -- e.g. "cereal (e.g. oats, barley)".
-
-    ``text.split(',')`` doesn't know about parens, so a comma nested inside
-    one gets treated as a top-level separator, tearing the parenthetical
-    apart and leaving an orphaned closing paren on the next "gloss".
-    """
-    depth = 0
-    for ch in text:
-        if ch in '([':
-            depth += 1
-        elif ch in ')]':
-            depth = max(0, depth - 1)
-        elif ch == ',' and depth > 0:
-            return True
-    return False
-
-
-def _looks_like_sentence(text):
-    """True if this source text reads as prose rather than a short gloss list.
-
-    A trailing '.', '!', or '?' only counts on a text long enough to be a
-    real clause -- a single hedge word like "bray?" shouldn't trip this.
-    Also checked per comma-separated part, so a sentence fragment buried
-    among otherwise-short glosses still gets caught.
-    """
-    text = text.strip()
-    if not text:
-        return False
-    if _SENTENCE_END_RE.search(text) and len(text.split()) > _SENTENCE_WORD_THRESHOLD:
-        return True
-    return any(len(part.split()) > _SENTENCE_WORD_THRESHOLD for part in text.split(','))
+# split on every comma. Anything ``translation_import.looks_like_prose`` flags
+# is a sign that at least one comma in the text is doing something else, and
+# the split would corrupt it -- the same check the app's import path now uses
+# (see ``translation_import.protect_prose_commas``) to tag such commas before
+# they ever reach a naive ``split(',')``.
 
 
 def _merge_is_risky(source_texts):
     """Whether merge_source_texts() on these texts could corrupt one of them."""
-    return any(
-        _has_comma_inside_parens(text) or _looks_like_sentence(text)
-        for text in source_texts
-    )
+    return any(translation_import.looks_like_prose(text) for text in source_texts)
 
 
 class Entry:
@@ -282,17 +246,20 @@ def build_report(entries, risky_groups):
             f"resolution ({len(risky_groups)} groups, {risky_entry_count} lines):"
         )
         lines.append(
-            "  a source text has a comma nested in parens/brackets, or reads as a "
-            "sentence rather than a short gloss list; merging would corrupt it"
+            "  a source text has a comma nested in parens/brackets, reads as a "
+            "sentence rather than a short gloss list, or contains a "
+            "parenthetical aside (e.g. 'in fact'); merging would corrupt it"
         )
         for group in risky_groups:
             lines.append(f"    {group[0].target!r}:")
             for e in group:
                 reason = []
-                if _has_comma_inside_parens(e.source):
+                if translation_import.has_comma_inside_parens(e.source):
                     reason.append('comma inside parens')
-                if _looks_like_sentence(e.source):
+                if translation_import.looks_like_sentence(e.source):
                     reason.append('looks like a sentence')
+                if translation_import.has_discourse_marker_part(e.source):
+                    reason.append('parenthetical aside')
                 reason_str = f" [{', '.join(reason)}]" if reason else ""
                 lines.append(f"      {e.line_no}: {e.target} - {e.source}{reason_str}")
         lines.append("")

@@ -26,5 +26,12 @@ def check_recall_answer(entry, user_text, target_language, direction):
         is_correct = user_norm in (bare.casefold(), displayed.casefold())
         return is_correct, displayed
     source_text = translation_import.coerce_str(entry.get('source_text', ''))
-    alternatives = [part.strip().casefold() for part in source_text.split(',') if part.strip()]
-    return user_norm in alternatives, source_text
+    # source_text may have a comma protected (tagged, not literal) where it's a
+    # pause within one phrase rather than a gloss separator -- splitting first
+    # and restoring each part after keeps such a phrase as a single whole
+    # alternative instead of tearing it apart.
+    alternatives = [
+        translation_import.restore_prose_commas(part).strip().casefold()
+        for part in source_text.split(',') if part.strip()
+    ]
+    return user_norm in alternatives, translation_import.format_source_for_display(source_text)

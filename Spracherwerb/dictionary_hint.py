@@ -27,7 +27,7 @@ def pick_vocabulary_hint(services: Any, limit: int = 5) -> Optional[str]:
         source_language, target_language, limit=limit)
 
     for entry in candidates:
-        source_word = translation_import.coerce_str(entry.get('source_text', '')).split(',')[0].strip()
+        source_word = translation_import.format_source_for_display(entry.get('source_text', '')).split(',')[0].strip()
         target_word = translation_import.coerce_str(entry.get('translated_text', ''))
         if not source_word or not target_word:
             continue

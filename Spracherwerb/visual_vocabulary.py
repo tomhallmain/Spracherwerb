@@ -211,7 +211,7 @@ class VisualVocabulary(BaseLearningModule):
 
         # No image this turn -- fall back to VocabularyBuilder's text prompts.
         if self._direction == "produce_target":
-            source_text = translation_import.coerce_str(entry.get('source_text', ''))
+            source_text = translation_import.format_source_for_display(entry.get('source_text', ''))
             english = _("Translate to {0}: {1}").format(
                 Language.get_language_name(target_language), source_text)
             return bilingual_phrase(
@@ -249,7 +249,8 @@ class VisualVocabulary(BaseLearningModule):
         return f"{target_language}_{slug}"
 
     def _prompt_for(self, entry: Dict[str, Any]) -> Optional[str]:
-        gloss = translation_import.coerce_str(entry.get('source_text', '')).split(',')[0].strip()
+        source_text = translation_import.format_source_for_display(entry.get('source_text', ''))
+        gloss = source_text.split(',')[0].strip()
         if not gloss:
             return None
         return f"{gloss}, simple clear illustration, single subject, plain background"
