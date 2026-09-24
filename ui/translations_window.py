@@ -12,7 +12,7 @@ from lib.multi_display import SmartWindow
 from utils.app_info_cache import app_info_cache
 from utils.config import config
 from utils.globals import Language, TranslationSortOrder
-from utils.translations import I18N
+from utils.translations import _
 from utils.translation_data_manager import TranslationDataManager
 from utils import translation_import
 from utils import translation_listing
@@ -24,7 +24,7 @@ class TranslationsWindow(SmartWindow):
     PAGE_SIZE = 200
 
     def __init__(self, parent=None, **kwargs):
-        super().__init__(persistent_parent=parent, title="Translation Notes", geometry="800x600", **kwargs)
+        super().__init__(persistent_parent=parent, title=_("Translation Notes"), geometry="800x600", **kwargs)
         self.setMinimumSize(800, 600)
 
         # Initialize data manager
@@ -43,8 +43,8 @@ class TranslationsWindow(SmartWindow):
         
         # Create language display
         language_layout = QHBoxLayout()
-        self.source_language_label = QLabel(f"Source: {Language.get_language_name(config.source_language)}")
-        self.target_language_label = QLabel(f"Target: {Language.get_language_name(config.target_language)}")
+        self.source_language_label = QLabel(_("Source: {0}").format(Language.get_language_name(config.source_language)))
+        self.target_language_label = QLabel(_("Target: {0}").format(Language.get_language_name(config.target_language)))
         language_layout.addWidget(self.source_language_label)
         language_layout.addWidget(self.target_language_label)
         layout.addLayout(language_layout)
@@ -52,7 +52,7 @@ class TranslationsWindow(SmartWindow):
         # Create search bar
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search translations...")
+        self.search_input.setPlaceholderText(_("Search translations..."))
         self.search_input.textChanged.connect(self.filter_translations)
         search_layout.addWidget(self.search_input)
         
@@ -71,20 +71,20 @@ class TranslationsWindow(SmartWindow):
         search_layout.addWidget(self.sort_combo)
         
         # Import translations button
-        self.import_button = QPushButton("Import")
-        self.import_button.setToolTip(
+        self.import_button = QPushButton(_("Import"))
+        self.import_button.setToolTip(_(
             "Import translations from a CSV, TSV, plain-text, or Markdown file "
             "into the currently selected language pair. CSV/TSV rows may use "
             "source_text and translated_text columns, or a single "
             "target - source line per row. Plain-text and Markdown files use "
             "one target - source entry per line (spaces around the hyphen are "
             "optional). Other fields (notes, date_added) are optional."
-        )
+        ))
         self.import_button.clicked.connect(self.import_translations)
         search_layout.addWidget(self.import_button)
 
         # Add new translation button
-        self.add_button = QPushButton("Add Translation")
+        self.add_button = QPushButton(_("Add Translation"))
         self.add_button.clicked.connect(self.add_translation)
         search_layout.addWidget(self.add_button)
         
@@ -93,7 +93,7 @@ class TranslationsWindow(SmartWindow):
         # Create table
         self.table = QTableWidget()
         self.table.setColumnCount(5)  # Removed date column
-        self.table.setHorizontalHeaderLabels(["", "Source Text", "Translated Text", "Notes", ""])
+        self.table.setHorizontalHeaderLabels(["", _("Source Text"), _("Translated Text"), _("Notes"), ""])
         
         # Set column resize modes
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Edit button
@@ -114,7 +114,7 @@ class TranslationsWindow(SmartWindow):
         # can run into the thousands) is what was making the window slow to
         # open.
         pagination_layout = QHBoxLayout()
-        self.prev_page_button = QPushButton("< Previous")
+        self.prev_page_button = QPushButton(_("< Previous"))
         self.prev_page_button.clicked.connect(self.go_to_previous_page)
         pagination_layout.addWidget(self.prev_page_button)
 
@@ -122,7 +122,7 @@ class TranslationsWindow(SmartWindow):
         self.page_label.setAlignment(Qt.AlignCenter)
         pagination_layout.addWidget(self.page_label, stretch=1)
 
-        self.next_page_button = QPushButton("Next >")
+        self.next_page_button = QPushButton(_("Next >"))
         self.next_page_button.clicked.connect(self.go_to_next_page)
         pagination_layout.addWidget(self.next_page_button)
         layout.addLayout(pagination_layout)
@@ -143,13 +143,13 @@ class TranslationsWindow(SmartWindow):
             self.translations = self.data_manager.get_language_pair_with_dates(
                 config.source_language,
                 config.target_language,
-                on_warning=lambda msg: QMessageBox.warning(self, "Warning", msg),
+                on_warning=lambda msg: QMessageBox.warning(self, _("Warning"), msg),
             )
             for t in self.translations:
                 translation_import.normalize_target_article_fields(
                     t, config.target_language)
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to load translations: {str(e)}")
+            QMessageBox.warning(self, _("Error"), _("Failed to load translations: {0}").format(e))
             self.translations = []
     
     def save_translations(self):
@@ -172,8 +172,8 @@ class TranslationsWindow(SmartWindow):
                 # If save failed due to potential data loss, ask user
                 reply = QMessageBox.question(
                     self, 
-                    "Confirm Save",
-                    "Saving these translations would result in significant data loss. Are you sure you want to continue?",
+                    _("Confirm Save"),
+                    _("Saving these translations would result in significant data loss. Are you sure you want to continue?"),
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.No
                 )
@@ -186,16 +186,16 @@ class TranslationsWindow(SmartWindow):
                         config.target_language,
                         force=True
                     ):
-                        QMessageBox.warning(self, "Error", "Failed to save translations even with force option.")
+                        QMessageBox.warning(self, _("Error"), _("Failed to save translations even with force option."))
                 else:
-                    QMessageBox.information(self, "Save Cancelled", "Translation save was cancelled to prevent data loss.")
+                    QMessageBox.information(self, _("Save Cancelled"), _("Translation save was cancelled to prevent data loss."))
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to save translations: {str(e)}")
+            QMessageBox.warning(self, _("Error"), _("Failed to save translations: {0}").format(e))
     
     def update_language_display(self):
         """Update the language display labels when languages change"""
-        self.source_language_label.setText(f"Source: {Language.get_language_name(config.source_language)}")
-        self.target_language_label.setText(f"Target: {Language.get_language_name(config.target_language)}")
+        self.source_language_label.setText(_("Source: {0}").format(Language.get_language_name(config.source_language)))
+        self.target_language_label.setText(_("Target: {0}").format(Language.get_language_name(config.target_language)))
         self.load_translations()  # Reload translations with new language filter
         self.current_page = 0
         self.update_table()
@@ -231,7 +231,7 @@ class TranslationsWindow(SmartWindow):
             t = self.translations[idx]
 
             # Edit button
-            edit_button = QPushButton("Edit")
+            edit_button = QPushButton(_("Edit"))
             edit_button.setFixedSize(50, 20)  # Smaller button size
             edit_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             edit_button.setStyleSheet("QPushButton { padding: 0px; margin: 0px; }")
@@ -252,7 +252,7 @@ class TranslationsWindow(SmartWindow):
             self.table.setItem(row, 3, notes_item)
 
             # Remove button
-            remove_button = QPushButton("Remove")
+            remove_button = QPushButton(_("Remove"))
             remove_button.setFixedSize(60, 20)  # Smaller button size
             remove_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             remove_button.setStyleSheet("QPushButton { padding: 0px; margin: 0px; }")
@@ -264,11 +264,11 @@ class TranslationsWindow(SmartWindow):
     def _update_pagination_controls(self, total, page_count, start, end):
         """Refresh the page label and enable/disable the prev/next buttons."""
         if total == 0:
-            self.page_label.setText("No translations")
+            self.page_label.setText(_("No translations"))
         else:
             self.page_label.setText(
-                f"Page {self.current_page + 1} of {page_count} "
-                f"({start + 1}-{end} of {total})"
+                _("Page {0} of {1} ({2}-{3} of {4})").format(
+                    self.current_page + 1, page_count, start + 1, end, total)
             )
         self.prev_page_button.setEnabled(self.current_page > 0)
         self.next_page_button.setEnabled(self.current_page < page_count - 1)
@@ -362,10 +362,10 @@ class TranslationsWindow(SmartWindow):
         
         reply = QMessageBox.question(
             self,
-            "Confirm Removal",
-            f"Are you sure you want to remove this translation?\n\n"
-            f"Source: {source_text}\n"
-            f"Target: {target_text}",
+            _("Confirm Removal"),
+            _("Are you sure you want to remove this translation?\n\n"
+              "Source: {0}\n"
+              "Target: {1}").format(source_text, target_text),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -395,8 +395,8 @@ class TranslationsWindow(SmartWindow):
         if not source_language or not target_language:
             QMessageBox.warning(
                 self,
-                "Import",
-                "Please select a source and target language before importing."
+                _("Import"),
+                _("Please select a source and target language before importing.")
             )
             return
 
@@ -407,10 +407,10 @@ class TranslationsWindow(SmartWindow):
 
         file_path, _selected_filter = QFileDialog.getOpenFileName(
             self,
-            "Import Translations",
+            _("Import Translations"),
             "",
-            "Translation files (*.csv *.tsv *.txt *.md);;"
-            "CSV (*.csv);;TSV (*.tsv);;Plain text (*.txt *.md);;All files (*)"
+            _("Translation files (*.csv *.tsv *.txt *.md);;"
+              "CSV (*.csv);;TSV (*.tsv);;Plain text (*.txt *.md);;All files (*)")
         )
         if not file_path:
             return
@@ -418,11 +418,11 @@ class TranslationsWindow(SmartWindow):
         try:
             raw_rows = self._parse_import_file(file_path)
         except Exception as e:
-            QMessageBox.warning(self, "Import Failed", f"Could not read the file:\n{str(e)}")
+            QMessageBox.warning(self, _("Import Failed"), _("Could not read the file:\n{0}").format(e))
             return
 
         if not raw_rows:
-            QMessageBox.information(self, "Import", "The file does not contain any translations.")
+            QMessageBox.information(self, _("Import"), _("The file does not contain any translations."))
             return
 
         valid_rows, skipped = self._normalize_imported_rows(
@@ -432,35 +432,32 @@ class TranslationsWindow(SmartWindow):
         valid_rows = translation_import.merge_rows_by_target(valid_rows)
         merged_in_file_count = pre_merge_count - len(valid_rows)
         if not valid_rows:
-            msg = "The file did not contain any usable translations."
+            msg = _("The file did not contain any usable translations.")
             if skipped:
-                msg += (
-                    f"\n\n{self._pluralize(len(skipped), 'row was', 'rows were')} skipped "
-                    "because the source or translated text was missing."
-                )
+                msg += "\n\n" + _(
+                    "Rows skipped (missing source or translated text): {0}"
+                ).format(len(skipped))
             else:
-                msg += "\n\nEach row needs a source text and a translated text."
-            QMessageBox.warning(self, "Import", msg)
+                msg += "\n\n" + _("Each row needs a source text and a translated text.")
+            QMessageBox.warning(self, _("Import"), msg)
             return
 
-        confirm_msg = (
-            f"Import {self._pluralize(len(valid_rows), 'translation')} "
-            f"as {pair_label}?"
-        )
+        confirm_lines = [
+            _("Translations to import into {0}: {1}").format(pair_label, len(valid_rows))
+        ]
         if merged_in_file_count:
-            confirm_msg += (
-                f"\n\n{self._pluralize(merged_in_file_count, 'duplicate target was', 'duplicate targets were')} "
-                "merged by combining their source definitions."
-            )
+            confirm_lines.append(_(
+                "Duplicate targets merged by combining their source definitions: {0}"
+            ).format(merged_in_file_count))
         if skipped:
-            confirm_msg += (
-                f"\n\n{self._pluralize(len(skipped), 'row will', 'rows will')} be skipped "
-                "because the source or translated text is missing."
-            )
+            confirm_lines.append(_(
+                "Rows to be skipped (missing source or translated text): {0}"
+            ).format(len(skipped)))
+        confirm_lines.append(_("Continue with the import?"))
         reply = QMessageBox.question(
             self,
-            "Confirm Import",
-            confirm_msg,
+            _("Confirm Import"),
+            "\n\n".join(confirm_lines),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.Yes
         )
@@ -472,8 +469,8 @@ class TranslationsWindow(SmartWindow):
         except Exception as e:
             QMessageBox.warning(
                 self,
-                "Import Failed",
-                f"Could not load existing translations:\n{str(e)}"
+                _("Import Failed"),
+                _("Could not load existing translations:\n{0}").format(e)
             )
             return
 
@@ -541,31 +538,27 @@ class TranslationsWindow(SmartWindow):
         self.update_table()
 
         result_lines = [
-            f"Imported {self._pluralize(imported_count, 'translation')} into {pair_label}."
+            _("Translations imported into {0}: {1}").format(pair_label, imported_count)
         ]
         if merged_in_file_count:
-            result_lines.append(
-                f"Merged {self._pluralize(merged_in_file_count, 'duplicate target')} "
-                "within the import file."
-            )
+            result_lines.append(_(
+                "Duplicate targets merged within the import file: {0}"
+            ).format(merged_in_file_count))
         if merged_into_existing_count:
-            result_lines.append(
-                f"Merged {self._pluralize(merged_into_existing_count, 'entry')} "
-                "into existing translations with the same target."
-            )
+            result_lines.append(_(
+                "Entries merged into existing translations with the same target: {0}"
+            ).format(merged_into_existing_count))
         if duplicate_count:
-            result_lines.append(
-                f"Skipped {self._pluralize(duplicate_count, 'duplicate')} "
-                "already in your translations."
-            )
+            result_lines.append(_(
+                "Duplicates skipped (already in your translations): {0}"
+            ).format(duplicate_count))
         if skipped:
-            result_lines.append(
-                f"Skipped {self._pluralize(len(skipped), 'row')} with missing "
-                "source or translated text."
-            )
+            result_lines.append(_(
+                "Rows skipped (missing source or translated text): {0}"
+            ).format(len(skipped)))
         if save_failed:
-            result_lines.append("The save did not complete; no changes were written.")
-        QMessageBox.information(self, "Import Complete", "\n".join(result_lines))
+            result_lines.append(_("The save did not complete; no changes were written."))
+        QMessageBox.information(self, _("Import Complete"), "\n".join(result_lines))
 
     # One ``target - source`` entry per line; no delimiter to interpret, so a
     # comma in a gloss list stays part of the gloss.
@@ -585,7 +578,7 @@ class TranslationsWindow(SmartWindow):
         ext = os.path.splitext(file_path)[1].lower()
 
         if ext not in self._LINE_IMPORT_EXTENSIONS + self._DELIMITED_IMPORT_EXTENSIONS:
-            raise ValueError(f"Unsupported file extension: {ext}")
+            raise ValueError(_("Unsupported file extension: {0}").format(ext))
 
         with open(file_path, 'r', encoding='utf-8-sig', newline='') as f:
             content = f.read()
@@ -629,13 +622,6 @@ class TranslationsWindow(SmartWindow):
         if isinstance(value, str):
             return value.strip()
         return str(value).strip()
-
-    @staticmethod
-    def _pluralize(count, singular, plural=None):
-        """Return e.g. '1 translation' or '617 translations'."""
-        if plural is None:
-            plural = singular + 's'
-        return f"{count} {singular if count == 1 else plural}"
 
     @classmethod
     def _row_is_blank(cls, row):

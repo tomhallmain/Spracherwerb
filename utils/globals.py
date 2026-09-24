@@ -93,13 +93,13 @@ class TranslationSortOrder(Enum):
 
     def label(self):
         if self == TranslationSortOrder.DATE_ADDED_NEWEST:
-            return "Date Added (Newest)"
+            return _("Date Added (Newest)")
         if self == TranslationSortOrder.DATE_ADDED_OLDEST:
-            return "Date Added (Oldest)"
+            return _("Date Added (Oldest)")
         if self == TranslationSortOrder.SOURCE_TEXT:
-            return "Source Text"
+            return _("Source Text")
         if self == TranslationSortOrder.TRANSLATED_TEXT:
-            return "Translated Text"
+            return _("Translated Text")
         raise ValueError(f"unhandled translation sort order: {self}")
 
     @classmethod

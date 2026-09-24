@@ -4,7 +4,7 @@ import os
 from utils.app_info_cache import app_info_cache
 from utils.config import config
 from utils.globals import Topic
-from utils.translations import I18N, _
+from utils.translations import _, get_english_language_name
 
 
 class Prompter:
@@ -254,7 +254,7 @@ class Prompter:
             # If no language-specific prompt exists, use translation approach
             if language_code != "en":
                 english_prompt = self.get_prompt(prompt_topic, "en")
-                return self.get_translation_prompt(language_code, I18N.get_english_language_name(language_code), english_prompt)
+                return self.get_translation_prompt(language_code, get_english_language_name(language_code), english_prompt)
             raise
 
 

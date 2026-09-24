@@ -17,3 +17,4 @@ torch>=2.0.0
 music-tag>=0.4.3
 numpy>=1.24.0
 pillow>=9.5.0 
+langcodes[data]

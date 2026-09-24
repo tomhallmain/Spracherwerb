@@ -109,6 +109,20 @@ class I18N:
 _ = I18N._
 mark_for_translation = I18N.mark_for_translation
 
+
+def get_english_language_name(language_code='en'):
+    """English name of a language code (e.g. "de" -> "German"), for prompts
+    and other text that must stay in English regardless of the UI locale."""
+    if language_code is None or language_code.strip() == "" or language_code == "en":
+        return "English"
+    try:
+        import langcodes
+        language = langcodes.Language.get(language_code)
+        return language.display_name()
+    except Exception as e:
+        logger.error(f"Error while getting language name for code '{language_code}': {e}")
+        return "English"
+
 # Modifier names only — avoid short verbs like "Delete" (already msgid → "Löschen").
 # Keep QKeySequence("Ctrl+…") bindings in English; use this for UI labels only.
 _SHORTCUT_MODIFIER_RE = re.compile(r"\b(?:Ctrl|Shift|Alt)\b")

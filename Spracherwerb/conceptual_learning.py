@@ -251,7 +251,7 @@ class ConceptualLearning(BaseLearningModule):
             verdict = _("Correct!")
         else:
             self._errors.append(question.prompt)
-            verdict = _("Not quite -- the answer was {0}) {1}").format(
+            verdict = _("Not quite -- the answer was ({0}) {1}").format(
                 question.correct_index + 1, question.correct_option)
         return f"{verdict}\n{question.explanation}" if question.explanation else verdict
 

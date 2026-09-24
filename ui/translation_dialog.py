@@ -6,7 +6,7 @@ import traceback
 
 from utils.config import config
 from utils.globals import Language
-from utils.translations import I18N
+from utils.translations import _
 from utils import translation_import
 from extensions.wordreference import WordReference, WordReferenceError
 
@@ -86,7 +86,7 @@ class CustomTextEdit(QTextEdit):
 class TranslationDialog(QDialog):
     def __init__(self, parent=None, translation=None):
         super().__init__(parent)
-        self.setWindowTitle("Edit Translation" if translation else "Add Translation")
+        self.setWindowTitle(_("Edit Translation") if translation else _("Add Translation"))
         self.setMinimumSize(400, 300)
         
         # Create main layout
@@ -94,26 +94,26 @@ class TranslationDialog(QDialog):
         
         # Create language display
         language_layout = QHBoxLayout()
-        self.source_language_label = QLabel(f"Source: {Language.get_language_name(config.source_language)}")
-        self.target_language_label = QLabel(f"Target: {Language.get_language_name(config.target_language)}")
+        self.source_language_label = QLabel(_("Source: {0}").format(Language.get_language_name(config.source_language)))
+        self.target_language_label = QLabel(_("Target: {0}").format(Language.get_language_name(config.target_language)))
         language_layout.addWidget(self.source_language_label)
         language_layout.addWidget(self.target_language_label)
         layout.addLayout(language_layout)
         
         # Create source text input
-        layout.addWidget(QLabel("Source Text:"))
+        layout.addWidget(QLabel(_("Source Text:")))
         self._source_text_edit = CustomTextEdit()
         self._source_text_edit.setMaximumHeight(100)
         layout.addWidget(self._source_text_edit)
         
         # Create translated text input
-        layout.addWidget(QLabel("Translated Text:"))
+        layout.addWidget(QLabel(_("Translated Text:")))
         self._translated_text_edit = CustomTextEdit()
         self._translated_text_edit.setMaximumHeight(100)
         layout.addWidget(self._translated_text_edit)
         
         # Create notes input
-        layout.addWidget(QLabel("Notes (Optional):"))
+        layout.addWidget(QLabel(_("Notes (Optional):")))
         self._notes_edit = CustomTextEdit()
         self._notes_edit.setMaximumHeight(100)
         layout.addWidget(self._notes_edit)
@@ -122,13 +122,13 @@ class TranslationDialog(QDialog):
         button_layout = QHBoxLayout()
         self.wordreference_button = QPushButton("WordReference")
         self.wordreference_button.setToolTip(
-            "Look up the source text on WordReference (English↔other language pairs)."
+            _("Look up the source text on WordReference (English↔other language pairs).")
         )
         self.wordreference_button.clicked.connect(self.lookup_wordreference)
         button_layout.addWidget(self.wordreference_button)
-        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button = QPushButton(_("Cancel"))
         self.cancel_button.clicked.connect(self.reject)
-        self.add_button = QPushButton("Save")
+        self.add_button = QPushButton(_("Save"))
         self.add_button.clicked.connect(self.accept)
         button_layout.addWidget(self.cancel_button)
         button_layout.addWidget(self.add_button)
@@ -172,8 +172,8 @@ class TranslationDialog(QDialog):
         if not self.source_text:
             QMessageBox.warning(
                 self, 
-                "Missing Source Text",
-                "Please enter the source text. This field cannot be empty."
+                _("Missing Source Text"),
+                _("Please enter the source text. This field cannot be empty.")
             )
             self._source_text_edit.setFocus()
             return False
@@ -181,8 +181,8 @@ class TranslationDialog(QDialog):
         if not self.translated_text:
             QMessageBox.warning(
                 self, 
-                "Missing Translation",
-                "Please enter the translated text. This field cannot be empty."
+                _("Missing Translation"),
+                _("Please enter the translated text. This field cannot be empty.")
             )
             self._translated_text_edit.setFocus()
             return False
@@ -196,7 +196,7 @@ class TranslationDialog(QDialog):
             QMessageBox.warning(
                 self,
                 "WordReference",
-                "Enter source text to look up.",
+                _("Enter source text to look up."),
             )
             self._source_text_edit.setFocus()
             return
@@ -206,9 +206,11 @@ class TranslationDialog(QDialog):
             QMessageBox.information(
                 self,
                 "WordReference",
-                "WordReference only supports dictionaries with English on one side "
-                f"({Language.get_language_name(config.source_language)} → "
-                f"{Language.get_language_name(config.target_language)} is not available).",
+                _("WordReference only supports dictionaries with English on one side "
+                  "({0} → {1} is not available).").format(
+                    Language.get_language_name(config.source_language),
+                    Language.get_language_name(config.target_language),
+                ),
             )
             return
 
@@ -226,7 +228,7 @@ class TranslationDialog(QDialog):
             reply = QMessageBox.question(
                 self,
                 "WordReference",
-                "Could not retrieve results. Open the WordReference page in your browser instead?",
+                _("Could not retrieve results. Open the WordReference page in your browser instead?"),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.Yes,
             )
@@ -245,7 +247,7 @@ class TranslationDialog(QDialog):
         dialog = QMessageBox(self)
         dialog.setWindowTitle("WordReference")
         dialog.setText(message)
-        open_button = dialog.addButton("Open in Browser", QMessageBox.ActionRole)
+        open_button = dialog.addButton(_("Open in Browser"), QMessageBox.ActionRole)
         dialog.addButton(QMessageBox.Ok)
         dialog.exec_()
         if dialog.clickedButton() == open_button:

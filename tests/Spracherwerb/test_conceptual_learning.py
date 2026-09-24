@@ -293,7 +293,7 @@ class TestConceptualLearningQuestions:
 
         result = module.handle_response(answer_number(module, correct=False), services)
 
-        expected = _("Not quite -- the answer was {0}) {1}").format(
+        expected = _("Not quite -- the answer was ({0}) {1}").format(
             question.correct_index + 1, question.correct_option)
         assert expected in result.text_response
         assert module._errors == [question.prompt]
