@@ -17,6 +17,7 @@ class ActivityType(str, Enum):
     READING_COMPREHENSION = "reading_comprehension"
     SITUATIONAL_DIALOGUES = "situational_dialogues"
     VISUAL_VOCABULARY = "visual_vocabulary"
+    CONCEPTUAL_LEARNING = "conceptual_learning"
 
     @classmethod
     def from_value(cls, value: str) -> "ActivityType":

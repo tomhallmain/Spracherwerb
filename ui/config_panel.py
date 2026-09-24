@@ -15,6 +15,7 @@ ACTIVITY_MODES = [
     ("Vocabulary Building", ActivityType.VOCABULARY_BUILDER),
     ("Visual Vocabulary", ActivityType.VISUAL_VOCABULARY),
     ("Grammar Practice", ActivityType.GRAMMAR_PRACTICE),
+    ("Conceptual Learning", ActivityType.CONCEPTUAL_LEARNING),
     ("Conversation", ActivityType.CONVERSATION_PRACTICE),
     ("Listening Comprehension", ActivityType.LISTENING_COMPREHENSION),
     ("Reading Comprehension", ActivityType.READING_COMPREHENSION),

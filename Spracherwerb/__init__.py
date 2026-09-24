@@ -6,6 +6,7 @@ from .activity_registry import ActivityRegistry
 from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleServices
 from .activity_types import ActivityType, LearningActivity
 from .base_learning_module import ActivityNotRegisteredError, BaseLearningModule
+from .conceptual_learning import ConceptualLearning
 from .conversation_practice import ConversationPractice
 from .cultural_context import CulturalContext
 from .grammar_practice import GrammarPractice
@@ -38,6 +39,7 @@ __all__ = [
     'ActivityTurnResult',
     'ActivityType',
     'BaseLearningModule',
+    'ConceptualLearning',
     'ConversationPractice',
     'CulturalContext',
     'GrammarPractice',

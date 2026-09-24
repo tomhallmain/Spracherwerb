@@ -95,6 +95,7 @@ The application offers various learning activities through prompts in the prompt
 
 - `vocabulary_builder` - Focused vocabulary learning with context, usage examples, and AI-generated images
 - `grammar_practice` - Interactive grammar exercises with explanations
+- `conceptual_learning` - Broad rules that apply across the language, with examples (drawing on saved translations) and multiple-choice questions
 - `conversation_practice` - Simulated conversations with the AI tutor
 - `listening_comprehension` - Audio-based exercises with follow-up questions
 - `writing_practice` - Writing exercises with AI feedback

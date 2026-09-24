@@ -16,6 +16,9 @@ class ActivityStartResult:
     ui_event: Optional[str] = None
     ui_payload: Optional[Dict[str, Any]] = None
     expects_response: bool = True
+    # What the engine speaks when voice_response is None: None speaks
+    # text_response, an empty string speaks nothing.
+    voice_text: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -42,6 +45,8 @@ class ActivityTurnResult:
     feedback: Optional[str] = None
     ui_event: Optional[str] = None
     ui_payload: Optional[Dict[str, Any]] = None
+    # Same meaning as ActivityStartResult.voice_text.
+    voice_text: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {

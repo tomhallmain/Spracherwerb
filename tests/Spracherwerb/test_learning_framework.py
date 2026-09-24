@@ -3,6 +3,7 @@
 import pytest
 
 from Spracherwerb.activity_registry import ActivityRegistry
+from Spracherwerb.activity_results import ActivityStartResult, ActivityTurnResult
 from Spracherwerb.activity_types import ActivityType
 from Spracherwerb.learning_engine import LearningEngine
 from Spracherwerb.session_config import SessionConfig
@@ -83,6 +84,49 @@ def test_learning_engine_runs_stub_module(session_config, session_context):
     assert results["stub"] is True
     assert results["turns"] == 2
     assert len(session_context.activities_completed) == 1
+
+
+class FakeVoice:
+    def __init__(self):
+        self.spoken = []
+
+    def generate_speech(self, text, topic="learning"):
+        self.spoken.append(text)
+        return f"speech_{len(self.spoken)}.mp3"
+
+
+class VoiceTextModule(StubLearningModule):
+    def start(self, services):
+        return ActivityStartResult(
+            text_response="Label: Beispielsatz.",
+            activity_type=self.activity_type.value,
+            voice_text="Beispielsatz.",
+        )
+
+    def handle_response(self, user_text, services):
+        return ActivityTurnResult(
+            text_response="Nothing worth reading aloud.",
+            activity_type=self.activity_type.value,
+            voice_text="",
+        )
+
+
+def test_learning_engine_speaks_voice_text_in_place_of_text_response(session_context):
+    ActivityRegistry.register(VoiceTextModule)
+    session_config = SessionConfig({
+        "source_language": "en",
+        "target_language": "de",
+        "enable_pronunciation_practice": True,
+    })
+    engine = LearningEngine(session_config, session_context, vocabulary_pool=VocabularyPool())
+    engine.voice = FakeVoice()
+
+    start = engine.start_activity("vocabulary_builder")
+    turn = engine.process_user_response("anything")
+
+    assert engine.voice.spoken == ["Beispielsatz."]
+    assert start["voice_response"] == "speech_1.mp3"
+    assert turn["voice_response"] is None
 
 
 def test_unimplemented_module_start(session_config, session_context):

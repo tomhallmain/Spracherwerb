@@ -22,6 +22,10 @@ from .session_config import SessionConfig
 logger = logging.getLogger(__name__)
 
 
+def _text_to_speak(result) -> str:
+    return result.text_response if result.voice_text is None else result.voice_text
+
+
 class LearningEngine:
     """Routes learning activities to registered module implementations."""
 
@@ -96,7 +100,7 @@ class LearningEngine:
 
         start_result = module.start(services)
         if start_result.voice_response is None:
-            start_result.voice_response = self._maybe_generate_voice(start_result.text_response)
+            start_result.voice_response = self._maybe_generate_voice(_text_to_speak(start_result))
 
         payload = start_result.to_dict()
         payload["config"] = self.config.to_dict()
@@ -109,7 +113,7 @@ class LearningEngine:
         services = self._services()
         turn_result = self.current_module.handle_response(response, services)
         if turn_result.voice_response is None:
-            turn_result.voice_response = self._maybe_generate_voice(turn_result.text_response)
+            turn_result.voice_response = self._maybe_generate_voice(_text_to_speak(turn_result))
 
         self.activity_results["responses"].append(
             {
