@@ -2,10 +2,8 @@ import re
 
 from tts.text_cleaner_ruleset import TextCleanerRuleset
 from utils.config import config
-from utils.translations import I18N
+from utils.translations import _
 from utils.utils import Utils
-
-_ = I18N._
 
 
 class Chunker:

@@ -9,10 +9,8 @@ from extensions.llm import LLMResult
 from tts.speakers import speakers
 from utils.config import config
 from utils.utils import Utils
-from utils.translations import I18N
+from utils.translations import _
 from utils.logging_setup import get_logger
-
-_ = I18N._
 
 logger = get_logger(__name__)
 

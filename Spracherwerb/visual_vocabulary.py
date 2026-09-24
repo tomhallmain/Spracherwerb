@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from utils import translation_import
 from utils.globals import Language
-from utils.translations import I18N
+from utils.translations import _
 
 from .activity_registry import ActivityRegistry
 from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleServices
@@ -28,7 +28,6 @@ from .learning_memory import LearningMemory
 from .recall_matching import check_recall_answer, resolve_recall_direction
 from .vocabulary_builder import TARGET_PHRASES as TEXT_PHRASES
 
-_ = I18N._
 logger = logging.getLogger(__name__)
 
 IMAGE_CACHE_DIR = Path("cache/visual_vocabulary")

@@ -34,10 +34,9 @@ from PySide6.QtGui import QCursor, QImage, QImageReader, QMovie, QPainter, QPixm
 from ui.app_style import AppStyle
 from ui.media_controls_overlay import MediaControlsOverlay, OVERLAY_HEIGHT
 from utils.logging_setup import get_logger
-from utils.translations import I18N
+from utils.translations import _
 
 logger = get_logger(__name__)
-_ = I18N._
 
 # Formats Qt may not build in (HEIC, AVIF, ...). Optional: the frame degrades to
 # whatever QImageReader handles.

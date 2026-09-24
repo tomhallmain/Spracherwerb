@@ -4,10 +4,8 @@ from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass
 
 from utils.config import config
-from utils.translations import I18N
+from utils.translations import _
 from utils.logging_setup import get_logger
-
-_ = I18N._
 
 logger = get_logger(__name__)
 

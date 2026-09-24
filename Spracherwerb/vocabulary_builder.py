@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from utils import translation_import
 from utils.globals import Language
-from utils.translations import I18N
+from utils.translations import _
 
 from .activity_registry import ActivityRegistry
 from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleServices
@@ -15,8 +15,6 @@ from .base_learning_module import BaseLearningModule
 from .bilingual_phrasing import bilingual_phrase
 from .learning_memory import LearningMemory
 from .recall_matching import check_recall_answer, resolve_recall_direction
-
-_ = I18N._
 
 # Short target-language phrasings for the languages translation_import already
 # special-cases for article detection (_ARTICLE_PREFIXES_BY_LANGUAGE). Paired

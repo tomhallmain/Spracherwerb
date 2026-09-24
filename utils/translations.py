@@ -31,8 +31,13 @@ class I18N:
             return s
 
     @staticmethod
-    def N_(msgid: str) -> str:
-        """Return *msgid* unchanged; marks the string for gettext extraction."""
+    def mark_for_translation(msgid: str) -> str:
+        """Return *msgid* unchanged; marks the string for gettext extraction.
+
+        For strings defined at import time (e.g. module-level label tables):
+        pass the marked msgid through _() where it is displayed, so it follows
+        the locale installed at that point.
+        """
         return msgid
 
     @staticmethod
@@ -89,7 +94,7 @@ class I18N:
     '''
     NOTE when gathering the translation strings, set _() == to gettext.gettext() instead of the above, and run:
 
-        ```python C:\\Python310\\Tools\\i18n\\pygettext.py -d base -o locale\\base.pot .```
+        ```python C:\\Python310\\Tools\\i18n\\pygettext.py -d base -k mark_for_translation -o locale\\base.pot .```
 
     in the base directory. The POT output file can be used as source for the PO files in each locale.
     Run personal script C:\\Scripts\\i18n_manager.py to generate new PO files and look for invalid translations.
@@ -102,6 +107,7 @@ class I18N:
     '''
 
 _ = I18N._
+mark_for_translation = I18N.mark_for_translation
 
 # Modifier names only — avoid short verbs like "Delete" (already msgid → "Löschen").
 # Keep QKeySequence("Ctrl+…") bindings in English; use this for UI labels only.

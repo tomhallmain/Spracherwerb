@@ -1,9 +1,7 @@
 from utils.logging_setup import get_logger
-from utils.translations import I18N
+from utils.translations import _
 
 logger = get_logger("job_queue")
-
-_ = I18N._
 
 class JobQueue:
     def __init__(self, name="JobQueue", max_size=50):

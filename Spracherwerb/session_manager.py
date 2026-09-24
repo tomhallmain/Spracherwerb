@@ -3,12 +3,11 @@ from typing import Optional, Dict, Any, List
 from enum import Enum, auto
 import logging
 
-from utils.translations import I18N
+from utils.translations import _
 from .session_config import SessionConfig
 from .session_context import SessionContext, UserAction
 from .learning_session import LearningSession
 
-_ = I18N._
 logger = logging.getLogger(__name__)
 
 

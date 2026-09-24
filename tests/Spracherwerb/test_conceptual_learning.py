@@ -17,9 +17,7 @@ from Spracherwerb.conceptual_learning import (
 )
 from Spracherwerb.learning_memory import LearningMemory
 from Spracherwerb.session_config import SessionConfig
-from utils.translations import I18N
-
-_ = I18N._
+from utils.translations import _
 
 
 @pytest.fixture(autouse=True)

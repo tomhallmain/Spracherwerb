@@ -4,9 +4,7 @@ from typing import Optional, List, Dict, Any
 import time
 
 from utils.config import config
-from utils.translations import I18N
-
-_ = I18N._
+from utils.translations import _
 
 
 class UserAction(Enum):

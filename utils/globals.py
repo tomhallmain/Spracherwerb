@@ -1,9 +1,7 @@
 from enum import Enum
 import os
 
-from utils.translations import I18N
-
-_ = I18N._
+from utils.translations import _
 
 
 class AppInfo:
@@ -59,17 +57,14 @@ class Language(Enum):
     @classmethod
     def get_language_name(cls, lang_code):
         """Convert a language code to its display name in the current locale."""
-        # Lazy import to avoid circular dependency
-        from utils.translations import I18N
-        
         # Map language codes to their display names
         lang_name_map = {
-            cls.ENGLISH.value: I18N._("English"),
-            cls.GERMAN.value: I18N._("German"),
-            cls.FRENCH.value: I18N._("French"),
-            cls.SPANISH.value: I18N._("Spanish"),
-            cls.ITALIAN.value: I18N._("Italian"),
-            cls.LATIN.value: I18N._("Latin"),
+            cls.ENGLISH.value: _("English"),
+            cls.GERMAN.value: _("German"),
+            cls.FRENCH.value: _("French"),
+            cls.SPANISH.value: _("Spanish"),
+            cls.ITALIAN.value: _("Italian"),
+            cls.LATIN.value: _("Latin"),
         }
         
         return lang_name_map.get(lang_code, lang_code)  # Return the code if no translation is available
@@ -77,17 +72,14 @@ class Language(Enum):
     @classmethod
     def get_language_code(cls, lang_name):
         """Convert a language name to its language code."""
-        # Lazy import to avoid circular dependency
-        from utils.translations import I18N
-        
         # Create a mapping of translated names to codes
         lang_map = {
-            I18N._("English"): cls.ENGLISH.value,
-            I18N._("German"): cls.GERMAN.value,
-            I18N._("French"): cls.FRENCH.value,
-            I18N._("Spanish"): cls.SPANISH.value,
-            I18N._("Italian"): cls.ITALIAN.value,
-            I18N._("Latin"): cls.LATIN.value,
+            _("English"): cls.ENGLISH.value,
+            _("German"): cls.GERMAN.value,
+            _("French"): cls.FRENCH.value,
+            _("Spanish"): cls.SPANISH.value,
+            _("Italian"): cls.ITALIAN.value,
+            _("Latin"): cls.LATIN.value,
         }
         return lang_map.get(lang_name, lang_name)  # Return the code if found, otherwise return the input
 

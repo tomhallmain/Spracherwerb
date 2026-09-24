@@ -1,3 +1,4 @@
+import html
 import os
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QLineEdit, QPushButton, QFrame
@@ -5,10 +6,8 @@ from PySide6.QtCore import Qt, Signal, Slot
 
 from Spracherwerb.media_generation import MediaPriority, MediaState
 from utils.config import config
-from utils.translations import I18N
+from utils.translations import _
 from utils.utils import Utils
-
-_ = I18N._
 
 class InteractionPanel(QWidget):
     """Right sidebar for user interaction with the language agent"""
@@ -98,9 +97,11 @@ class InteractionPanel(QWidget):
         
     def append_message(self, sender, content, is_html=False):
         """Append a message to the log area with optional HTML content"""
+        # The log is rich text, so plain content (LLM output included) is
+        # escaped: a "<" in it would otherwise be parsed as markup.
         if not is_html:
-            content = content.replace("\n", "<br>")
-        self.log_area.append(f"<b>{sender}:</b><br>{content}")
+            content = html.escape(content).replace("\n", "<br>")
+        self.log_area.append(f"<b>{html.escape(sender)}:</b><br>{content}")
         self.log_area.verticalScrollBar().setValue(
             self.log_area.verticalScrollBar().maximum()
         )

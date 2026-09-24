@@ -14,7 +14,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from utils.globals import Language
-from utils.translations import I18N
+from utils.translations import _
 
 from .activity_registry import ActivityRegistry
 from .activity_results import ActivityStartResult, ActivityTurnResult, ModuleServices
@@ -24,7 +24,6 @@ from .bilingual_phrasing import bilingual_phrase
 from .dictionary_hint import pick_vocabulary_hint
 from .llm_turn import ask_llm
 
-_ = I18N._
 logger = logging.getLogger(__name__)
 
 LLM_TIMEOUT = 60.0

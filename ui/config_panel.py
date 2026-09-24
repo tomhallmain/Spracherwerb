@@ -6,24 +6,32 @@ from PySide6.QtCore import Qt, Signal
 from Spracherwerb.activity_types import ActivityType
 from ui.gutenberg_search_window import GutenbergSearchWindow
 from utils.config import config
-from utils.translations import I18N
+from utils.translations import _, mark_for_translation
 from utils.globals import Language
 
 # Modes offered in the UI today, in display order. Add a tuple here to offer
 # a new activity once its module exists -- no other ConfigPanel change needed.
+# Labels are marked for extraction here and translated when the combo box
+# is filled, so they follow the locale installed at that point.
 ACTIVITY_MODES = [
-    ("Vocabulary Building", ActivityType.VOCABULARY_BUILDER),
-    ("Visual Vocabulary", ActivityType.VISUAL_VOCABULARY),
-    ("Grammar Practice", ActivityType.GRAMMAR_PRACTICE),
-    ("Conceptual Learning", ActivityType.CONCEPTUAL_LEARNING),
-    ("Conversation", ActivityType.CONVERSATION_PRACTICE),
-    ("Listening Comprehension", ActivityType.LISTENING_COMPREHENSION),
-    ("Reading Comprehension", ActivityType.READING_COMPREHENSION),
-    ("Writing Practice", ActivityType.WRITING_PRACTICE),
-    ("Situational Dialogues", ActivityType.SITUATIONAL_DIALOGUES),
-    ("Cultural Learning", ActivityType.CULTURAL_CONTEXT),
-    ("Idioms & Expressions", ActivityType.IDIOMS_AND_EXPRESSIONS),
-    ("Pronunciation Guide", ActivityType.PRONUNCIATION_GUIDE),
+    (mark_for_translation("Vocabulary Building"), ActivityType.VOCABULARY_BUILDER),
+    (mark_for_translation("Visual Vocabulary"), ActivityType.VISUAL_VOCABULARY),
+    (mark_for_translation("Grammar Practice"), ActivityType.GRAMMAR_PRACTICE),
+    (mark_for_translation("Conceptual Learning"), ActivityType.CONCEPTUAL_LEARNING),
+    (mark_for_translation("Conversation"), ActivityType.CONVERSATION_PRACTICE),
+    (mark_for_translation("Listening Comprehension"), ActivityType.LISTENING_COMPREHENSION),
+    (mark_for_translation("Reading Comprehension"), ActivityType.READING_COMPREHENSION),
+    (mark_for_translation("Writing Practice"), ActivityType.WRITING_PRACTICE),
+    (mark_for_translation("Situational Dialogues"), ActivityType.SITUATIONAL_DIALOGUES),
+    (mark_for_translation("Cultural Learning"), ActivityType.CULTURAL_CONTEXT),
+    (mark_for_translation("Idioms & Expressions"), ActivityType.IDIOMS_AND_EXPRESSIONS),
+    (mark_for_translation("Pronunciation Guide"), ActivityType.PRONUNCIATION_GUIDE),
+]
+
+PROFICIENCY_LEVELS = [
+    (mark_for_translation("Beginner"), "beginner"),
+    (mark_for_translation("Intermediate"), "intermediate"),
+    (mark_for_translation("Advanced"), "advanced"),
 ]
 
 
@@ -44,7 +52,7 @@ class ConfigPanel(QWidget):
         self.setLayout(layout)
         
         # Language Settings Group
-        language_group = QGroupBox("Language Settings")
+        language_group = QGroupBox(_("Language Settings"))
         language_layout = QFormLayout()
         
         # Source language
@@ -66,38 +74,41 @@ class ConfigPanel(QWidget):
         
         # Proficiency level
         self.level_combo = QComboBox()
-        self.level_combo.addItems(["Beginner", "Intermediate", "Advanced"])
-        self.level_combo.setCurrentText(config.proficiency_level.capitalize())
-        self.level_combo.currentTextChanged.connect(self.on_proficiency_level_changed)
+        for label, level in PROFICIENCY_LEVELS:
+            self.level_combo.addItem(_(label), level)
+        level_index = self.level_combo.findData(str(config.proficiency_level).lower())
+        if level_index >= 0:
+            self.level_combo.setCurrentIndex(level_index)
+        self.level_combo.currentIndexChanged.connect(self._on_proficiency_level_changed)
         
-        language_layout.addRow("Source Language:", self.source_language_combo)
-        language_layout.addRow("Target Language:", self.target_language_combo)
-        language_layout.addRow("Proficiency Level:", self.level_combo)
+        language_layout.addRow(_("Source Language:"), self.source_language_combo)
+        language_layout.addRow(_("Target Language:"), self.target_language_combo)
+        language_layout.addRow(_("Proficiency Level:"), self.level_combo)
         language_group.setLayout(language_layout)
         
         # Learning Mode Group
-        mode_group = QGroupBox("Learning Mode")
+        mode_group = QGroupBox(_("Learning Mode"))
         mode_layout = QFormLayout()
         
         self.mode_combo = QComboBox()
         for label, activity_type in ACTIVITY_MODES:
-            self.mode_combo.addItem(label, activity_type.value)
+            self.mode_combo.addItem(_(label), activity_type.value)
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
 
-        mode_layout.addRow("Current Mode:", self.mode_combo)
+        mode_layout.addRow(_("Current Mode:"), self.mode_combo)
         mode_group.setLayout(mode_layout)
         
         # Gutenberg Books Group
-        books_group = QGroupBox("Learning Materials")
+        books_group = QGroupBox(_("Learning Materials"))
         books_layout = QVBoxLayout()
         
         # Button to open Gutenberg search
-        self.search_button = QPushButton("Select Books from Gutenberg")
+        self.search_button = QPushButton(_("Select Books from Gutenberg"))
         self.search_button.clicked.connect(self._open_gutenberg_search)
         books_layout.addWidget(self.search_button)
         
         # Label for selected books
-        self.books_label = QLabel("Selected Books:")
+        self.books_label = QLabel(_("Selected Books:"))
         books_layout.addWidget(self.books_label)
         
         # List widget for selected books
@@ -108,10 +119,10 @@ class ConfigPanel(QWidget):
         books_group.setLayout(books_layout)
         
         # Translations Group
-        translations_group = QGroupBox("Translations")
+        translations_group = QGroupBox(_("Translations"))
         translations_layout = QVBoxLayout()
         
-        self.translations_button = QPushButton("Open Translation Notes")
+        self.translations_button = QPushButton(_("Open Translation Notes"))
         self.translations_button.clicked.connect(self._open_translations)
         translations_layout.addWidget(self.translations_button)
         
@@ -144,7 +155,7 @@ class ConfigPanel(QWidget):
         for book in self.selected_books:
             item_text = f"{book.title} - {', '.join(book.authors)}"
             if book.word_count:
-                item_text += f" ({book.word_count} words)"
+                item_text += " " + _("({0} words)").format(book.word_count)
             self.books_list.addItem(item_text)
     
     def _open_translations(self):
@@ -162,9 +173,11 @@ class ConfigPanel(QWidget):
         config.target_language = Language.get_language_code(language)
         self.languages_changed.emit()
     
-    def on_proficiency_level_changed(self, level):
+    def _on_proficiency_level_changed(self, index):
         """Handle proficiency level change."""
-        config.proficiency_level = level.lower()
+        level = self.level_combo.itemData(index)
+        if level:
+            config.proficiency_level = level
 
     def _on_mode_changed(self, index):
         """Handle learning mode change."""

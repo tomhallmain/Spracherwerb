@@ -19,9 +19,7 @@ from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Signal
 from PySide6.QtGui import QPainter, QColor
 
 from ui.app_style import AppStyle
-from utils.translations import I18N
-
-_ = I18N._
+from utils.translations import _
 
 
 SLIDER_MAX = 1000

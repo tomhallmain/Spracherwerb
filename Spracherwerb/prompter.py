@@ -4,9 +4,7 @@ import os
 from utils.app_info_cache import app_info_cache
 from utils.config import config
 from utils.globals import Topic
-from utils.translations import I18N
-
-_ = I18N._
+from utils.translations import I18N, _
 
 
 class Prompter:

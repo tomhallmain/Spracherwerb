@@ -18,7 +18,7 @@ from typing import Any, Dict, Optional
 
 from utils import translation_import
 from utils.globals import Language
-from utils.translations import I18N
+from utils.translations import _
 
 from . import image_hint
 from .activity_registry import ActivityRegistry
@@ -27,7 +27,6 @@ from .activity_types import ActivityType
 from .base_learning_module import BaseLearningModule
 from .llm_turn import ask_llm
 
-_ = I18N._
 logger = logging.getLogger(__name__)
 
 MAX_TURNS = 8
