@@ -32,6 +32,9 @@ class WordReferenceTranslation:
     context: str = ''
     from_pos: Optional[str] = None
     to_pos: Optional[str] = None
+    # Part of speech of each to_terms item, by index; may be shorter than
+    # to_terms when a layout carries no per-term POS.
+    to_term_pos: List[Optional[str]] = field(default_factory=list)
 
 
 @dataclass
@@ -278,6 +281,7 @@ class WordReference:
                     )
                     if to_term:
                         current_entry.to_terms.append(to_term)
+                        current_entry.to_term_pos.append(current_entry.to_pos)
                     section.entries.append(current_entry)
                     continue
 
@@ -291,9 +295,11 @@ class WordReference:
                     current_entry.context = extra
 
                 if to_term and to_term not in current_entry.to_terms:
+                    to_pos = self._extract_pos(to_cell)
                     current_entry.to_terms.append(to_term)
+                    current_entry.to_term_pos.append(to_pos)
                     if not current_entry.to_pos:
-                        current_entry.to_pos = self._extract_pos(to_cell)
+                        current_entry.to_pos = to_pos
 
             if section.entries:
                 sections.append(section)
@@ -360,6 +366,7 @@ class WordReference:
                 context=context,
                 from_pos=self._extract_pos(cells[2]),
                 to_pos=self._extract_pos(cells[0]),
+                to_term_pos=[self._extract_pos(cells[0])],
             ))
         return entries
 

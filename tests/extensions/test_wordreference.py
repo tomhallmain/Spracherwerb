@@ -182,6 +182,12 @@ class TestWordReference:
         assert sections[0].entries[0].from_term == 'dog'
         assert sections[0].entries[0].to_terms == ['Hund', 'Köter']
 
+    def test_keeps_each_translations_part_of_speech(self, wordreference_client):
+        """Continuation rows carry their own POS, which gives a German noun its gender."""
+        sections = wordreference_client._parse_html(SAMPLE_HTML, 'ende')
+
+        assert sections[0].entries[0].to_term_pos == ['Nm', 'Nm']
+
     def test_parses_both_alternating_row_classes(self, wordreference_client):
         """Translation rows alternate odd/even; reading only one drops half the table."""
         sections = wordreference_client._parse_html(ALTERNATING_ROWS_HTML, 'deen')

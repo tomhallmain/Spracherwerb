@@ -16,8 +16,9 @@ everything that needs a human/LLM look before import:
 - lines that ``split_translation_line`` cannot parse at all (would be
   silently dropped)
 - unresolved ``***`` placeholders
-- entries whose source (right-hand) side still looks like German rather
-  than a translation (heuristic; always worth a manual check)
+- entries whose source (right-hand) side still looks like the target
+  language rather than a translation (heuristic; always worth a manual
+  check; only for target languages in ``_TARGET_MARKERS_BY_LANGUAGE``)
 - occurrences of "ibg", a common mobile-keyboard mistype of the "-ing"
   ending (n and b sit next to each other on a phone keyboard), e.g.
   "somethibg" for "something"
@@ -43,8 +44,9 @@ Nothing here fabricates a translation. Entries that need one are reported,
 not guessed.
 
 Usage:
-    python scripts/lint_translation_import.py docs/import.txt
-    python scripts/lint_translation_import.py docs/import.txt --write-normalized docs/import.normalized.txt
+    python scripts/lint_translation_import.py path/to/import.md
+    python scripts/lint_translation_import.py path/to/import.md --target-language fr
+    python scripts/lint_translation_import.py path/to/import.md --write-normalized path/to/import.normalized.md
 """
 
 import argparse
@@ -55,15 +57,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from utils import translation_import  # noqa: E402
+from utils.config import config  # noqa: E402
 
-# Heuristic only: flags candidates for manual review, not a verdict. Common
-# German function words/diacritics turning up on the source side usually mean
-# the "translation" is still German (see docs/import.txt history: entries
-# like "Getreide - Hafer, Gerste, Weizen" had German glosses instead of an
-# English translation).
-_GERMAN_MARKER_RE = re.compile(
-    r'[äöüßÄÖÜ]|(?:\b(?:und|oder|kleiner|größer|für|kein|nicht)\b)'
-)
+# Heuristic only: flags candidates for manual review, not a verdict. Function
+# words or letters of the target language on the source side can mean the
+# "translation" is still in the target language, e.g. "Getreide - Hafer,
+# Gerste, Weizen" with German glosses where English was meant. Target
+# languages without an entry skip the check.
+_TARGET_MARKERS_BY_LANGUAGE = {
+    'de': re.compile(r'[äöüßÄÖÜ]|(?:\b(?:und|oder|kleiner|größer|für|kein|nicht)\b)'),
+}
 
 # A comma-separated word/phrase list is safe for merge_source_texts() to
 # split on every comma. Anything ``translation_import.looks_like_prose`` flags
@@ -104,11 +107,10 @@ class Entry:
     def has_ibg_typo(self):
         return 'ibg' in self.raw_line.lower()
 
-    @property
-    def looks_untranslated(self):
-        if not self.parsed:
+    def looks_untranslated(self, marker_re):
+        if not self.parsed or marker_re is None:
             return False
-        return bool(_GERMAN_MARKER_RE.search(self.source))
+        return bool(marker_re.search(self.source))
 
 
 def parse_file(lines):
@@ -180,7 +182,9 @@ def _append_section(lines, header, items, render_item, subtext=None):
     lines.append("")
 
 
-def build_report(entries, risky_groups):
+def build_report(entries, risky_groups, target_language):
+    marker_re = _TARGET_MARKERS_BY_LANGUAGE.get(
+        translation_import.primary_language_tag(target_language))
     unparseable = [
         e for e in entries
         if not e.parsed and not e.is_blank and not e.has_placeholder
@@ -188,7 +192,7 @@ def build_report(entries, risky_groups):
     placeholders = [e for e in entries if e.has_placeholder]
     untranslated_looking = [
         e for e in entries
-        if e.parsed and not e.dropped_as_duplicate_of and e.looks_untranslated
+        if e.parsed and not e.dropped_as_duplicate_of and e.looks_untranslated(marker_re)
     ]
     ibg_typos = [e for e in entries if e.has_ibg_typo]
     duplicates = [e for e in entries if e.dropped_as_duplicate_of]
@@ -198,6 +202,9 @@ def build_report(entries, risky_groups):
     parsed_count = sum(1 for e in entries if e.parsed)
     lines.append(f"  {parsed_count} parsed as target/source entries")
     lines.append(f"  {len(duplicates)} of those duplicate an earlier target (would be merged)")
+    if marker_re is None:
+        lines.append(
+            f"  no untranslated-source check for target language {target_language!r}")
     lines.append("")
 
     _append_section(
@@ -220,7 +227,7 @@ def build_report(entries, risky_groups):
 
     _append_section(
         lines,
-        f"Entries whose source side still looks German, needs a human/LLM check ({len(untranslated_looking)}):",
+        f"Entries whose source side still looks like {target_language}, needs a human/LLM check ({len(untranslated_looking)}):",
         untranslated_looking,
         lambda e: f"    {e.line_no}: {e.target} - {e.source}",
     )
@@ -291,6 +298,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('input', type=Path, help="plain-text import file to lint")
     parser.add_argument(
+        '--target-language',
+        default=translation_import.primary_language_tag(config.target_language),
+        help="language of the left-hand (target) side (default: target_language "
+             "from the app config)",
+    )
+    parser.add_argument(
         '--write-normalized', type=Path, default=None,
         help="write a normalized copy (canonical spacing, in-file duplicates merged) to this path",
     )
@@ -306,7 +319,7 @@ def main():
     entries = parse_file(lines)
     risky_groups = find_in_file_duplicates(entries)
 
-    report = build_report(entries, risky_groups)
+    report = build_report(entries, risky_groups, args.target_language)
     print(report)
     if args.report_out:
         args.report_out.write_text(report + '\n', encoding='utf-8')
