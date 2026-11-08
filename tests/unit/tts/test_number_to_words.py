@@ -1,6 +1,7 @@
 import pytest
 
 from tts.text_cleaner_ruleset import NumberToWordsConverter, TextCleanerRuleset
+from utils.translations import I18N
 
 
 class TestNumberToWordsConverter:
@@ -341,6 +342,16 @@ class TestTextCleanerRulesetIntegration:
         assert "Zahl" not in trailing_hash
         assert "#" in trailing_hash
 
+        # Stand in for the de catalog, so this checks that the label is looked
+        # up for the given locale, not whether the catalog has that entry yet.
+        real_override = I18N.get_translation_override
+
+        def fake_override(msgid, locale=None):
+            if locale == "de" and msgid == "Number \\1":
+                return "Zahl \\1"
+            return real_override(msgid, locale)
+
+        monkeypatch.setattr(I18N, "get_translation_override", staticmethod(fake_override))
         german_numbered = cleaner.clean("Satz #5 in C-Dur", locale="de")
         assert "Zahl 5" in german_numbered
         assert "#5" not in german_numbered

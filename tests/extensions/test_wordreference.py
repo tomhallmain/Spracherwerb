@@ -114,6 +114,55 @@ ALTERNATING_ROWS_HTML = """
 """
 
 
+# An English noun's POS label is "n", a letter that also occurs inside the
+# headword, at its end ("citizen") or only in the middle ("reference").
+ENGLISH_NOUN_HTML = """
+<div id="articleWRD">
+  <table class="WRD" data-dict="ende">
+    <tr class="odd">
+      <td class="FrWrd"><strong>reference</strong> <em class="POS2" data-abbr="n">n</em></td>
+      <td>(mention)</td>
+      <td class="ToWrd">Bezug <em class="POS2" data-abbr="Nm">Nm</em></td>
+    </tr>
+    <tr class="even">
+      <td class="FrWrd"><strong>citizen</strong> <em class="POS2" data-abbr="n">n</em></td>
+      <td>(member of a country)</td>
+      <td class="ToWrd">Staatsb&uuml;rger <em class="POS2" data-abbr="Nm">Nm</em></td>
+    </tr>
+  </table>
+</div>
+"""
+
+# The older editions mark hyphenation points with a middle dot, and the
+# current one can carry soft hyphens.
+SYLLABLE_SEPARATOR_HTML = """
+<div id="articleWRD">
+  <table class="WRD" data-dict="ende">
+    <tr class="odd">
+      <td class="FrWrd"><strong>frame of reference</strong> <em class="POS2" data-abbr="n">n</em></td>
+      <td>(axes)</td>
+      <td class="ToWrd">Ba&shy;sis&shy;punkt <em class="POS2" data-abbr="Nm">Nm</em></td>
+    </tr>
+  </table>
+</div>
+<div id="otherDicts">
+  <div class="small1">W&ouml;rterbuch v1 Englisch-Deutsch &copy; WordReference.com 2012:</div>
+  <div class="entry langenscheidt"><strong class="hw">ref&middot;er&middot;ence</strong><span class="roman"> Verweis</span><span class="roman">;</span><div class="examplecontainer"><span class="example phrase ex"> cross ref&middot;er&middot;ence</span><span class="roman"> Querverweis</span></div></div>
+</div>
+"""
+
+
+# The older editions mark stress with an apostrophe (anywhere in a headword,
+# word-initially in a phrase) or with U+05BD, a Hebrew point.
+STRESS_MARK_HTML = """
+<div id="otherDicts">
+  <div class="small1">W&ouml;rterbuch v1 Englisch-Deutsch &copy; WordReference.com 2012:</div>
+  <div class="entry langenscheidt"><strong class="hw">&uuml;ber'ziehen</strong><span class="roman"> cover</span><span class="roman">;</span><div class="examplecontainer"><span class="example phrase ex"> was habe 'ich davon?</span><span class="roman"> what's in it for me?</span></div></div>
+  <div class="entry langenscheidt"><strong class="hw">&#x5bd;ad&middot;o'les&middot;cent</strong><span class="roman"> Jugendliche</span></div>
+</div>
+"""
+
+
 @pytest.fixture
 def wordreference_client():
     with patch.object(WordReference, '_load_cache'):
@@ -181,6 +230,35 @@ class TestWordReference:
         assert sections[0].title == 'Principal Translations'
         assert sections[0].entries[0].from_term == 'dog'
         assert sections[0].entries[0].to_terms == ['Hund', 'Köter']
+
+    def test_pos_label_letters_stay_in_the_headword(self, wordreference_client):
+        """Removing the "n" label must not remove the word's own n's."""
+        sections = wordreference_client._parse_html(ENGLISH_NOUN_HTML, 'ende')
+
+        entries = sections[0].entries
+        assert [e.from_term for e in entries] == ['reference', 'citizen']
+        assert [e.from_pos for e in entries] == ['n', 'n']
+        assert [e.to_terms for e in entries] == [['Bezug'], ['Staatsbürger']]
+
+    def test_drops_syllable_separators(self, wordreference_client):
+        sections = wordreference_client._parse_html(SYLLABLE_SEPARATOR_HTML, 'ende')
+
+        pairs = [(e.from_term, e.to_terms) for s in sections for e in s.entries]
+        assert pairs == [
+            ('frame of reference', ['Basispunkt']),
+            ('reference', ['Verweis']),
+            ('cross reference', ['Querverweis']),
+        ]
+
+    def test_drops_stress_marks_but_keeps_apostrophes(self, wordreference_client):
+        sections = wordreference_client._parse_html(STRESS_MARK_HTML, 'ende')
+
+        pairs = [(e.from_term, e.to_terms) for s in sections for e in s.entries]
+        assert pairs == [
+            ('überziehen', ['cover']),
+            ('was habe ich davon?', ["what's in it for me?"]),
+            ('adolescent', ['Jugendliche']),
+        ]
 
     def test_keeps_each_translations_part_of_speech(self, wordreference_client):
         """Continuation rows carry their own POS, which gives a German noun its gender."""

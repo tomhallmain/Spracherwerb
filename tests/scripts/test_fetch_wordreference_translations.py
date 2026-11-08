@@ -251,10 +251,14 @@ class TestRemainingLines:
 
 class TestWriteLines:
     def test_replaces_the_file_and_leaves_no_temp_file(self, script, tmp_path):
-        output = tmp_path / 'out.md'
+        # A directory of its own: the autouse isolated_singletons fixture puts
+        # cache/, configs/ and backup/ directly in tmp_path.
+        out_dir = tmp_path / 'out'
+        out_dir.mkdir()
+        output = out_dir / 'out.md'
         output.write_text('old\n', encoding='utf-8')
 
         script._write_lines(output, ['die Pulle - bottle'])
 
         assert output.read_text(encoding='utf-8') == 'die Pulle - bottle\n'
-        assert list(tmp_path.iterdir()) == [output]
+        assert list(out_dir.iterdir()) == [output]

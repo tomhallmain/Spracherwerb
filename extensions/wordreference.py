@@ -413,7 +413,8 @@ class WordReference:
         headword_el = entry.find('strong', class_='hw')
         if headword_el is None:
             return None
-        headword = self._collapse(headword_el.get_text(' ', strip=True))
+        headword = self._strip_headword_stress(
+            self._collapse(headword_el.get_text(' ', strip=True)))
         if not headword:
             return None
         glosses, examples = self._walk_dictionary_entry(entry)
@@ -435,7 +436,8 @@ class WordReference:
         lemma_el = entry.find('span', class_='lemma')
         if lemma_el is None:
             return None
-        headword = self._clean_text(self._abbreviated_text(lemma_el))
+        headword = self._strip_headword_stress(
+            self._clean_text(self._abbreviated_text(lemma_el)))
         if not headword:
             return None
 
@@ -549,6 +551,7 @@ class WordReference:
         """
         text = cls._POINTER_GLYPH_RE.sub('', text)
         text = cls._collapse(text)
+        text = cls._WORD_INITIAL_STRESS_RE.sub('', text)
         text = re.sub(r'\s*(?:…|\.\.\.)', '', text)
         text = re.sub(r'\s+([,;:.)\]])', r'\1', text)
         text = re.sub(r'([(\[])\s+', r'\1', text)
@@ -557,28 +560,48 @@ class WordReference:
         text = text.replace(';', ',')
         return cls._collapse(text).strip(' ;:,')
 
-    @staticmethod
-    def _collapse(text: str) -> str:
+    # Pronunciation marks inside words, never part of the word itself:
+    # hyphenation points (middle dot "ref·er·ence", soft hyphen), IPA stress
+    # marks, and U+05BD, a Hebrew point the older editions use as a stress
+    # mark ("ֽadolescent"). Left in, a headword never matches the queried word.
+    _PRONUNCIATION_MARK_RE = re.compile('[·­ˈˌֽ]')
+    # The older editions also mark stress with an ASCII apostrophe before the
+    # stressed syllable: "'überziehen", "über'ziehen", "was habe 'ich davon?".
+    # In a phrase only a word-initial one is taken as a stress mark, so
+    # "don't", "regulars'" and the clitic "'s" keep theirs.
+    _WORD_INITIAL_STRESS_RE = re.compile(r"(?<![^\s(\[/])'(?!s\b)(?=[^\W\d_])")
+
+    @classmethod
+    def _collapse(cls, text: str) -> str:
+        text = cls._PRONUNCIATION_MARK_RE.sub('', text)
         return re.sub(r'\s+', ' ', text).strip()
 
     @staticmethod
-    def _extract_term(cell) -> str:
+    def _strip_headword_stress(headword: str) -> str:
+        """Drop every ASCII apostrophe from an older edition's headword.
+
+        A headword's apostrophe can sit mid-word ("über'ziehen"), so all are
+        taken as stress marks. A headword with a real apostrophe ("o'clock")
+        loses it too.
+        """
+        return headword.replace("'", '')
+
+    @classmethod
+    def _extract_term(cls, cell) -> str:
+        """The term in *cell*, without its part-of-speech label.
+
+        The label is removed as an element, not as text: its text can be a
+        letter of the word itself (an English noun's POS is "n").
+        """
         if cell is None:
             return ''
-        text = cell.get_text(' ', strip=True)
-        if not text or text == '\xa0':
-            return ''
-        strong = cell.find('strong')
-        if strong:
-            text = strong.get_text(' ', strip=True)
+        cell = copy.copy(cell)
         for em in cell.find_all('em', class_='POS2'):
-            pos_text = em.get_text(strip=True)
-            if text.endswith(pos_text):
-                text = text[: -len(pos_text)].strip()
-            else:
-                text = text.replace(pos_text, '').strip()
-        text = WordReference._POINTER_GLYPH_RE.sub('', text)
-        return re.sub(r'\s+', ' ', text).strip()
+            em.decompose()
+        strong = cell.find('strong')
+        text = (strong or cell).get_text(' ', strip=True)
+        text = cls._POINTER_GLYPH_RE.sub('', text)
+        return cls._collapse(text)
 
     @staticmethod
     def _extract_pos(cell) -> Optional[str]:
