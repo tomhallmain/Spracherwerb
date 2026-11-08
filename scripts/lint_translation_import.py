@@ -20,6 +20,8 @@ everything that needs a human/LLM look before import:
 - lines that ``split_translation_line`` cannot parse at all (would be
   silently dropped)
 - unresolved ``***`` placeholders
+- lines with more than one `` - `` separator, which the importer splits at the
+  first one (left out of the checks below, since their split is wrong)
 - entries whose source (right-hand) side still looks like the target
   language rather than a translation (heuristic; always worth a manual
   check; only for target languages in ``_TARGET_MARKERS_BY_LANGUAGE``)
@@ -124,6 +126,11 @@ class Entry:
         return '***' in self.raw_line
 
     @property
+    def has_multiple_separators(self):
+        """More than one ' - ': split_translation_line() splits at the first."""
+        return self.raw_line.count(' - ') > 1
+
+    @property
     def has_ibg_typo(self):
         return 'ibg' in self.raw_line.lower()
 
@@ -165,7 +172,7 @@ def _group_parsed_by_target(entries):
     groups = {}
     order = []
     for e in entries:
-        if not e.parsed:
+        if not e.parsed or e.has_multiple_separators:
             continue
         key = translation_import.target_identity_key(e.target)
         if key not in groups:
@@ -191,6 +198,12 @@ def find_in_file_duplicates(entries):
     risky_groups = []
     for group in _group_parsed_by_target(entries):
         if len(group) < 2:
+            continue
+        if len({' '.join(e.source.split()) for e in group}) == 1:
+            # Identical sources: keep the first as it is. Nothing is split, so
+            # a sentence or a parenthesised comma comes through intact.
+            for e in group[1:]:
+                e.dropped_as_duplicate_of = group[0]
             continue
         if _merge_is_risky(e.source for e in group):
             risky_groups.append(group)
@@ -225,9 +238,11 @@ def build_report(entries, risky_groups, target_language):
         if not e.parsed and not e.is_blank and not e.has_placeholder
     ]
     placeholders = [e for e in entries if e.has_placeholder]
+    multiple_separators = [e for e in entries if e.has_multiple_separators]
     untranslated_looking = [
         e for e in entries
-        if e.parsed and not e.dropped_as_duplicate_of and e.looks_untranslated(marker_re)
+        if e.parsed and not e.dropped_as_duplicate_of and not e.has_multiple_separators
+        and e.looks_untranslated(marker_re)
     ]
     ibg_typos = [e for e in entries if e.has_ibg_typo]
     duplicates = [e for e in entries if e.dropped_as_duplicate_of]
@@ -258,6 +273,18 @@ def build_report(entries, risky_groups, target_language):
         f"Unresolved '***' placeholders ({len(placeholders)}):",
         placeholders,
         lambda e: f"    {e.location}: {e.raw_line}",
+    )
+
+    _append_section(
+        lines,
+        f"Lines with more than one ' - ' separator ({len(multiple_separators)}):",
+        multiple_separators,
+        lambda e: f"    {e.location}: {e.raw_line}",
+        subtext=(
+            "  the importer splits at the first ' - ', so the rest of the target "
+            "lands in the source. Keep ' - ' only between target and source, "
+            "e.g. write a range inside one side as '9-18.30' or '9 bis 18.30'."
+        ),
     )
 
     _append_section(
@@ -315,14 +342,14 @@ def build_normalized_lines(entries):
     Duplicate targets are dropped in favor of the earlier occurrence (which
     absorbed the merged source glosses). Everything that isn't a clean
     target/source entry -- blanks, '***' placeholders, unparseable lines,
-    free-text notes -- is passed through unchanged rather than dropped, so a
+    lines with more than one ' - ', free-text notes -- is passed through unchanged rather than dropped, so a
     human/LLM review pass still has something to act on afterward.
     """
     out = []
     for e in entries:
         if e.dropped_as_duplicate_of:
             continue
-        if e.parsed:
+        if e.parsed and not e.has_multiple_separators:
             out.append(f"{e.target} - {e.source}")
         else:
             out.append(e.raw_line)

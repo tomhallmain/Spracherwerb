@@ -63,6 +63,71 @@ class TestParseFiles:
         assert [e.location for e in entries] == ['1', '2']
 
 
+class TestIdenticalDuplicates:
+    def test_identical_sentences_are_merged_unchanged(self, script):
+        sentence = 'Mir geht es um den Mann - I’m talking about the man, who told you'
+        entries = script.parse_file([sentence, sentence])
+
+        risky = script.find_in_file_duplicates(entries)
+
+        assert risky == []
+        assert entries[0].source == 'I’m talking about the man, who told you'
+        assert entries[1].dropped_as_duplicate_of is entries[0]
+
+    def test_identical_parenthesised_commas_are_merged_unchanged(self, script):
+        line = 'erfahren - learn (of), be told (about, of)'
+        entries = script.parse_file([line, line])
+
+        assert script.find_in_file_duplicates(entries) == []
+        assert entries[0].source == 'learn (of), be told (about, of)'
+
+    def test_different_sentences_still_need_a_manual_merge(self, script):
+        entries = script.parse_file([
+            'was habe ich davon? - what do I get out of it?',
+            'was habe ich davon? - why should I?',
+        ])
+
+        risky = script.find_in_file_duplicates(entries)
+
+        assert len(risky) == 1
+        assert all(e.dropped_as_duplicate_of is None for e in entries)
+
+
+class TestMultipleSeparators:
+    LINE = 'durchgehend von 9 - 18.30 geöffnet - open 9 a.m. - 6.30 p.m.'
+
+    def test_gets_its_own_section_and_not_the_source_language_one(self, script):
+        entries = script.parse_file([self.LINE])
+        risky = script.find_in_file_duplicates(entries)
+
+        report = script.build_report(entries, risky, 'de')
+
+        assert "Lines with more than one ' - ' separator (1):" in report
+        assert f"    1: {self.LINE}" in report
+        assert 'still looks like' not in report
+
+    def test_is_not_merged_with_a_target_its_wrong_split_matches(self, script):
+        entries = script.parse_file([
+            'durchgehend von 9 - open from 9',
+            self.LINE,
+        ])
+
+        script.find_in_file_duplicates(entries)
+
+        assert entries[0].source == 'open from 9'
+        assert entries[1].dropped_as_duplicate_of is None
+
+    def test_passes_through_normalization_unchanged(self, script):
+        entries = script.parse_file([self.LINE])
+
+        assert script.build_normalized_lines(entries) == [self.LINE]
+
+    def test_a_hyphen_inside_a_word_is_not_a_separator(self, script):
+        entries = script.parse_file(['die E-Mail - e-mail, email'])
+
+        assert not entries[0].has_multiple_separators
+
+
 class TestConsolidatedLint:
     def test_merges_a_duplicate_from_another_file(self, script, import_files):
         entries = script.parse_files(list(import_files))

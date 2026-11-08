@@ -112,6 +112,11 @@ The report lists:
   importer skips them without a warning.
 - **Unresolved `***` placeholders**: rows that would be imported with `***`
   as their text.
+- **More than one ` - ` separator**: the importer splits at the first one,
+  so the rest of the target ends up in the source (`durchgehend von 9 -
+  18.30 geöffnet - open 9 a.m. - 6.30 p.m.`). Keep ` - ` only between the two
+  sides. These lines are left out of the checks below and passed through
+  `--write-normalized` unchanged.
 - **Source side still looks like the target language**: a rough check.
   Review each one; some will be fine. It runs only for target languages
   listed in the script (currently German), and the report says when it was
