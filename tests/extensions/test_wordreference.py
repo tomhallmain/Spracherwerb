@@ -1,7 +1,7 @@
 """Unit tests for the WordReference extension."""
 
+import os
 from pathlib import Path
-import shutil
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -171,13 +171,23 @@ def wordreference_client():
 
 
 class TestWordReference:
-    def setup_method(self):
-        cache_dir = Path('cache/wordreference')
-        if cache_dir.exists():
-            shutil.rmtree(cache_dir)
-
     def test_initialization(self, wordreference_client):
         assert isinstance(wordreference_client, WordReference)
+
+    def test_cache_lives_under_the_cache_override(self, wordreference_client):
+        """The autouse isolated_singletons fixture points SPRACHERWERB_CACHE_DIR at
+        a temp directory; a lookup must write there, not to the real cache."""
+        cache_root = Path(os.environ['SPRACHERWERB_CACHE_DIR'])
+        mock_response = MagicMock()
+        mock_response.text = SAMPLE_HTML
+
+        with patch.object(
+            wordreference_client.session, 'get', return_value=mock_response
+        ):
+            wordreference_client.lookup('dog', 'en', 'de', use_cache=False)
+
+        assert wordreference_client.CACHE_FILE == cache_root / 'wordreference' / 'lookups.json'
+        assert wordreference_client.CACHE_FILE.exists()
 
     @pytest.mark.parametrize(
         ('from_lang', 'to_lang', 'expected'),

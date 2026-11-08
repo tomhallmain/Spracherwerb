@@ -2,7 +2,6 @@
 
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from pathlib import Path
 import json
 import time
 import requests
@@ -10,6 +9,7 @@ from bs4 import BeautifulSoup
 import re
 import os
 
+from utils.cache_paths import CachePath, resolve_cache_file
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -47,9 +47,9 @@ class UniLang:
     
     BASE_URL = "https://forum.unilang.org"
     RESOURCES_URL = f"{BASE_URL}/resources.php"
-    CACHE_DIR = Path("cache/unilang")
-    RESOURCES_CACHE = CACHE_DIR / "resources.json"
-    FORUM_CACHE = CACHE_DIR / "forum.json"
+    CACHE_DIR = CachePath("unilang")
+    RESOURCES_CACHE = CachePath("unilang", "resources.json")
+    FORUM_CACHE = CachePath("unilang", "forum.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     
     # Language code to forum ID mapping
@@ -340,7 +340,7 @@ class UniLang:
                 logger.debug(f"Response content length: {len(response.text)}")
                 
                 # Save response for debugging
-                with open("forum_response.html", "w", encoding="utf-8") as f:
+                with open(resolve_cache_file("forum_response.html"), "w", encoding="utf-8") as f:
                     f.write(response.text)
                 
             except requests.exceptions.HTTPError as e:

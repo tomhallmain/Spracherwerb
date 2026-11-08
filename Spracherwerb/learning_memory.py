@@ -3,10 +3,17 @@ import pickle
 import gc
 from typing import Optional, Dict, List, Any
 
+from utils.cache_paths import resolve_cache_file
 from utils.logging_setup import get_logger
 from .learning_spot_profile import LearningSpot, LearningSpotProfile
 
 logger = get_logger(__name__)
+
+
+def _memory_file() -> str:
+    """The pickle file: in the working directory, or SPRACHERWERB_CACHE_DIR when set."""
+    return resolve_cache_file('learning_memory')
+
 
 @dataclass
 class LearningSpotSnapshot:
@@ -54,7 +61,7 @@ class LearningMemory:
     def load():
         """Load learning memory from disk."""
         try:
-            with open('learning_memory', 'rb') as f:
+            with open(_memory_file(), 'rb') as f:
                 swap = pickle.load(f)
                 LearningMemory.all_learning_spots = list(swap.all_learning_spots)
                 LearningMemory.last_session_spots = list(swap.current_session_spots)
@@ -76,7 +83,7 @@ class LearningMemory:
     @staticmethod
     def save():
         """Save learning memory to disk."""
-        with open('learning_memory', 'wb') as f:
+        with open(_memory_file(), 'wb') as f:
             swap = LearningMemory()
             swap._historical_snapshots = LearningMemory._historical_snapshots
             swap.vocabulary_learned = LearningMemory.vocabulary_learned

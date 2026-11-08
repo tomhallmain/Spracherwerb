@@ -2,6 +2,7 @@ import os
 import re
 from typing import Optional
 
+from utils.cache_paths import resolve_cache_subdir
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -55,8 +56,13 @@ def cleanup_orphaned_output_files(directory: str) -> int:
     return removed
 
 
+# Where TTS output goes unless SPRACHERWERB_CACHE_DIR is set, in which case it
+# goes to <that directory>/tts_output.
+PROJECT_OUTPUT_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tts_output")
+
+
 def default_output_directory() -> str:
-    return os.path.join(os.path.dirname(os.path.dirname(__file__)), "tts_output")
+    return str(resolve_cache_subdir("tts_output", PROJECT_OUTPUT_DIRECTORY))
 
 
 def cleanup_default_output_directory(directory: Optional[str] = None) -> int:

@@ -3,11 +3,11 @@
 import requests
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from pathlib import Path
 import json
 import time
 import random
 
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -28,8 +28,8 @@ class Tatoeba:
     """Handles interactions with Tatoeba's sentence database."""
     
     BASE_URL = "https://api.tatoeba.org/unstable"
-    CACHE_DIR = Path("cache/tatoeba")
-    CACHE_FILE = CACHE_DIR / "sentences.json"
+    CACHE_DIR = CachePath("tatoeba")
+    CACHE_FILE = CachePath("tatoeba", "sentences.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     
     # List of supported languages (from Tatoeba's website)
@@ -49,10 +49,6 @@ class Tatoeba:
             "Accept": "application/json",
             "Content-Type": "application/json"
         })
-        # Initialize default cache paths
-        self.CACHE_DIR = Path("cache/tatoeba")
-        self.CACHE_FILE = self.CACHE_DIR / "sentences.json"
-        # Load cache after paths are set
         self._load_cache()
     
     def _load_cache(self):

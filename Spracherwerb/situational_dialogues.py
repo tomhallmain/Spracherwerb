@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from utils import translation_import
+from utils.cache_paths import resolve_cache_subdir
 from utils.globals import Language
 from utils.translations import _
 
@@ -32,7 +33,12 @@ logger = logging.getLogger(__name__)
 MAX_TURNS = 8
 LLM_TIMEOUT = 60.0
 GOAL_MARKER = "[GOAL MET]"
-IMAGE_CACHE_DIR = Path("cache/situational_dialogues")
+
+
+def image_cache_dir() -> Path:
+    """Where this activity caches generated images; follows SPRACHERWERB_CACHE_DIR."""
+    return resolve_cache_subdir("situational_dialogues")
+
 
 _FAREWELL_WORDS = (
     "bye", "goodbye", "quit", "stop", "end conversation",
@@ -202,12 +208,12 @@ class SituationalDialogues(BaseLearningModule):
         if not image_hint.is_sd_available(services):
             return None
         slug = self._scenario["id"]
-        cached = image_hint.find_cached_image(IMAGE_CACHE_DIR, slug)
+        cached = image_hint.find_cached_image(image_cache_dir(), slug)
         if cached:
             return cached
         prompt = f"{self._scenario['setup']}, simple clear illustration, plain background"
         return image_hint.generate_now(
-            services, IMAGE_CACHE_DIR, slug, prompt, group=self._media_group())
+            services, image_cache_dir(), slug, prompt, group=self._media_group())
 
     def _media_group(self) -> str:
         """Groups this activity's requests so ending it cancels them."""

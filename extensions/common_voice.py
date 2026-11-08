@@ -12,6 +12,7 @@ import json
 import time
 import requests
 
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -35,8 +36,8 @@ class CommonVoice:
     """Handles interactions with Mozilla's Common Voice database."""
     
     BASE_URL = "https://commonvoice.mozilla.org/api/v2"
-    CACHE_DIR = Path("cache/common_voice")
-    CACHE_FILE = CACHE_DIR / "samples.json"
+    CACHE_DIR = CachePath("common_voice")
+    CACHE_FILE = CachePath("common_voice", "samples.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     
     def __init__(self):

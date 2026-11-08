@@ -3,11 +3,11 @@
 import requests
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from pathlib import Path
 import json
 import time
 
 from utils.globals import Language
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -69,8 +69,8 @@ class Gutenberg:
     """Handles interactions with Project Gutenberg's API."""
 
     BASE_URL = "https://gutendex.com/books"
-    CACHE_DIR = Path("cache/gutenberg")
-    CACHE_FILE = CACHE_DIR / "books.json"
+    CACHE_DIR = CachePath("gutenberg")
+    CACHE_FILE = CachePath("gutenberg", "books.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     API_TIMEOUT = 15  # seconds, for the lightweight Gutendex JSON calls
     TEXT_TIMEOUT = 30  # seconds, full book texts can be several MB

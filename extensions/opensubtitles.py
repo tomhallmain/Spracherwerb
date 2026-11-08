@@ -3,7 +3,6 @@
 import requests
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from pathlib import Path
 import json
 import time
 import re
@@ -11,6 +10,7 @@ import base64
 import gzip
 import io
 
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -34,8 +34,8 @@ class OpenSubtitles:
     """Handles interactions with OpenSubtitles API."""
     
     BASE_URL = "https://api.opensubtitles.com/api/v1"
-    CACHE_DIR = Path("cache/opensubtitles")
-    CACHE_FILE = CACHE_DIR / "subtitles.json"
+    CACHE_DIR = CachePath("opensubtitles")
+    CACHE_FILE = CachePath("opensubtitles", "subtitles.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     
     def __init__(self, api_key: Optional[str] = None):

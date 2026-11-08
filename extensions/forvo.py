@@ -3,10 +3,10 @@
 import requests
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from pathlib import Path
 import json
 import time
 
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -28,8 +28,8 @@ class Forvo:
     """Handles interactions with Forvo's pronunciation database."""
     
     BASE_URL = "https://apifree.forvo.com"
-    CACHE_DIR = Path("cache/forvo")
-    CACHE_FILE = CACHE_DIR / "pronunciations.json"
+    CACHE_DIR = CachePath("forvo")
+    CACHE_FILE = CachePath("forvo", "pronunciations.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     
     def __init__(self, api_key: Optional[str] = None):

@@ -8,6 +8,7 @@ import time
 import requests
 from urllib.parse import quote
 
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -36,8 +37,8 @@ class WikimediaCommons:
     """Handles interactions with Wikimedia Commons API."""
     
     BASE_URL = "https://commons.wikimedia.org/w/api.php"
-    CACHE_DIR = Path("cache/wikimedia_commons")
-    CACHE_FILE = CACHE_DIR / "media.json"
+    CACHE_DIR = CachePath("wikimedia_commons")
+    CACHE_FILE = CachePath("wikimedia_commons", "media.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     
     def __init__(self, api_key: Optional[str] = None):

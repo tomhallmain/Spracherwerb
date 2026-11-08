@@ -12,13 +12,13 @@ import re
 import time
 import webbrowser
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import quote
 
 import requests
 from bs4 import BeautifulSoup, Tag
 
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -64,8 +64,8 @@ class WordReference:
     """Client for wordreference.com translation pages."""
 
     BASE_URL = 'https://www.wordreference.com'
-    CACHE_DIR = Path('cache/wordreference')
-    CACHE_FILE = CACHE_DIR / 'lookups.json'
+    CACHE_DIR = CachePath('wordreference')
+    CACHE_FILE = CachePath('wordreference', 'lookups.json')
     CACHE_DURATION = 86400
     HUMAN_COOKIE = 'nginx_wr_human'
     USER_AGENT = (

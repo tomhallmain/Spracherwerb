@@ -24,12 +24,6 @@ def deterministic_scenario(monkeypatch):
     monkeypatch.setattr(situational_dialogues.random, "choice", lambda seq: seq[0])
 
 
-@pytest.fixture(autouse=True)
-def isolated_image_cache(tmp_path, monkeypatch):
-    """Redirect the module's image cache dir so tests never touch the real cache/ tree."""
-    monkeypatch.setattr(situational_dialogues, "IMAGE_CACHE_DIR", tmp_path / "situational_dialogues")
-
-
 class FakeLLMResult:
     def __init__(self, response, context=None):
         self.response = response

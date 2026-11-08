@@ -27,12 +27,6 @@ def clean_learning_memory():
     LearningMemory.vocabulary_learned = before
 
 
-@pytest.fixture(autouse=True)
-def isolated_image_cache(tmp_path, monkeypatch):
-    """Redirect the module's image cache dir so tests never touch the real cache/ tree."""
-    monkeypatch.setattr(visual_vocabulary, "IMAGE_CACHE_DIR", tmp_path / "visual_vocabulary")
-
-
 class FakeVocabularyPool:
     def __init__(self, entries, session_limit=20):
         self._entries = entries
@@ -189,9 +183,9 @@ class TestVisualVocabularyWithSD:
             'Was zeigt das Bild? (What does the picture show, in English?)'
         )
 
-    def test_reuses_cached_image_without_regenerating(self, tmp_path):
-        cache_dir = tmp_path / "visual_vocabulary"
-        cache_dir.mkdir()
+    def test_reuses_cached_image_without_regenerating(self):
+        cache_dir = visual_vocabulary.image_cache_dir()
+        cache_dir.mkdir(parents=True)
         cached_file = cache_dir / "de_hund.png"
         cached_file.write_bytes(b"fake-image-bytes")
 

@@ -3,11 +3,11 @@
 import requests
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from pathlib import Path
 import json
 import time
 
 from utils.globals import Language
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -41,8 +41,8 @@ class LibriVox:
     """Handles interactions with LibriVox's audiobook database."""
     
     BASE_URL = "https://librivox.org/api/feed/audiobooks"
-    CACHE_DIR = Path("cache/librivox")
-    CACHE_FILE = CACHE_DIR / "audiobooks.json"
+    CACHE_DIR = CachePath("librivox")
+    CACHE_FILE = CachePath("librivox", "audiobooks.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     REQUEST_TIMEOUT = 20  # seconds; extended=1 listings can be a large payload
     

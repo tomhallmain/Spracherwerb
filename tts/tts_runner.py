@@ -9,7 +9,10 @@ import uuid
 
 import music_tag
 
-from tts.output_cleanup import cleanup_default_output_directory, is_orphaned_output_wav
+from tts.output_cleanup import (
+    PROJECT_OUTPUT_DIRECTORY, cleanup_default_output_directory, is_orphaned_output_wav,
+)
+from utils.cache_paths import CachePath
 from tts.providers import BaseTTSProvider, TTSProviderType, get_provider
 from tts.chunker import Chunker
 from utils.config import config
@@ -137,7 +140,7 @@ class TTSSpeakInvocation:
 class TextToSpeechRunner:
     QUEUES = [] # TODO multiple named queues
     VLC_MEDIA_PLAYER = vlc.MediaPlayer()
-    output_directory = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tts_output")
+    output_directory = CachePath("tts_output", default=PROJECT_OUTPUT_DIRECTORY)
     lib_sounds = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lib", "sounds")
 
     def __init__(self, config: TTSConfig):

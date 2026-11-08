@@ -2,11 +2,11 @@
 
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from pathlib import Path
 import json
 import time
 import requests
 
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -34,8 +34,8 @@ class LanguageTool:
     """Handles interactions with LanguageTool's grammar and style checking API."""
     
     BASE_URL = "https://api.languagetool.org/v2"
-    CACHE_DIR = Path("cache/languagetool")
-    CACHE_FILE = CACHE_DIR / "checks.json"
+    CACHE_DIR = CachePath("languagetool")
+    CACHE_FILE = CachePath("languagetool", "checks.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     
     def __init__(self, api_key: Optional[str] = None):

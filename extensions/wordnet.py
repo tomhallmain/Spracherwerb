@@ -2,12 +2,12 @@
 
 from typing import List, Dict, Optional, Any, Set
 from dataclasses import dataclass
-from pathlib import Path
 import json
 import time
 from nltk.corpus import wordnet as wn
 from nltk.corpus.reader.wordnet import Synset
 
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -67,8 +67,8 @@ class WordInfo:
 class WordNet:
     """Handles interactions with WordNet's lexical database."""
     
-    CACHE_DIR = Path("cache/wordnet")
-    CACHE_FILE = CACHE_DIR / "words.json"
+    CACHE_DIR = CachePath("wordnet")
+    CACHE_FILE = CachePath("wordnet", "words.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     
     def __init__(self):

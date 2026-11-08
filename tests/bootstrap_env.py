@@ -84,11 +84,25 @@ def _pin_key_backup_dir() -> None:
     )
 
 
+def _pin_log_dir() -> None:
+    """Keep log files inside the throwaway test tree.
+
+    Loggers open their file at first import, and the log directory's cleanup
+    deletes old files, so an unpinned run writes into, and prunes, the
+    developer's own log directory.
+    """
+    os.environ.setdefault(
+        "SPRACHERWERB_LOG_DIR",
+        os.path.join(os.environ["SPRACHERWERB_CACHE_DIR"], "logs"),
+    )
+
+
 def apply() -> None:
     global _applied, _cleanup_tmp
     if _applied or os.environ.get("SPRACHERWERB_CACHE_DIR"):
         _applied = True
         _pin_key_backup_dir()
+        _pin_log_dir()
         install_fake_keyring()
         return
 
@@ -123,6 +137,7 @@ def apply() -> None:
     atexit.register(shutil.rmtree, _cleanup_tmp, True)
     _applied = True
     _pin_key_backup_dir()
+    _pin_log_dir()
     install_fake_keyring()
 
 

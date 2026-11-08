@@ -3,12 +3,12 @@
 import requests
 from typing import List, Dict, Optional, Any, Tuple
 from dataclasses import dataclass
-from pathlib import Path
 import json
 import time
 import re
 
 from utils.globals import AppInfo
+from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -33,8 +33,8 @@ class Wiktionary:
     """Handles interactions with Wiktionary's dictionary database."""
     
     BASE_URL = "https://en.wiktionary.org/w/api.php"
-    CACHE_DIR = Path("cache/wiktionary")
-    CACHE_FILE = CACHE_DIR / "entries.json"
+    CACHE_DIR = CachePath("wiktionary")
+    CACHE_FILE = CachePath("wiktionary", "entries.json")
     CACHE_DURATION = 86400  # 24 hours in seconds
     # Wikimedia's API rejects requests with no descriptive User-Agent (403,
     # "Please set a user-agent and respect our robot policy") -- the default

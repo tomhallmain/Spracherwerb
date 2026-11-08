@@ -23,7 +23,8 @@ Auto-download
 If piper_model_path is not set (or does not exist), the provider will
 auto-download a voice for the requested language code, provided
 piper_auto_download is True in config.  Models are cached in
-piper_voices_dir (default: configs/piper_voices/).
+piper_voices_dir (default: configs/piper_voices/, under
+SPRACHERWERB_CONFIGS_DIR when that is set).
 
 Manual use
 ----------
@@ -41,9 +42,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from tts.providers import BaseTTSProvider
+from utils.cache_paths import spracherwerb_configs_dir
 from utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
+
+
+def _default_voices_dir() -> Path:
+    """configs/piper_voices in the project, or under SPRACHERWERB_CONFIGS_DIR when set."""
+    configs_dir = spracherwerb_configs_dir() or Path(__file__).resolve().parents[2] / "configs"
+    return Path(configs_dir) / "piper_voices"
+
 
 _VOICES_INDEX_URL = (
     "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
@@ -265,13 +274,7 @@ class PiperTTSProvider(BaseTTSProvider):
         return onnx_path
 
     def _cache_dir(self) -> Path:
-        if self.voices_dir:
-            return self.voices_dir
-        # Default: configs/piper_voices/ relative to the project root.
-        from utils.config import config as app_config
-        configs_dir = Path(getattr(app_config, "CONFIGS_DIR_LOC",
-                                   Path(__file__).resolve().parents[2] / "configs"))
-        return configs_dir / "piper_voices"
+        return self.voices_dir or _default_voices_dir()
 
     @staticmethod
     def list_available_voices(
@@ -282,9 +285,7 @@ class PiperTTSProvider(BaseTTSProvider):
 
         Useful for building UI pickers.  Fetches/caches the index the first time.
         """
-        cache_dir = voices_dir or (
-            Path(__file__).resolve().parents[2] / "configs" / "piper_voices"
-        )
+        cache_dir = voices_dir or _default_voices_dir()
         index = _fetch_voices_index(cache_dir)
         results = []
         for key, meta in index.items():

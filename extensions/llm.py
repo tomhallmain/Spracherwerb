@@ -16,6 +16,7 @@ from extensions.llm_redundancy import (
     strip_thinking_blocks,
     streaming_visible_response,
 )
+from utils.cache_paths import resolve_cache_file
 from utils.logging_setup import get_logger
 from utils import Utils
 
@@ -171,9 +172,10 @@ class LLM:
         state_suffix = "".join(
             c if (c.isalnum() or c in ("-", "_")) else "_" for c in str(self.state_key)
         )
-        self.prompt_response_history_file = os.path.join(
-            os.getcwd(), f"temp_llm_prompt_response_history_{state_suffix}.json"
-        )
+        # The working directory, or SPRACHERWERB_CACHE_DIR when set.
+        self.prompt_response_history_file = os.path.abspath(resolve_cache_file(
+            f"temp_llm_prompt_response_history_{state_suffix}.json"
+        ))
         self._cancelled = False
         self._result = None
         self._exception = None

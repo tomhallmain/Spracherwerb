@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from utils import translation_import
+from utils.cache_paths import resolve_cache_subdir
 from utils.globals import Language
 from utils.translations import _
 
@@ -30,7 +31,11 @@ from .vocabulary_builder import TARGET_PHRASES as TEXT_PHRASES
 
 logger = logging.getLogger(__name__)
 
-IMAGE_CACHE_DIR = Path("cache/visual_vocabulary")
+
+def image_cache_dir() -> Path:
+    """Where this activity caches generated images; follows SPRACHERWERB_CACHE_DIR."""
+    return resolve_cache_subdir("visual_vocabulary")
+
 
 # Only the two prompt phrasings differ when an image is shown instead of
 # text; feedback/session-complete wording is identical either way, so those
@@ -269,7 +274,7 @@ class VisualVocabulary(BaseLearningModule):
             return None
 
         slug = self._slug_for(target_language, entry)
-        cached = image_hint.find_cached_image(IMAGE_CACHE_DIR, slug)
+        cached = image_hint.find_cached_image(image_cache_dir(), slug)
         if cached:
             return cached
 
@@ -278,7 +283,7 @@ class VisualVocabulary(BaseLearningModule):
             return None
 
         image_path = image_hint.generate_now(
-            services, IMAGE_CACHE_DIR, slug, prompt, group=self._media_group())
+            services, image_cache_dir(), slug, prompt, group=self._media_group())
         if image_path:
             self._images_generated += 1
         return image_path
@@ -301,7 +306,7 @@ class VisualVocabulary(BaseLearningModule):
             if prompt:
                 items.append((self._slug_for(target_language, entry), prompt))
         image_hint.generate_ahead(
-            services, IMAGE_CACHE_DIR, items, group=self._media_group())
+            services, image_cache_dir(), items, group=self._media_group())
 
 
 ActivityRegistry.register(VisualVocabulary)
