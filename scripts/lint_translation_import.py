@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Lint (and optionally normalize) a plain-text ``target - source`` import file.
 
+Several input files are linted as one consolidated file, in the order given:
+duplicates are found across all of them, ``--write-normalized`` writes the
+consolidated result, and the report names each line by its original file.
+
 Plain-text imports (``.txt``, one entry per line) go through
 ``utils.translation_import.lines_to_row_dicts``, which silently drops any line
 ``split_translation_line`` can't parse -- no dash, a multi-line dictionary
@@ -45,6 +49,7 @@ not guessed.
 
 Usage:
     python scripts/lint_translation_import.py path/to/import.md
+    python scripts/lint_translation_import.py complete.md a.resolved.md b.resolved.md --write-normalized combined.md
     python scripts/lint_translation_import.py path/to/import.md --target-language fr
     python scripts/lint_translation_import.py path/to/import.md --write-normalized path/to/import.normalized.md
 """
@@ -84,12 +89,27 @@ def _merge_is_risky(source_texts):
 class Entry:
     """One line of the import file, categorized for the report."""
 
-    def __init__(self, line_no, raw_line):
+    def __init__(self, line_no, raw_line, source_file=None):
         self.line_no = line_no
         self.raw_line = raw_line
+        self.source_file = source_file
         self.target = None
         self.source = None
-        self.dropped_as_duplicate_of = None  # line_no of the entry it merged into
+        self.dropped_as_duplicate_of = None  # the Entry it merged into
+
+    @property
+    def location(self):
+        """``12``, or ``file.md:12`` when several files were linted together."""
+        if self.source_file is None:
+            return str(self.line_no)
+        return f"{self.source_file}:{self.line_no}"
+
+    @property
+    def reference(self):
+        """The location as it reads mid-sentence: ``line 12`` or ``file.md:12``."""
+        if self.source_file is None:
+            return f"line {self.line_no}"
+        return self.location
 
     @property
     def parsed(self):
@@ -113,15 +133,30 @@ class Entry:
         return bool(marker_re.search(self.source))
 
 
-def parse_file(lines):
+def parse_file(lines, source_file=None):
     """Parse every line with the app's own splitter; nothing is skipped here."""
     entries = []
     for line_no, raw_line in enumerate(lines, start=1):
-        entry = Entry(line_no, raw_line)
+        entry = Entry(line_no, raw_line, source_file)
         split = translation_import.split_translation_line(raw_line)
         if split is not None:
             entry.target, entry.source = split
         entries.append(entry)
+    return entries
+
+
+def parse_files(paths):
+    """Parse *paths* in order into one list of entries.
+
+    Each entry keeps its own file and line number; a single file is numbered
+    by line alone. Each file is decoded on its own, so a byte-order mark at
+    the start of a later file does not end up mid-text, and a file with no
+    final newline cannot run into the next one.
+    """
+    entries = []
+    for path in paths:
+        lines = path.read_text(encoding='utf-8-sig').splitlines()
+        entries.extend(parse_file(lines, str(path) if len(paths) > 1 else None))
     return entries
 
 
@@ -165,7 +200,7 @@ def find_in_file_duplicates(entries):
         merged_source = translation_import.merge_rows_by_target(rows)[0]['source_text']
         group[0].source = merged_source
         for e in group[1:]:
-            e.dropped_as_duplicate_of = group[0].line_no
+            e.dropped_as_duplicate_of = group[0]
 
     return risky_groups
 
@@ -211,7 +246,7 @@ def build_report(entries, risky_groups, target_language):
         lines,
         f"Lines that would be SILENTLY DROPPED on import ({len(unparseable)}):",
         unparseable,
-        lambda e: f"    {e.line_no}: {e.raw_line}",
+        lambda e: f"    {e.location}: {e.raw_line}",
         subtext=(
             "  split_translation_line() found no usable ' - ' separator; "
             "lines_to_row_dicts() skips these with no warning."
@@ -222,28 +257,28 @@ def build_report(entries, risky_groups, target_language):
         lines,
         f"Unresolved '***' placeholders ({len(placeholders)}):",
         placeholders,
-        lambda e: f"    {e.line_no}: {e.raw_line}",
+        lambda e: f"    {e.location}: {e.raw_line}",
     )
 
     _append_section(
         lines,
         f"Entries whose source side still looks like {target_language}, needs a human/LLM check ({len(untranslated_looking)}):",
         untranslated_looking,
-        lambda e: f"    {e.line_no}: {e.target} - {e.source}",
+        lambda e: f"    {e.location}: {e.target} - {e.source}",
     )
 
     _append_section(
         lines,
         f"'ibg' typos (likely mistyped \"-ing\", n/b are keyboard neighbors) ({len(ibg_typos)}):",
         ibg_typos,
-        lambda e: f"    {e.line_no}: {e.raw_line}",
+        lambda e: f"    {e.location}: {e.raw_line}",
     )
 
     _append_section(
         lines,
         f"In-file duplicate targets merged ({len(duplicates)}):",
         duplicates,
-        lambda e: f"    {e.line_no}: {e.target!r} duplicates line {e.dropped_as_duplicate_of}",
+        lambda e: f"    {e.location}: {e.target!r} duplicates {e.dropped_as_duplicate_of.reference}",
     )
 
     if risky_groups:
@@ -268,7 +303,7 @@ def build_report(entries, risky_groups, target_language):
                 if translation_import.has_discourse_marker_part(e.source):
                     reason.append('parenthetical aside')
                 reason_str = f" [{', '.join(reason)}]" if reason else ""
-                lines.append(f"      {e.line_no}: {e.target} - {e.source}{reason_str}")
+                lines.append(f"      {e.location}: {e.target} - {e.source}{reason_str}")
         lines.append("")
 
     return '\n'.join(lines).rstrip('\n')
@@ -296,7 +331,10 @@ def build_normalized_lines(entries):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('input', type=Path, help="plain-text import file to lint")
+    parser.add_argument(
+        'inputs', type=Path, nargs='+',
+        help="plain-text import file(s) to lint; several are linted as one "
+             "consolidated file, in the order given")
     parser.add_argument(
         '--target-language',
         default=translation_import.primary_language_tag(config.target_language),
@@ -313,10 +351,13 @@ def main():
     )
     args = parser.parse_args()
 
-    text = args.input.read_text(encoding='utf-8-sig')
-    lines = text.splitlines()
+    input_paths = {path.resolve() for path in args.inputs}
+    for option, path in (('--write-normalized', args.write_normalized),
+                         ('--report-out', args.report_out)):
+        if path is not None and path.resolve() in input_paths:
+            parser.error(f"{option} {path} is one of the input files; choose another path")
 
-    entries = parse_file(lines)
+    entries = parse_files(args.inputs)
     risky_groups = find_in_file_duplicates(entries)
 
     report = build_report(entries, risky_groups, args.target_language)
@@ -328,7 +369,6 @@ def main():
         normalized = build_normalized_lines(entries)
         args.write_normalized.write_text('\n'.join(normalized) + '\n', encoding='utf-8')
         print(f"\nWrote normalized copy to {args.write_normalized}")
-
 
 if __name__ == '__main__':
     main()

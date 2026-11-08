@@ -6,7 +6,7 @@ Standalone maintenance scripts. Run them from the repository root, e.g.
 | Script | Purpose |
 | --- | --- |
 | `fetch_wordreference_translations.py` | Fills `***` placeholders on either side of a needs-translations import file from WordReference, and harvests related phrases. Needs network access. |
-| `lint_translation_import.py` | Checks a plain-text import file for problems the app's importer would hide, and can write a normalized copy. |
+| `lint_translation_import.py` | Checks plain-text import files for problems the app's importer would hide. Takes several files, linted as one, and can write their consolidated, normalized copy. |
 | `key_material.py` | Reports on (`status`) or backs up (`backup`) the encryption key store. See the script's docstring. |
 
 Each script's `--help` lists every option.
@@ -92,13 +92,19 @@ reported as malformed and left unchanged.
 
 ### 2. Combine and lint
 
-Combine the complete-entries file and every `.resolved.md` output into one
-file, then lint it:
+Pass the complete-entries file and every `.resolved.md` output to the lint
+script. It lints them as one consolidated file, in the order given, so
+duplicates are found across all of them, and the report names each line by
+its original file (`file:line`):
 
 ```bash
-python scripts/lint_translation_import.py path/to/combined.md \
-    --report-out path/to/lint_report.md
+python scripts/lint_translation_import.py \
+    path/to/complete.md path/to/missing_source.resolved.md path/to/missing_target.resolved.md \
+    --write-normalized path/to/combined.md --report-out path/to/lint_report.md
 ```
+
+`--write-normalized` writes the consolidated result, which is the file you
+import. The script refuses to write it or the report over one of the inputs.
 
 The report lists:
 
@@ -118,10 +124,10 @@ The report lists:
   is a sentence or has a comma inside parentheses, so a comma-split merge
   would break it. Combine these into one line by hand.
 
-Fix the problems in the combined file and run the lint again until the report
-shows nothing you still need to fix. `--write-normalized <file>` writes a copy
-with consistent spacing and the safe duplicates merged. It is optional, since
-the importer does the same merge.
+Fix the problems in the input files and run the same command again until the
+report shows nothing you still need to fix. The normalized copy has
+consistent spacing and the safe duplicates merged, the same merge the
+importer does.
 
 ### 3. Import
 
