@@ -134,7 +134,30 @@ report shows nothing you still need to fix. The normalized copy has
 consistent spacing and the safe duplicates merged, the same merge the
 importer does.
 
-### 3. Import
+### 3. Review the combined file
+
+The lint catches structural problems, not wrong content. Before importing,
+read through the normalized file (or have an LLM review it) for what the lint
+can't see:
+
+- **Spelling** on both sides. `tts/dictionary_de.txt` and
+  `tts/dictionary_en.txt` are word lists (UTF-8, one word per line) to check
+  each side against.
+- **Wrong articles**, e.g. `der Beamter` for `der Beamte`.
+- **Glosses that don't fit**, e.g. a verb carrying the noun's translations.
+- **Fragments left over from WordReference's older editions:**
+  - English glosses that are only `on`, `of`, `s` or `-er`, each of which
+    becomes a separately accepted quiz answer;
+  - German lists broken into pieces like `ung` or `auf`;
+  - `(: x)` alternatives, which would display literally.
+- **Near-duplicates that differ only by article** (`die Zacke` / `Zacke`).
+  The importer treats the article as part of the entry, so these become
+  separate entries.
+
+Fix what you find in a copy of the normalized file. If you change it a lot,
+lint the copy again.
+
+### 4. Import
 
 In the app, open the Translations window, make sure the right language pair
 is active, click **Import**, and choose the combined file. Entries whose
