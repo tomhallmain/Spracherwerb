@@ -102,7 +102,7 @@ class SituationalDialogues(BaseLearningModule):
                 timeout=LLM_TIMEOUT,
             )
         except Exception as e:
-            logger.warning(f"SituationalDialogues failed to start: {e}")
+            logger.warning(_("SituationalDialogues failed to start: {0}").format(e))
             turn = None
 
         if turn is None:

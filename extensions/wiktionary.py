@@ -10,6 +10,7 @@ import re
 from utils.globals import AppInfo
 from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -62,9 +63,9 @@ class Wiktionary:
                     }
                 logger.info(f"Loaded {len(self.entries)} entries from cache")
             else:
-                logger.warning("Cache file not found")
+                logger.warning(_("Cache file not found"))
         except Exception as e:
-            logger.error(f"Error loading Wiktionary cache: {e}")
+            logger.error(_("Error loading Wiktionary cache: {0}").format(e))
             self.entries = {}
     
     def _save_cache(self):
@@ -82,7 +83,7 @@ class Wiktionary:
                 )
             logger.info(f"Saved {len(self.entries)} entries to cache")
         except Exception as e:
-            logger.error(f"Error saving Wiktionary cache: {e}")
+            logger.error(_("Error saving Wiktionary cache: {0}").format(e))
     
     def _is_cache_valid(self, entry: WiktionaryEntry) -> bool:
         """Check if cached entry data is still valid."""
@@ -111,7 +112,7 @@ class Wiktionary:
         
         # Validate language
         if not language or not language.isalpha() or len(language) != 2:
-            logger.warning(f"Invalid language code: {language}")
+            logger.warning(_("Invalid language code: {0}").format(language))
             return None
         
         try:
@@ -141,12 +142,12 @@ class Wiktionary:
             
             # Get the parsed content
             if "parse" not in data or "text" not in data["parse"]:
-                logger.warning(f"No content found for {word}")
+                logger.warning(_("No content found for {0}").format(word))
                 return None
                 
             content = data["parse"]["text"]["*"]
             if not content:
-                logger.warning(f"No content found for {word}")
+                logger.warning(_("No content found for {0}").format(word))
                 return None
             
             logger.debug(f"Retrieved content length: {len(content)}")
@@ -165,14 +166,14 @@ class Wiktionary:
                 self.entries[cache_key] = entry
                 self._save_cache()
             else:
-                logger.warning(f"No valid entry found for {word}")
+                logger.warning(_("No valid entry found for {0}").format(word))
             
             return entry
             
         except Exception as e:
-            logger.error(f"Error getting Wiktionary entry for {word}: {e}")
-            logger.error(f"Error type: {type(e)}")
-            logger.error(f"Error details: {str(e)}")
+            logger.error(_("Error getting Wiktionary entry for {0}: {1}").format(word, e))
+            logger.error(_("Error type: {0}").format(type(e)))
+            logger.error(_("Error details: {0}").format(str(e)))
             return None
     
     def _find_part_of_speech(self, content: str) -> str:
@@ -222,7 +223,7 @@ class Wiktionary:
             logger.debug(f"Earliest part of speech found: '{earliest_match}' at position {earliest_position}")
             return earliest_match.lower()
         
-        logger.warning("No valid part of speech found")
+        logger.warning(_("No valid part of speech found"))
         return "unknown"
 
     def _parse_wiktionary_content(
@@ -245,7 +246,7 @@ class Wiktionary:
             )
             
             if not lang_section:
-                logger.warning(f"No {language} section found for {word}")
+                logger.warning(_("No {0} section found for {1}").format(language, word))
                 return None
             
             content = lang_section.group(1)
@@ -307,9 +308,9 @@ class Wiktionary:
             return entry
             
         except Exception as e:
-            logger.error(f"Error parsing Wiktionary content for {word}: {e}")
-            logger.error(f"Error type: {type(e)}")
-            logger.error(f"Error details: {str(e)}")
+            logger.error(_("Error parsing Wiktionary content for {0}: {1}").format(word, e))
+            logger.error(_("Error type: {0}").format(type(e)))
+            logger.error(_("Error details: {0}").format(str(e)))
             return None
     
     def get_word_forms(self, word: str, language: str = "en") -> Dict[str, List[str]]:
@@ -317,7 +318,7 @@ class Wiktionary:
         logger.info(f"Getting word forms for {word} in {language}")
         entry = self.get_word_entry(word, language)
         if not entry or not entry.content:
-            logger.warning(f"No entry found for {word}, cannot get word forms")
+            logger.warning(_("No entry found for {0}, cannot get word forms").format(word))
             return {}
 
         forms = {}
@@ -412,7 +413,7 @@ class Wiktionary:
             for form_type, form_list in forms.items():
                 logger.info(f"  {form_type}: {form_list}")
         else:
-            logger.warning(f"No word forms found for {word}")
+            logger.warning(_("No word forms found for {0}").format(word))
             logger.debug(f"Word part of speech: {entry.part_of_speech}")
         
         return forms
@@ -422,7 +423,7 @@ class Wiktionary:
         logger.info(f"Getting synonyms for {word} in {language}")
         entry = self.get_word_entry(word, language)
         if not entry:
-            logger.warning(f"No entry found for {word}, cannot get synonyms")
+            logger.warning(_("No entry found for {0}, cannot get synonyms").format(word))
             return []
         
         synonyms = []
@@ -455,7 +456,7 @@ class Wiktionary:
         logger.info(f"Getting antonyms for {word} in {language}")
         entry = self.get_word_entry(word, language)
         if not entry:
-            logger.warning(f"No entry found for {word}, cannot get antonyms")
+            logger.warning(_("No entry found for {0}, cannot get antonyms").format(word))
             return []
         
         antonyms = []

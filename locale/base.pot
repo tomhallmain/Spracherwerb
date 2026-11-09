@@ -7,14 +7,38 @@ msgid ""
 msgstr ""
 "Project-Id-Version: APPLICATION 1.0\n"
 "Report-Msgid-Bugs-To: Translator Name <translator@example.com>\n"
-"POT-Creation-Date: 2026-09-24 11:36-0400\n"
-"PO-Revision-Date: 2026-09-24 11:36-0400\n"
+"POT-Creation-Date: 2026-11-09 17:57-0500\n"
+"PO-Revision-Date: 2026-11-09 17:57-0500\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
+
+#: app.py:138
+msgid "Error releasing media frame on close: {0}"
+msgstr ""
+
+#: app.py:145
+msgid "Error storing app_info_cache on window close: {0}"
+msgstr ""
+
+#: app.py:155
+msgid "Error loading app_info_cache at startup: {0}"
+msgstr ""
+
+#: app.py:166
+msgid "Error storing app_info_cache on application quit: {0}"
+msgstr ""
+
+#: Spracherwerb/concept_questions.py:115
+msgid "Concept lesson was not valid JSON: {0}"
+msgstr ""
+
+#: Spracherwerb/conceptual_learning.py:121
+msgid "ConceptualLearning failed to start: {0}"
+msgstr ""
 
 #: Spracherwerb/conceptual_learning.py:128
 msgid "Conceptual learning isn't available right now -- make sure the local LLM (Ollama) is running and try again."
@@ -23,8 +47,8 @@ msgstr ""
 #: Spracherwerb/conceptual_learning.py:160 Spracherwerb/conversation_practice.py:112 Spracherwerb/cultural_context.py:130
 #: Spracherwerb/grammar_practice.py:137 Spracherwerb/idioms_and_expressions.py:115
 #: Spracherwerb/listening_comprehension.py:116 Spracherwerb/pronunciation_guide.py:112
-#: Spracherwerb/reading_comprehension.py:135 Spracherwerb/situational_dialogues.py:129
-#: Spracherwerb/visual_vocabulary.py:120 Spracherwerb/vocabulary_builder.py:113 Spracherwerb/writing_practice.py:101
+#: Spracherwerb/reading_comprehension.py:135 Spracherwerb/situational_dialogues.py:135
+#: Spracherwerb/visual_vocabulary.py:125 Spracherwerb/vocabulary_builder.py:113 Spracherwerb/writing_practice.py:101
 #: tests/Spracherwerb/test_conceptual_learning.py:322
 msgid "This activity has already finished."
 msgstr ""
@@ -37,12 +61,20 @@ msgstr ""
 msgid "Session complete: {0} of {1} correct."
 msgstr ""
 
-#: Spracherwerb/conceptual_learning.py:251 Spracherwerb/visual_vocabulary.py:131 Spracherwerb/vocabulary_builder.py:124
+#: Spracherwerb/conceptual_learning.py:251 Spracherwerb/visual_vocabulary.py:136 Spracherwerb/vocabulary_builder.py:124
 msgid "Correct!"
 msgstr ""
 
 #: Spracherwerb/conceptual_learning.py:254 tests/Spracherwerb/test_conceptual_learning.py:296
 msgid "Not quite -- the answer was ({0}) {1}"
+msgstr ""
+
+#: Spracherwerb/conceptual_learning.py:269
+msgid "Could not record reviewed word {0!r}: {1}"
+msgstr ""
+
+#: Spracherwerb/conceptual_learning.py:294
+msgid "Could not load saved translations: {0}"
 msgstr ""
 
 #: Spracherwerb/conceptual_learning.py:371 tests/Spracherwerb/test_conceptual_learning.py:186
@@ -61,6 +93,10 @@ msgstr ""
 msgid "Question {0} of {1}: {2}"
 msgstr ""
 
+#: Spracherwerb/conversation_practice.py:87
+msgid "ConversationPractice failed to start: {0}"
+msgstr ""
+
 #: Spracherwerb/conversation_practice.py:95
 msgid "The conversation partner isn't available right now -- make sure the local LLM (Ollama) is running and try again."
 msgstr ""
@@ -69,8 +105,12 @@ msgstr ""
 msgid "Lost the connection to the conversation partner."
 msgstr ""
 
-#: Spracherwerb/conversation_practice.py:138 Spracherwerb/situational_dialogues.py:157
+#: Spracherwerb/conversation_practice.py:138 Spracherwerb/situational_dialogues.py:163
 msgid "Session complete after {0} turn(s)."
+msgstr ""
+
+#: Spracherwerb/cultural_context.py:104
+msgid "CulturalContext failed to start: {0}"
 msgstr ""
 
 #: Spracherwerb/cultural_context.py:112
@@ -89,6 +129,14 @@ msgstr ""
 msgid "Feel free to ask a follow-up question, or say \"done\" to finish."
 msgstr ""
 
+#: Spracherwerb/dictionary_hint.py:38
+msgid "Dictionary lookup failed for {0!r}: {1}"
+msgstr ""
+
+#: Spracherwerb/grammar_practice.py:111
+msgid "GrammarPractice failed to start: {0}"
+msgstr ""
+
 #: Spracherwerb/grammar_practice.py:119
 msgid "Grammar practice isn't available right now -- make sure the local LLM (Ollama) is running and try again."
 msgstr ""
@@ -103,6 +151,10 @@ msgstr ""
 
 #: Spracherwerb/grammar_practice.py:208
 msgid "Use today's grammar point in a sentence of your own."
+msgstr ""
+
+#: Spracherwerb/idioms_and_expressions.py:86
+msgid "IdiomsAndExpressions failed to start: {0}"
 msgstr ""
 
 #: Spracherwerb/idioms_and_expressions.py:94
@@ -121,12 +173,108 @@ msgstr ""
 msgid "Nice try! Idioms take practice to feel natural -- keep at it."
 msgstr ""
 
+#: Spracherwerb/image_hint.py:40
+msgid "SD Runner reachability check failed: {0}"
+msgstr ""
+
+#: Spracherwerb/image_hint.py:74
+msgid "Image generation failed for {0!r}: {1}"
+msgstr ""
+
+#: Spracherwerb/image_hint.py:92
+msgid "Could not cancel pending generation for {0!r}: {1}"
+msgstr ""
+
+#: Spracherwerb/image_hint.py:118
+msgid "Could not queue pre-generation: {0}"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:51
+msgid "Found similar voice name \"{0}\", using valid speaker name \"{1}\" instead"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:55
+msgid "Error validating voice name: {0}"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:63
+msgid "Avatar path \"{0}\" does not exist, removing it"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:65
+msgid "No valid avatar paths found for tutor \"{0}\", using default avatar"
+msgstr ""
+
 #: Spracherwerb/language_tutor.py:94
 msgid "a man"
 msgstr ""
 
 #: Spracherwerb/language_tutor.py:96
 msgid "a woman"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:168
+msgid "Tutor already exists, skipping: {0}"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:170
+msgid "Error loading tutors: {0}"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:191
+msgid "Removing mock tutor: {0}"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:194
+msgid "Error reloading tutors: {0}"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:261
+msgid "Mock tutor not found, creating new: {0}"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:275
+msgid "Tutor not found: {0}"
+msgstr ""
+
+#: Spracherwerb/language_tutor.py:307
+msgid "Error getting context and system prompt: {0}"
+msgstr ""
+
+#: Spracherwerb/learning_memory.py:82
+msgid "Error loading learning memory: {0}"
+msgstr ""
+
+#: Spracherwerb/learning_progression.py:179
+msgid "Invalid reorder: length mismatch"
+msgstr ""
+
+#: Spracherwerb/learning_session.py:54
+msgid "Failed to start learning session: {0}"
+msgstr ""
+
+#: Spracherwerb/learning_session.py:73
+msgid "Failed to start activity {0}: {1}"
+msgstr ""
+
+#: Spracherwerb/learning_session.py:92
+msgid "Failed to process user response: {0}"
+msgstr ""
+
+#: Spracherwerb/learning_session.py:111
+msgid "Failed to generate media: {0}"
+msgstr ""
+
+#: Spracherwerb/learning_session.py:130
+msgid "Failed to complete activity: {0}"
+msgstr ""
+
+#: Spracherwerb/learning_session.py:145
+msgid "Failed to handle user action {0}: {1}"
+msgstr ""
+
+#: Spracherwerb/learning_spot_profile.py:163
+msgid "Failsafe triggered: get_last_spoken_spot exceeded {0} iterations"
 msgstr ""
 
 #: Spracherwerb/listening_comprehension.py:86
@@ -141,16 +289,44 @@ msgstr ""
 msgid "Passage: {0}"
 msgstr ""
 
+#: Spracherwerb/listening_comprehension.py:164
+msgid "ListeningComprehension failed to load its activity prompt: {0}"
+msgstr ""
+
 #: Spracherwerb/listening_comprehension.py:186
 msgid "What was the passage about?"
+msgstr ""
+
+#: Spracherwerb/listening_comprehension.py:192
+msgid "ListeningComprehension TTS failed: {0}"
 msgstr ""
 
 #: Spracherwerb/listening_comprehension.py:210
 msgid "Could not grade your answer right now, but thanks for listening!"
 msgstr ""
 
+#: Spracherwerb/llm_turn.py:31
+msgid "LLM call failed: {0}"
+msgstr ""
+
+#: Spracherwerb/media_generation.py:149
+msgid "Media listener failed for {0!r}: {1}"
+msgstr ""
+
+#: Spracherwerb/media_generation.py:177
+msgid "Timed out waiting for media job {0}"
+msgstr ""
+
+#: Spracherwerb/media_generation.py:328
+msgid "Media generation failed for {0!r}: {1}"
+msgstr ""
+
 #: Spracherwerb/pronunciation_guide.py:83
 msgid "No saved vocabulary to practice yet for {0} → {1}. Add some translations first."
+msgstr ""
+
+#: Spracherwerb/pronunciation_guide.py:96
+msgid "PronunciationGuide failed to load its activity prompt: {0}"
 msgstr ""
 
 #: Spracherwerb/pronunciation_guide.py:142
@@ -163,6 +339,10 @@ msgstr ""
 
 #: Spracherwerb/pronunciation_guide.py:191
 msgid "(Could not fetch articulation tips right now.)"
+msgstr ""
+
+#: Spracherwerb/pronunciation_guide.py:198
+msgid "PronunciationGuide TTS failed: {0}"
 msgstr ""
 
 #: Spracherwerb/reading_comprehension.py:103 Spracherwerb/reading_comprehension.py:116
@@ -189,50 +369,103 @@ msgstr ""
 msgid "Session complete: {0} question(s) answered."
 msgstr ""
 
-#: Spracherwerb/situational_dialogues.py:106
+#: Spracherwerb/reading_comprehension.py:250
+msgid "Failed to save new word {0!r}: {1}"
+msgstr ""
+
+#: Spracherwerb/reading_comprehension.py:268
+msgid "Gutenberg lookup failed: {0}"
+msgstr ""
+
+#: Spracherwerb/reading_comprehension.py:274
+msgid "Gutenberg text fetch failed for book {0}: {1}"
+msgstr ""
+
+#: Spracherwerb/reading_comprehension.py:307
+msgid "ReadingComprehension failed to load its activity prompt: {0}"
+msgstr ""
+
+#: Spracherwerb/situational_dialogues.py:105
+msgid "SituationalDialogues failed to start: {0}"
+msgstr ""
+
+#: Spracherwerb/situational_dialogues.py:112
 msgid "This role-play isn't available right now -- make sure the local LLM (Ollama) is running and try again."
 msgstr ""
 
-#: Spracherwerb/situational_dialogues.py:116
+#: Spracherwerb/situational_dialogues.py:122
 msgid ""
 "Scenario: {0}\n"
 "Your goal: {1}"
 msgstr ""
 
-#: Spracherwerb/situational_dialogues.py:142
+#: Spracherwerb/situational_dialogues.py:148
 msgid "Lost the connection to the role-play partner."
 msgstr ""
 
-#: Spracherwerb/situational_dialogues.py:156
+#: Spracherwerb/situational_dialogues.py:162
 msgid "Goal achieved!"
 msgstr ""
 
-#: Spracherwerb/visual_vocabulary.py:94 Spracherwerb/vocabulary_builder.py:93
+#: Spracherwerb/visual_vocabulary.py:99 Spracherwerb/vocabulary_builder.py:93
 msgid "No saved vocabulary to review yet for {0} → {1}. Add some translations first."
 msgstr ""
 
-#: Spracherwerb/visual_vocabulary.py:133 Spracherwerb/vocabulary_builder.py:126
+#: Spracherwerb/visual_vocabulary.py:138 Spracherwerb/vocabulary_builder.py:126
 msgid "Not quite -- the answer was \"{0}\"."
 msgstr ""
 
-#: Spracherwerb/visual_vocabulary.py:150 Spracherwerb/vocabulary_builder.py:142
+#: Spracherwerb/visual_vocabulary.py:155 Spracherwerb/vocabulary_builder.py:142
 msgid "Session complete -- reviewed {0} word(s), {1} correct."
 msgstr ""
 
-#: Spracherwerb/visual_vocabulary.py:204
+#: Spracherwerb/visual_vocabulary.py:209
 msgid "What is this called in {0}?"
 msgstr ""
 
-#: Spracherwerb/visual_vocabulary.py:207
+#: Spracherwerb/visual_vocabulary.py:212
 msgid "What does the picture show, in {0}?"
 msgstr ""
 
-#: Spracherwerb/visual_vocabulary.py:214 Spracherwerb/vocabulary_builder.py:166
+#: Spracherwerb/visual_vocabulary.py:219 Spracherwerb/vocabulary_builder.py:166
 msgid "Translate to {0}: {1}"
 msgstr ""
 
-#: Spracherwerb/visual_vocabulary.py:220 Spracherwerb/vocabulary_builder.py:172
+#: Spracherwerb/visual_vocabulary.py:225 Spracherwerb/vocabulary_builder.py:172
 msgid "What does \"{0}\" mean?"
+msgstr ""
+
+#: Spracherwerb/voice.py:21
+msgid "Failed to import tts_runner."
+msgstr ""
+
+#: Spracherwerb/voice.py:30
+msgid "Unknown tts_provider '%s', falling back to coqui."
+msgstr ""
+
+#: Spracherwerb/voice.py:54
+msgid "TTS is disabled in config. Voice functionality will be limited."
+msgstr ""
+
+#: Spracherwerb/voice.py:67
+msgid "Failed to initialise TTS runner: %s"
+msgstr ""
+
+#: Spracherwerb/voice.py:68
+msgid "Voice synthesis disabled."
+msgstr ""
+
+#: Spracherwerb/voice.py:70
+msgid "TTS is not available. Voice functionality will be limited."
+msgstr ""
+
+#: Spracherwerb/voice.py:94 Spracherwerb/voice.py:115 Spracherwerb/voice.py:137 Spracherwerb/voice.py:156
+#: Spracherwerb/voice.py:167
+msgid "Cannot speak."
+msgstr ""
+
+#: Spracherwerb/writing_practice.py:77
+msgid "WritingPractice failed to start: {0}"
 msgstr ""
 
 #: Spracherwerb/writing_practice.py:85
@@ -243,8 +476,440 @@ msgstr ""
 msgid "Nice work -- no issues found!"
 msgstr ""
 
+#: Spracherwerb/writing_practice.py:153
+msgid "LanguageTool check failed: {0}"
+msgstr ""
+
 #: Spracherwerb/writing_practice.py:163
 msgid "Corrections:"
+msgstr ""
+
+#: extensions/common_voice.py:66
+msgid "Error loading Common Voice cache: {0}"
+msgstr ""
+
+#: extensions/common_voice.py:82
+msgid "Error saving Common Voice cache: {0}"
+msgstr ""
+
+#: extensions/common_voice.py:98 extensions/forvo.py:155 extensions/languagetool.py:156 extensions/opensubtitles.py:210
+msgid "Error getting available languages: {0}"
+msgstr ""
+
+#: extensions/common_voice.py:134
+msgid "Error getting Common Voice samples for {0}: {1}"
+msgstr ""
+
+#: extensions/common_voice.py:192
+msgid "Error downloading sample {0}: {1}"
+msgstr ""
+
+#: extensions/common_voice.py:211
+msgid "Error getting statistics for {0}: {1}"
+msgstr ""
+
+#: extensions/forvo.py:53
+msgid "Error loading Forvo cache: {0}"
+msgstr ""
+
+#: extensions/forvo.py:69
+msgid "Error saving Forvo cache: {0}"
+msgstr ""
+
+#: extensions/forvo.py:124
+msgid "Error getting Forvo pronunciations for {0}: {1}"
+msgstr ""
+
+#: extensions/forvo.py:204
+msgid "Error getting user pronunciations: {0}"
+msgstr ""
+
+#: extensions/gutenberg.py:94
+msgid "Error loading Gutenberg cache: {0}"
+msgstr ""
+
+#: extensions/gutenberg.py:109
+msgid "Error saving Gutenberg cache: {0}"
+msgstr ""
+
+#: extensions/gutenberg.py:200
+msgid "Error searching Gutenberg books: {0}"
+msgstr ""
+
+#: extensions/gutenberg.py:221
+msgid "Error getting Gutenberg book {0}: {1}"
+msgstr ""
+
+#: extensions/gutenberg.py:276
+msgid "Error fetching text to count words for book {0} after {1:.1f}s ({2}): {3}: {4}"
+msgstr ""
+
+#: extensions/gutenberg.py:318
+msgid "Error getting book text for {0}: {1}"
+msgstr ""
+
+#: extensions/gutenberg.py:362
+msgid "Error getting popular books for {0}: {1}"
+msgstr ""
+
+#: extensions/languagetool.py:59
+msgid "Error loading LanguageTool cache: {0}"
+msgstr ""
+
+#: extensions/languagetool.py:75
+msgid "Error saving LanguageTool cache: {0}"
+msgstr ""
+
+#: extensions/languagetool.py:145
+msgid "Error checking text with LanguageTool: {0}"
+msgstr ""
+
+#: extensions/languagetool.py:167
+msgid "Error getting available rules: {0}"
+msgstr ""
+
+#: extensions/librivox.py:69
+msgid "Error loading LibriVox cache: {0}"
+msgstr ""
+
+#: extensions/librivox.py:95
+msgid "Error saving LibriVox cache: {0}"
+msgstr ""
+
+#: extensions/librivox.py:158
+msgid "Error searching LibriVox: {0}"
+msgstr ""
+
+#: extensions/librivox.py:193
+msgid "Error getting LibriVox audiobook {0}: {1}"
+msgstr ""
+
+#: extensions/librivox.py:284
+msgid "Error getting popular audiobooks: {0}"
+msgstr ""
+
+#: extensions/llm.py:132
+msgid "{0} - Failed to get json attr {1} from json response: {2}"
+msgstr ""
+
+#: extensions/llm.py:186
+msgid "Using LLM model: %s (state: %s, stream=%s, redundancy=%s)"
+msgstr ""
+
+#: extensions/llm.py:194
+msgid "LLM prompt/response tracking is enabled (file: %s)"
+msgstr ""
+
+#: extensions/llm.py:248
+msgid "LLM failure count increased to {0} for state '{1}'"
+msgstr ""
+
+#: extensions/llm.py:509
+msgid "LLM stream stopped early (%s); %d chars kept"
+msgstr ""
+
+#: extensions/llm.py:595 extensions/llm.py:721
+msgid "Failed to generate LLM response: {0}"
+msgstr ""
+
+#: extensions/llm.py:646
+msgid "Failed to persist LLM prompt/response history: %s"
+msgstr ""
+
+#: extensions/llm.py:697
+msgid "Exception in LLM generation thread: {0}"
+msgstr ""
+
+#: extensions/llm.py:715
+msgid "Exception while monitoring LLM thread: {0}"
+msgstr ""
+
+#: extensions/llm.py:826
+msgid "Thread did not terminate gracefully, forcing cleanup"
+msgstr ""
+
+#: extensions/opensubtitles.py:59
+msgid "Error loading OpenSubtitles cache: {0}"
+msgstr ""
+
+#: extensions/opensubtitles.py:75
+msgid "Error saving OpenSubtitles cache: {0}"
+msgstr ""
+
+#: extensions/opensubtitles.py:137
+msgid "Error searching OpenSubtitles: {0}"
+msgstr ""
+
+#: extensions/opensubtitles.py:174
+msgid "Error getting OpenSubtitles subtitle {0}: {1}"
+msgstr ""
+
+#: extensions/opensubtitles.py:196
+msgid "Error decompressing subtitle content: {0}"
+msgstr ""
+
+#: extensions/sd_runner_client.py:96
+msgid "SD Runner connection refused (attempt {0}/{1}), retrying in {2}s..."
+msgstr ""
+
+#: extensions/sd_runner_client.py:100
+msgid "Failed to connect to SD Runner: {0}"
+msgstr ""
+
+#: extensions/sd_runner_client.py:102
+msgid "Failed to connect to SD Runner after {0} attempts: {1}"
+msgstr ""
+
+#: extensions/sd_runner_client.py:125
+msgid "Failed to close SD Runner Client: {0}"
+msgstr ""
+
+#: extensions/sd_runner_client.py:206
+msgid "Error in worker thread: {0}"
+msgstr ""
+
+#: extensions/sd_runner_client.py:329
+msgid "SD Runner generate_image request failed: {0}"
+msgstr ""
+
+#: extensions/sd_runner_client.py:350
+msgid "Timed out after {0}s waiting for {1} in {2}"
+msgstr ""
+
+#: extensions/soup_utils.py:77
+msgid "Failed to find elements of class {0} - {1}"
+msgstr ""
+
+#: extensions/tatoeba.py:70
+msgid "Error loading Tatoeba cache: {0}"
+msgstr ""
+
+#: extensions/tatoeba.py:88
+msgid "Error saving Tatoeba cache: {0}"
+msgstr ""
+
+#: extensions/tatoeba.py:154
+msgid "No data found in API response"
+msgstr ""
+
+#: extensions/tatoeba.py:190
+msgid "Error searching Tatoeba sentences: {0}"
+msgstr ""
+
+#: extensions/tatoeba.py:231
+msgid "Error getting Tatoeba sentence {0}: {1}"
+msgstr ""
+
+#: extensions/tatoeba.py:279
+msgid "No sentences found matching criteria"
+msgstr ""
+
+#: extensions/tatoeba.py:288
+msgid "Error getting random Tatoeba sentence: {0}"
+msgstr ""
+
+#: extensions/unilang.py:209
+msgid "Resources cache file not found"
+msgstr ""
+
+#: extensions/unilang.py:217
+msgid "Forum cache file not found"
+msgstr ""
+
+#: extensions/unilang.py:219
+msgid "Error loading UniLang cache: {0}"
+msgstr ""
+
+#: extensions/unilang.py:239
+msgid "Error saving UniLang cache: {0}"
+msgstr ""
+
+#: extensions/unilang.py:302
+msgid "Error getting resources for {0}: {1}"
+msgstr ""
+
+#: extensions/unilang.py:325
+msgid "No forum ID found for language: {0}"
+msgstr ""
+
+#: extensions/unilang.py:326
+msgid "Available forum IDs: {0}"
+msgstr ""
+
+#: extensions/unilang.py:348
+msgid "HTTP error occurred while fetching forum posts: {0}"
+msgstr ""
+
+#: extensions/unilang.py:349
+msgid "Response status: {0}"
+msgstr ""
+
+#: extensions/unilang.py:350
+msgid "Response headers: {0}"
+msgstr ""
+
+#: extensions/unilang.py:351
+msgid "Response content: {0}"
+msgstr ""
+
+#: extensions/unilang.py:354
+msgid "Request error occurred while fetching forum posts: {0}"
+msgstr ""
+
+#: extensions/unilang.py:372
+msgid "No title element found in forum post"
+msgstr ""
+
+#: extensions/unilang.py:378
+msgid "No author element found in forum post"
+msgstr ""
+
+#: extensions/unilang.py:384
+msgid "No date element found in forum post"
+msgstr ""
+
+#: extensions/unilang.py:406
+msgid "Error parsing forum post: {0}"
+msgstr ""
+
+#: extensions/unilang.py:416
+msgid "No forum posts found for {0}, cache not updated"
+msgstr ""
+
+#: extensions/unilang.py:423
+msgid "Error getting forum posts for {0}: {1}"
+msgstr ""
+
+#: extensions/unilang.py:424 extensions/wiktionary.py:175 extensions/wiktionary.py:312
+msgid "Error type: {0}"
+msgstr ""
+
+#: extensions/unilang.py:425 extensions/wiktionary.py:176 extensions/wiktionary.py:313
+msgid "Error details: {0}"
+msgstr ""
+
+#: extensions/unilang.py:465
+msgid "Error searching resources: {0}"
+msgstr ""
+
+#: extensions/unilang.py:477
+msgid "Error getting categories for {0}: {1}"
+msgstr ""
+
+#: extensions/wiki_opensearch_api.py:51 extensions/wiki_opensearch_api.py:59
+msgid "Failed to connect to Wiki OpenSearch API: {0}"
+msgstr ""
+
+#: extensions/wikimedia_commons.py:62
+msgid "Error loading Wikimedia Commons cache: {0}"
+msgstr ""
+
+#: extensions/wikimedia_commons.py:78
+msgid "Error saving Wikimedia Commons cache: {0}"
+msgstr ""
+
+#: extensions/wikimedia_commons.py:157
+msgid "Error searching Wikimedia Commons: {0}"
+msgstr ""
+
+#: extensions/wikimedia_commons.py:235
+msgid "Error getting media by category: {0}"
+msgstr ""
+
+#: extensions/wikimedia_commons.py:257
+msgid "Error downloading media {0}: {1}"
+msgstr ""
+
+#: extensions/wiktionary.py:66
+msgid "Cache file not found"
+msgstr ""
+
+#: extensions/wiktionary.py:68
+msgid "Error loading Wiktionary cache: {0}"
+msgstr ""
+
+#: extensions/wiktionary.py:86
+msgid "Error saving Wiktionary cache: {0}"
+msgstr ""
+
+#: extensions/wiktionary.py:115
+msgid "Invalid language code: {0}"
+msgstr ""
+
+#: extensions/wiktionary.py:145 extensions/wiktionary.py:150
+msgid "No content found for {0}"
+msgstr ""
+
+#: extensions/wiktionary.py:169
+msgid "No valid entry found for {0}"
+msgstr ""
+
+#: extensions/wiktionary.py:174
+msgid "Error getting Wiktionary entry for {0}: {1}"
+msgstr ""
+
+#: extensions/wiktionary.py:226
+msgid "No valid part of speech found"
+msgstr ""
+
+#: extensions/wiktionary.py:249
+msgid "No {0} section found for {1}"
+msgstr ""
+
+#: extensions/wiktionary.py:311
+msgid "Error parsing Wiktionary content for {0}: {1}"
+msgstr ""
+
+#: extensions/wiktionary.py:321
+msgid "No entry found for {0}, cannot get word forms"
+msgstr ""
+
+#: extensions/wiktionary.py:416
+msgid "No word forms found for {0}"
+msgstr ""
+
+#: extensions/wiktionary.py:426
+msgid "No entry found for {0}, cannot get synonyms"
+msgstr ""
+
+#: extensions/wiktionary.py:459
+msgid "No entry found for {0}, cannot get antonyms"
+msgstr ""
+
+#: extensions/wordnet.py:93
+msgid "Error loading WordNet cache: {0}"
+msgstr ""
+
+#: extensions/wordnet.py:110
+msgid "Error saving WordNet cache: {0}"
+msgstr ""
+
+#: extensions/wordnet.py:182
+msgid "Error getting WordNet info for {0}: {1}"
+msgstr ""
+
+#: extensions/wordnet.py:286
+msgid "Error calculating word similarity: {0}"
+msgstr ""
+
+#: extensions/wordnet.py:325
+msgid "Error getting related words: {0}"
+msgstr ""
+
+#: extensions/wordreference.py:160
+msgid "WordReference request failed for %s: %s"
+msgstr ""
+
+#: extensions/wordreference.py:169
+msgid "WordReference returned no parseable sections for %s (HTTP %s)"
+msgstr ""
+
+#: extensions/wordreference.py:648
+msgid "Error loading WordReference cache: %s"
+msgstr ""
+
+#: extensions/wordreference.py:674
+msgid "Error saving WordReference cache: %s"
 msgstr ""
 
 #: tests/Spracherwerb/test_conceptual_learning.py:273
@@ -269,6 +934,98 @@ msgstr ""
 
 #: tts/chunker.py:147
 msgid "*This text contains {0}, I can't read it but it looks interesting*"
+msgstr ""
+
+#: tts/output_cleanup.py:49
+msgid "Failed to remove disposable TTS output file %s: %s"
+msgstr ""
+
+#: tts/text_cleaner_ruleset.py:338
+msgid "No replacement found for locale {0}, using default locale {1}"
+msgstr ""
+
+#: tts/text_cleaner_ruleset.py:393
+msgid "Failed to load English detection words from {0}: {1}"
+msgstr ""
+
+#: tts/text_cleaner_ruleset.py:448
+msgid "Failed to load number words for locale {0}: {1}"
+msgstr ""
+
+#: tts/tts_runner.py:190
+msgid "Failed to delete audio files: {0}"
+msgstr ""
+
+#: tts/tts_runner.py:257
+msgid "Cannot find speech output path: {0}"
+msgstr ""
+
+#: tts/tts_runner.py:297
+msgid "TTS generation error: {0}"
+msgstr ""
+
+#: tts/tts_runner.py:390
+msgid "Could not add metadata: %s"
+msgstr ""
+
+#: tts/providers/coqui.py:81
+msgid "Coqui TTS generation failed: %s"
+msgstr ""
+
+#: tts/providers/coqui.py:85
+msgid "Coqui TTS wrote file despite error, continuing..."
+msgstr ""
+
+#: tts/providers/coqui.py:123
+msgid "Fuzzy-matched Coqui voice \"%s\" → \"%s\""
+msgstr ""
+
+#: tts/providers/coqui.py:126
+msgid "Unknown Coqui voice \"%s\", using as-is."
+msgstr ""
+
+#: tts/providers/f5tts.py:40
+msgid "F5-TTS reference audio not found: \"%s\". Set f5tts_reference_audio in config to a valid WAV file path."
+msgstr ""
+
+#: tts/providers/kokoro.py:79
+msgid "Unknown Kokoro voice \"%s\". Run KokoroTTSProvider().voices() for the full list."
+msgstr ""
+
+#: tts/providers/maskgct.py:72
+msgid "MaskGCT reference audio not found: \"%s\". Set maskgct_reference_audio in config to a valid WAV file path."
+msgstr ""
+
+#: tts/providers/piper.py:79
+msgid "Could not read cached voices.json: %s"
+msgstr ""
+
+#: tts/providers/piper.py:81
+msgid "Fetching Piper voices index from HuggingFace…"
+msgstr ""
+
+#: tts/providers/piper.py:126
+msgid "Selected Piper voice: %s (quality=%s, lang=%s)"
+msgstr ""
+
+#: tts/providers/piper.py:150
+msgid "Downloading Piper voice file: %s"
+msgstr ""
+
+#: tts/providers/piper.py:189
+msgid "Piper model file not found: \"%s\"."
+msgstr ""
+
+#: tts/providers/zonos.py:72
+msgid "Unknown Zonos model \"%s\". Known models: %s"
+msgstr ""
+
+#: tts/providers/zonos.py:79
+msgid "Zonos reference audio not found: \"%s\". Set zonos_reference_audio in config to a valid audio file."
+msgstr ""
+
+#: tts/providers/zonos.py:97
+msgid "espeak-ng not found on PATH. Zonos requires espeak-ng for phonemization."
 msgstr ""
 
 #: ui/config_panel.py:55
@@ -317,6 +1074,58 @@ msgstr ""
 
 #: ui/config_panel.py:158
 msgid "({0} words)"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:21
+msgid "Gutenberg Book Search"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:53
+msgid "Enter search terms..."
+msgstr ""
+
+#: ui/gutenberg_search_window.py:65
+msgid "Search"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:73
+msgid "Search Results"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:83
+msgid "Selected Books"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:94
+msgid "Add Selected"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:101
+msgid "Remove Selected"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:108
+msgid "Save Selection"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:122
+msgid "Search Error"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:123
+msgid "Please enter a search term."
+msgstr ""
+
+#: ui/gutenberg_search_window.py:140 ui/gutenberg_search_window.py:156
+msgid "Words: {0}"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:178
+msgid "Save Error"
+msgstr ""
+
+#: ui/gutenberg_search_window.py:179
+msgid "Please select at least one book."
 msgstr ""
 
 #: ui/interaction_panel.py:69 ui/interaction_panel.py:239
@@ -383,6 +1192,14 @@ msgstr ""
 msgid "Play"
 msgstr ""
 
+#: ui/media_frame.py:63
+msgid "VLC is unavailable; video playback is disabled: {0}"
+msgstr ""
+
+#: ui/media_frame.py:227
+msgid "Failed to render media {0}: {1}"
+msgstr ""
+
 #: ui/media_frame.py:229 ui/media_frame.py:339
 msgid "Unable to display this file: {0}"
 msgstr ""
@@ -395,8 +1212,24 @@ msgstr ""
 msgid "Video playback is unavailable: {0}"
 msgstr ""
 
+#: ui/media_frame.py:475
+msgid "VLC refused to play {0}"
+msgstr ""
+
 #: ui/media_frame.py:477
 msgid "Could not play this video: {0}"
+msgstr ""
+
+#: ui/media_frame.py:522
+msgid "Could not restart looped video {0}: {1}"
+msgstr ""
+
+#: ui/media_frame.py:542
+msgid "VLC stop() timed out for {0}; abandoning the player"
+msgstr ""
+
+#: ui/media_frame.py:569
+msgid "Could not replace the VLC player: {0}"
 msgstr ""
 
 #: ui/translation_dialog.py:89

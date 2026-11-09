@@ -9,6 +9,7 @@ import random
 
 from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -66,7 +67,7 @@ class Tatoeba:
             else:
                 logger.info(f"No cache file found at {self.CACHE_FILE}")
         except Exception as e:
-            logger.error(f"Error loading Tatoeba cache: {e}")
+            logger.error(_("Error loading Tatoeba cache: {0}").format(e))
             self.sentences = {}
     
     def _save_cache(self):
@@ -84,7 +85,7 @@ class Tatoeba:
                 )
             logger.info(f"Cache saved successfully with {len(self.sentences)} sentences")
         except Exception as e:
-            logger.error(f"Error saving Tatoeba cache: {e}")
+            logger.error(_("Error saving Tatoeba cache: {0}").format(e))
     
     def _is_cache_valid(self, sentence: TatoebaSentence) -> bool:
         """Check if cached sentence data is still valid."""
@@ -150,7 +151,7 @@ class Tatoeba:
             if "data" in data:
                 logger.info(f"API response data length: {len(data['data'])}")
             else:
-                logger.error(f"No data found in API response")
+                logger.error(_("No data found in API response"))
                 return cached_results[:limit]
             
             results = []
@@ -186,7 +187,7 @@ class Tatoeba:
             return combined_results[:limit]
             
         except Exception as e:
-            logger.error(f"Error searching Tatoeba sentences: {e}")
+            logger.error(_("Error searching Tatoeba sentences: {0}").format(e))
             return cached_results[:limit]  # Return cached results even if API fails
     
     def get_sentence(self, sentence_id: int) -> Optional[TatoebaSentence]:
@@ -227,7 +228,7 @@ class Tatoeba:
             return sentence
             
         except Exception as e:
-            logger.error(f"Error getting Tatoeba sentence {sentence_id}: {e}")
+            logger.error(_("Error getting Tatoeba sentence {0}: {1}").format(sentence_id, e))
             return None
     
     def _parse_sentence_data(self, data: Dict[str, Any]) -> TatoebaSentence:
@@ -275,7 +276,7 @@ class Tatoeba:
             logger.info(f"Found {len(sentences)} sentences")
             
             if not sentences:
-                logger.error("No sentences found matching criteria")
+                logger.error(_("No sentences found matching criteria"))
                 return None
             
             # Randomly select one sentence
@@ -284,7 +285,7 @@ class Tatoeba:
             return sentence
             
         except Exception as e:
-            logger.error(f"Error getting random Tatoeba sentence: {e}")
+            logger.error(_("Error getting random Tatoeba sentence: {0}").format(e))
             return None
     
     def get_available_languages(self) -> List[str]:

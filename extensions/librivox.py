@@ -9,6 +9,7 @@ import time
 from utils.globals import Language
 from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -65,7 +66,7 @@ class LibriVox:
                         ]
                         self.audiobooks[int(book_id)] = Audiobook(**book_data)
         except Exception as e:
-            logger.error(f"Error loading LibriVox cache: {e}")
+            logger.error(_("Error loading LibriVox cache: {0}").format(e))
             self.audiobooks = {}
         return self.audiobooks
 
@@ -91,7 +92,7 @@ class LibriVox:
                     indent=2
                 )
         except Exception as e:
-            logger.error(f"Error saving LibriVox cache: {e}")
+            logger.error(_("Error saving LibriVox cache: {0}").format(e))
     
     def _is_cache_valid(self, audiobook: Audiobook) -> bool:
         """Check if cached audiobook data is still valid."""
@@ -154,7 +155,7 @@ class LibriVox:
             return results
 
         except Exception as e:
-            logger.error(f"Error searching LibriVox: {e}")
+            logger.error(_("Error searching LibriVox: {0}").format(e))
             return []
     
     def get_audiobook(self, book_id: int) -> Optional[Audiobook]:
@@ -189,7 +190,7 @@ class LibriVox:
             return audiobook
 
         except Exception as e:
-            logger.error(f"Error getting LibriVox audiobook {book_id}: {e}")
+            logger.error(_("Error getting LibriVox audiobook {0}: {1}").format(book_id, e))
             return None
 
     def _parse_audiobook_data(self, data: Dict[str, Any]) -> Audiobook:
@@ -280,5 +281,5 @@ class LibriVox:
             return results
 
         except Exception as e:
-            logger.error(f"Error getting popular audiobooks: {e}")
+            logger.error(_("Error getting popular audiobooks: {0}").format(e))
             return [] 

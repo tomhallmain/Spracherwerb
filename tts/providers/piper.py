@@ -44,6 +44,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from tts.providers import BaseTTSProvider
 from utils.cache_paths import spracherwerb_configs_dir
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -75,9 +76,9 @@ def _fetch_voices_index(cache_dir: Path) -> Dict[str, Any]:
             with cache_file.open(encoding="utf-8") as fh:
                 return json.load(fh)
         except Exception as exc:
-            logger.warning("Could not read cached voices.json: %s", exc)
+            logger.warning(_("Could not read cached voices.json: %s"), exc)
 
-    logger.info("Fetching Piper voices index from HuggingFace…")
+    logger.info(_("Fetching Piper voices index from HuggingFace…"))
     try:
         with urllib.request.urlopen(_VOICES_INDEX_URL, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -122,7 +123,7 @@ def _pick_voice(
             if meta.get("quality") == q:
                 file_paths = list(meta.get("files", {}).keys())
                 logger.info(
-                    "Selected Piper voice: %s (quality=%s, lang=%s)",
+                    _("Selected Piper voice: %s (quality=%s, lang=%s)"),
                     key, q, language_code,
                 )
                 return key, file_paths
@@ -146,7 +147,7 @@ def _download_voice(
         if dest.is_file():
             logger.info("Piper: already cached %s", dest.name)
         else:
-            logger.info("Downloading Piper voice file: %s", dest.name)
+            logger.info(_("Downloading Piper voice file: %s"), dest.name)
             try:
                 urllib.request.urlretrieve(url, dest)
             except Exception as exc:
@@ -185,7 +186,7 @@ class PiperTTSProvider(BaseTTSProvider):
 
         if self.model_path and not os.path.isfile(self.model_path):
             logger.warning(
-                'Piper model file not found: "%s".',
+                _('Piper model file not found: "%s".'),
                 self.model_path,
             )
 
@@ -266,7 +267,7 @@ class PiperTTSProvider(BaseTTSProvider):
         # 3. Auto-download: select a voice from the index and download it.
         cache_dir = self._cache_dir()
         index = _fetch_voices_index(cache_dir)
-        _, file_paths = _pick_voice(index, self.language, self.quality)
+        _voice_key, file_paths = _pick_voice(index, self.language, self.quality)
         onnx_path = _download_voice(file_paths, cache_dir)
 
         # Cache the resolved path so the next load() call skips re-downloading.

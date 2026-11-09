@@ -60,7 +60,7 @@ try:
     import vlc
     _VLC_AVAILABLE = True
 except Exception as _vlc_import_error:  # noqa: BLE001 - see above
-    logger.warning(f"VLC is unavailable; video playback is disabled: {_vlc_import_error}")
+    logger.warning(_("VLC is unavailable; video playback is disabled: {0}").format(_vlc_import_error))
     _VLC_AVAILABLE = False
 
 VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".webm", ".mov", ".m4v", ".ogv")
@@ -224,7 +224,7 @@ class MediaFrame(QFrame):
         try:
             self._show_image(path)
         except Exception as e:
-            logger.warning(f"Failed to render media {path}: {e}")
+            logger.warning(_("Failed to render media {0}: {1}").format(path, e))
             self._show_placeholder(
                 _("Unable to display this file: {0}").format(os.path.basename(path)))
 
@@ -472,7 +472,7 @@ class MediaFrame(QFrame):
         self.vlc_media_player.set_media(self.vlc_media)
         if self.vlc_media_player.play() == -1:
             self._loop_video_path = None
-            logger.warning(f"VLC refused to play {path}")
+            logger.warning(_("VLC refused to play {0}").format(path))
             self._show_placeholder(
                 _("Could not play this video: {0}").format(os.path.basename(path)))
             return False
@@ -519,7 +519,7 @@ class MediaFrame(QFrame):
         try:
             self._show_video(path, loop=True)
         except Exception as e:
-            logger.warning(f"Could not restart looped video {path}: {e}")
+            logger.warning(_("Could not restart looped video {0}: {1}").format(path, e))
 
     def video_stop(self):
         """Stop playback, surviving a libvlc stop() that never returns.
@@ -539,7 +539,7 @@ class MediaFrame(QFrame):
             stopper.join(timeout=VIDEO_STOP_TIMEOUT_S)
             if stopper.is_alive():
                 logger.warning(
-                    f"VLC stop() timed out for {self.path}; abandoning the player")
+                    _("VLC stop() timed out for {0}; abandoning the player").format(self.path))
                 if self.path and str(self.path).lower().endswith(MATROSKA_EXTENSIONS):
                     _missing_seek_index_paths.add(self.path)
                 self._replace_vlc_player()
@@ -566,7 +566,7 @@ class MediaFrame(QFrame):
             player.video_set_key_input(False)
             self.vlc_media_player = player
         except Exception as e:
-            logger.error(f"Could not replace the VLC player: {e}")
+            logger.error(_("Could not replace the VLC player: {0}").format(e))
             self.vlc_media_player = None
 
     # ------------------------------------------------------------------

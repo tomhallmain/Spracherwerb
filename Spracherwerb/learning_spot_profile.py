@@ -160,7 +160,7 @@ class LearningSpotProfile:
                 
             idx += 1
             if idx >= max_iterations:
-                logger.error(f"Failsafe triggered: get_last_spoken_spot exceeded {max_iterations} iterations")
+                logger.error(_("Failsafe triggered: get_last_spoken_spot exceeded {0} iterations").format(max_iterations))
                 return None
                 
     def set_preparation_time(self) -> None:

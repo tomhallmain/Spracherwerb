@@ -48,11 +48,11 @@ class LanguageTutor:
             try: 
                 for speaker in speakers:
                     if Utils.is_similar_strings(speaker, self.voice_name):
-                        logger.warning(f"Found similar voice name \"{self.voice_name}\", using valid speaker name \"{speaker}\" instead")
+                        logger.warning(_('Found similar voice name "{0}", using valid speaker name "{1}" instead').format(self.voice_name, speaker))
                         self.voice_name = speaker
                         break
             except Exception as e:
-                logger.error(f"Error validating voice name: {e}")
+                logger.error(_("Error validating voice name: {0}").format(e))
                 raise ValueError(f"Invalid voice name: {self.voice_name}. Must be one of {list(speakers.keys())}")
         
         if self.avatar_paths is not None:
@@ -60,9 +60,9 @@ class LanguageTutor:
             for path in test_paths:
                 if not Path(path).exists():
                     test_paths.remove(path)
-                    logger.warning(f"Avatar path \"{path}\" does not exist, removing it")
+                    logger.warning(_('Avatar path "{0}" does not exist, removing it').format(path))
             if len(test_paths) == 0:
-                logger.error(f"No valid avatar paths found for tutor \"{self.name}\", using default avatar")
+                logger.error(_('No valid avatar paths found for tutor "{0}", using default avatar').format(self.name))
                 self.avatar_paths = None
             else:
                 self.avatar_paths = test_paths
@@ -165,9 +165,9 @@ class LanguageTutorManager:
                 if tutor.voice_name not in self.tutors:
                     self.tutors[tutor.voice_name] = tutor
                 else:
-                    logger.warning(f"Tutor already exists, skipping: {tutor.voice_name}")
+                    logger.warning(_("Tutor already exists, skipping: {0}").format(tutor.voice_name))
         except Exception as e:
-            logger.error(f"Error loading tutors: {e}")
+            logger.error(_("Error loading tutors: {0}").format(e))
         
         if len(self.tutors) == 0:
             self._create_default_tutors()
@@ -188,10 +188,10 @@ class LanguageTutorManager:
             # Remove mock tutors
             for name, tutor in self.tutors.items():
                 if tutor.is_mock:
-                    logger.warning(f"Removing mock tutor: {name}")
+                    logger.warning(_("Removing mock tutor: {0}").format(name))
                     del self.tutors[name]
         except Exception as e:
-            logger.error(f"Error reloading tutors: {e}")
+            logger.error(_("Error reloading tutors: {0}").format(e))
 
     def _create_default_tutors(self):
         """Create default tutors if none exist."""
@@ -258,7 +258,7 @@ class LanguageTutorManager:
             return tutor
         else:
             if hasattr(self, "allow_mock_tutors") and self.allow_mock_tutors:
-                logger.warning(f"Mock tutor not found, creating new: {voice_name}")
+                logger.warning(_("Mock tutor not found, creating new: {0}").format(voice_name))
                 tutor = LanguageTutor(
                     name=voice_name,
                     voice_name=voice_name,
@@ -272,7 +272,7 @@ class LanguageTutorManager:
                 self.tutors[voice_name] = tutor
                 return tutor
             else:
-                logger.error(f"Tutor not found: {voice_name}")
+                logger.error(_("Tutor not found: {0}").format(voice_name))
                 return None
 
     def set_current_tutor(self, voice_name: str) -> Optional[LanguageTutor]:
@@ -304,5 +304,5 @@ class LanguageTutorManager:
                 self.current_tutor.system_prompt if self.current_tutor else None
             ) 
         except Exception as e:
-            logger.error(f"Error getting context and system prompt: {e}")
+            logger.error(_("Error getting context and system prompt: {0}").format(e))
             return ([], None) 

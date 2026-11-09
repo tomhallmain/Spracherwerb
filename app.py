@@ -12,6 +12,7 @@ from ui.translations_window import TranslationsWindow
 from ui.app_style import AppStyle
 from ui.app_actions import AppActions
 from utils.app_info_cache import app_info_cache
+from utils.translations import _
 
 
 class MainWindow(SmartMainWindow):
@@ -134,14 +135,14 @@ class MainWindow(SmartMainWindow):
             self.media_frame.release_media()
         except Exception as e:
             from utils.logging_setup import get_logger
-            get_logger(__name__).error(f"Error releasing media frame on close: {e}")
+            get_logger(__name__).error(_("Error releasing media frame on close: {0}").format(e))
         # Then persist the cache (including the position_data just saved by parent)
         try:
             app_info_cache.store()
         except Exception as e:
             from utils.logging_setup import get_logger
             logger = get_logger(__name__)
-            logger.error(f"Error storing app_info_cache on window close: {e}")
+            logger.error(_("Error storing app_info_cache on window close: {0}").format(e))
 
 
 if __name__ == "__main__":
@@ -151,7 +152,7 @@ if __name__ == "__main__":
     except Exception as e:
         from utils.logging_setup import get_logger
         logger = get_logger(__name__)
-        logger.warning(f"Error loading app_info_cache at startup: {e}")
+        logger.warning(_("Error loading app_info_cache at startup: {0}").format(e))
     
     app = QApplication(sys.argv)
     
@@ -162,7 +163,7 @@ if __name__ == "__main__":
         except Exception as e:
             from utils.logging_setup import get_logger
             logger = get_logger(__name__)
-            logger.error(f"Error storing app_info_cache on application quit: {e}")
+            logger.error(_("Error storing app_info_cache on application quit: {0}").format(e))
     
     app.aboutToQuit.connect(store_cache_on_quit)
     

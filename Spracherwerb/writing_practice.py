@@ -74,7 +74,7 @@ class WritingPractice(BaseLearningModule):
                 query += f" If it fits naturally, suggest they use this word they already know: {vocab_hint}."
             turn = ask_llm(services.llm, query, system_prompt=system_prompt, timeout=LLM_TIMEOUT)
         except Exception as e:
-            logger.warning(f"WritingPractice failed to start: {e}")
+            logger.warning(_("WritingPractice failed to start: {0}").format(e))
             turn = None
 
         if turn is None:
@@ -150,7 +150,7 @@ class WritingPractice(BaseLearningModule):
         try:
             return language_tool.check_text(text, target_language)
         except Exception as e:
-            logger.warning(f"LanguageTool check failed: {e}")
+            logger.warning(_("LanguageTool check failed: {0}").format(e))
             return []
 
     def _format_corrections(self, errors: list) -> str:

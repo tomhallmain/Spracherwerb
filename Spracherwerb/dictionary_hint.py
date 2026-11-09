@@ -12,6 +12,7 @@ import logging
 from typing import Any, Optional
 
 from utils import translation_import
+from utils.translations import _
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def pick_vocabulary_hint(services: Any, limit: int = 5) -> Optional[str]:
         try:
             result = word_reference.lookup(source_word, source_language, target_language)
         except Exception as e:
-            logger.warning(f"Dictionary lookup failed for {source_word!r}: {e}")
+            logger.warning(_("Dictionary lookup failed for {0!r}: {1}").format(source_word, e))
             continue
         pos = _first_part_of_speech(result)
         if pos:

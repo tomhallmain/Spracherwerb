@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Iterable, Optional, Tuple
 
 from .media_generation import MediaPriority, find_cached
+from utils.translations import _
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ def is_sd_available(services: Any) -> bool:
     try:
         return sd_client.is_reachable()
     except Exception as e:
-        logger.warning(f"SD Runner reachability check failed: {e}")
+        logger.warning(_("SD Runner reachability check failed: {0}").format(e))
         return False
 
 
@@ -70,7 +71,7 @@ def generate_now(
             priority=MediaPriority.NOW)
         return service.wait_for(job_id, timeout=timeout)
     except Exception as e:
-        logger.warning(f"Image generation failed for {slug!r}: {e}")
+        logger.warning(_("Image generation failed for {0!r}: {1}").format(slug, e))
         return None
 
 
@@ -88,7 +89,7 @@ def cancel_pending(services: Any, group: str) -> None:
     try:
         service.cancel_group(group)
     except Exception as e:
-        logger.warning(f"Could not cancel pending generation for {group!r}: {e}")
+        logger.warning(_("Could not cancel pending generation for {0!r}: {1}").format(group, e))
 
 
 def generate_ahead(
@@ -114,4 +115,4 @@ def generate_ahead(
     try:
         service.request_ahead(wanted, cache_dir=cache_dir, group=group)
     except Exception as e:
-        logger.warning(f"Could not queue pre-generation: {e}")
+        logger.warning(_("Could not queue pre-generation: {0}").format(e))

@@ -8,6 +8,7 @@ import requests
 
 from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -55,7 +56,7 @@ class LanguageTool:
                         for text, errors in data.items()
                     }
         except Exception as e:
-            logger.error(f"Error loading LanguageTool cache: {e}")
+            logger.error(_("Error loading LanguageTool cache: {0}").format(e))
             self.checks = {}
     
     def _save_cache(self):
@@ -71,7 +72,7 @@ class LanguageTool:
                     indent=2
                 )
         except Exception as e:
-            logger.error(f"Error saving LanguageTool cache: {e}")
+            logger.error(_("Error saving LanguageTool cache: {0}").format(e))
     
     def _is_cache_valid(self, errors: List[LanguageError]) -> bool:
         """Check if cached checks are still valid."""
@@ -141,7 +142,7 @@ class LanguageTool:
             return errors
             
         except Exception as e:
-            logger.error(f"Error checking text with LanguageTool: {e}")
+            logger.error(_("Error checking text with LanguageTool: {0}").format(e))
             return []
     
     def get_available_languages(self) -> List[str]:
@@ -152,7 +153,7 @@ class LanguageTool:
             data = response.json()
             return [lang["code"] for lang in data]
         except Exception as e:
-            logger.error(f"Error getting available languages: {e}")
+            logger.error(_("Error getting available languages: {0}").format(e))
             return []
     
     def get_available_rules(self, language: str) -> Dict[str, Any]:
@@ -163,7 +164,7 @@ class LanguageTool:
             data = response.json()
             return data
         except Exception as e:
-            logger.error(f"Error getting available rules: {e}")
+            logger.error(_("Error getting available rules: {0}").format(e))
             return {}
     
     def get_rule_categories(self, language: str) -> List[str]:

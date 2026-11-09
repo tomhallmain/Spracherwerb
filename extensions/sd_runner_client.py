@@ -93,14 +93,13 @@ class SDRunnerClient:
                 last_error = e
                 if attempt < max_retries - 1:
                     logger.warning(
-                        f"SD Runner connection refused (attempt {attempt + 1}/{max_retries}),"
-                        f" retrying in {retry_delay}s..."
+                        _("SD Runner connection refused (attempt {0}/{1}), retrying in {2}s...").format(attempt + 1, max_retries, retry_delay)
                     )
                     time.sleep(retry_delay)
             except Exception as e:
-                logger.error(f"Failed to connect to SD Runner: {e}")
+                logger.error(_("Failed to connect to SD Runner: {0}").format(e))
                 raise
-        logger.error(f"Failed to connect to SD Runner after {max_retries} attempts: {last_error}")
+        logger.error(_("Failed to connect to SD Runner after {0} attempts: {1}").format(max_retries, last_error))
         raise last_error
 
     def send(self, msg):
@@ -123,7 +122,7 @@ class SDRunnerClient:
             self._conn = None
             logger.info("Closed SD Runner Client")
         except Exception as e:
-            logger.error(f"Failed to close SD Runner Client: {e}")
+            logger.error(_("Failed to close SD Runner Client: {0}").format(e))
             raise e
 
     def validate_connection(self):
@@ -204,7 +203,7 @@ class SDRunnerClient:
             except queue.Empty:
                 continue
             except Exception as e:
-                logger.error(f"Error in worker thread: {e}")
+                logger.error(_("Error in worker thread: {0}").format(e))
 
     def _run_internal(
         self,
@@ -327,7 +326,7 @@ class SDRunnerClient:
                 filename=filename,
             )
         except Exception as e:
-            logger.warning(f"SD Runner generate_image request failed: {e}")
+            logger.warning(_("SD Runner generate_image request failed: {0}").format(e))
             return None
         return self._wait_for_file(target_dir, filename, timeout, poll_interval)
 
@@ -348,7 +347,7 @@ class SDRunnerClient:
                     return matches[0]
             if time.time() >= deadline:
                 logger.warning(
-                    f"Timed out after {timeout}s waiting for {filename} in {target_dir}")
+                    _("Timed out after {0}s waiting for {1} in {2}").format(timeout, filename, target_dir))
                 return None
             time.sleep(poll_interval)
 

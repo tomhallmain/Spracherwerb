@@ -247,7 +247,7 @@ class ReadingComprehension(BaseLearningModule):
                 'notes': 'Added from reading comprehension',
             })
         except Exception as e:
-            logger.warning(f"Failed to save new word {word!r}: {e}")
+            logger.warning(_("Failed to save new word {0!r}: {1}").format(word, e))
 
     # -- passage sourcing -------------------------------------------------
 
@@ -265,13 +265,13 @@ class ReadingComprehension(BaseLearningModule):
         try:
             books = gutenberg.get_popular_books(target_language, limit=GUTENBERG_CANDIDATE_BOOKS)
         except Exception as e:
-            logger.warning(f"Gutenberg lookup failed: {e}")
+            logger.warning(_("Gutenberg lookup failed: {0}").format(e))
             return None
         for book in books:
             try:
                 text = gutenberg.get_book_text(book.id)
             except Exception as e:
-                logger.warning(f"Gutenberg text fetch failed for book {book.id}: {e}")
+                logger.warning(_("Gutenberg text fetch failed for book {0}: {1}").format(book.id, e))
                 continue
             excerpt = self._extract_excerpt(text)
             if excerpt:
@@ -304,7 +304,7 @@ class ReadingComprehension(BaseLearningModule):
                 f"at a {proficiency} proficiency level."
             )
         except Exception as e:
-            logger.warning(f"ReadingComprehension failed to load its activity prompt: {e}")
+            logger.warning(_("ReadingComprehension failed to load its activity prompt: {0}").format(e))
             return None
         query = (
             "Write a short reading passage (5-8 sentences) about an everyday or "

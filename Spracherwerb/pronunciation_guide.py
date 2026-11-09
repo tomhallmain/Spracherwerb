@@ -93,7 +93,7 @@ class PronunciationGuide(BaseLearningModule):
         try:
             self._system_prompt = self._build_system_prompt(services)
         except Exception as e:
-            logger.warning(f"PronunciationGuide failed to load its activity prompt: {e}")
+            logger.warning(_("PronunciationGuide failed to load its activity prompt: {0}").format(e))
             self._system_prompt = ""
 
         self._queue = candidates
@@ -195,7 +195,7 @@ class PronunciationGuide(BaseLearningModule):
         try:
             path = services.voice.generate_speech(text, topic="pronunciation_guide")
         except Exception as e:
-            logger.warning(f"PronunciationGuide TTS failed: {e}")
+            logger.warning(_("PronunciationGuide TTS failed: {0}").format(e))
             return None
         if path:
             self._audio_paths.append(path)

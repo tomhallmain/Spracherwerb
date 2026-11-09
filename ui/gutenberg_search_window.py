@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt, Signal, Slot
 from ui.base_window import BaseWindow
 from extensions.gutenberg import Gutenberg, GutenbergBook
 from utils.config import config
+from utils.translations import _
 
 
 class GutenbergSearchWindow(BaseWindow):
@@ -17,7 +18,7 @@ class GutenbergSearchWindow(BaseWindow):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Gutenberg Book Search")
+        self.setWindowTitle(_("Gutenberg Book Search"))
         self.gutenberg = Gutenberg()
         self.selected_books = []
         
@@ -49,7 +50,7 @@ class GutenbergSearchWindow(BaseWindow):
         """Initialize the search controls section."""
         # Search input
         self.search_input = self.add_entry(
-            placeholder="Enter search terms...",
+            placeholder=_("Enter search terms..."),
             column=0
         )
         
@@ -61,7 +62,7 @@ class GutenbergSearchWindow(BaseWindow):
         
         # Search button
         self.search_button = self.add_button(
-            "Search",
+            _("Search"),
             self._perform_search,
             column=0
         )
@@ -69,7 +70,7 @@ class GutenbergSearchWindow(BaseWindow):
     def _init_results_list(self):
         """Initialize the search results list."""
         self.results_label = self.add_label(
-            "Search Results",
+            _("Search Results"),
             column=1
         )
         self.results_list = QListWidget()
@@ -79,7 +80,7 @@ class GutenbergSearchWindow(BaseWindow):
     def _init_selection_list(self):
         """Initialize the selected books list."""
         self.selection_label = self.add_label(
-            "Selected Books",
+            _("Selected Books"),
             column=1
         )
         self.selection_list = QListWidget()
@@ -90,21 +91,21 @@ class GutenbergSearchWindow(BaseWindow):
         """Initialize the action buttons."""
         # Add selected button
         self.add_button = self.add_button(
-            "Add Selected",
+            _("Add Selected"),
             self._add_selected_book,
             column=1
         )
         
         # Remove selected button
         self.remove_button = self.add_button(
-            "Remove Selected",
+            _("Remove Selected"),
             self._remove_selected_book,
             column=1
         )
         
         # Save selection button
         self.save_button = self.add_button(
-            "Save Selection",
+            _("Save Selection"),
             self._save_selection,
             column=1
         )
@@ -118,8 +119,8 @@ class GutenbergSearchWindow(BaseWindow):
         if not search_term:
             QMessageBox.warning(
                 self,
-                "Search Error",
-                "Please enter a search term."
+                _("Search Error"),
+                _("Please enter a search term.")
             )
             return
         
@@ -136,7 +137,7 @@ class GutenbergSearchWindow(BaseWindow):
         for book in results:
             item_text = f"{book.title} - {', '.join(book.authors)}"
             if book.word_count:
-                item_text += f" ({book.word_count} words)"
+                item_text += " (" + _("Words: {0}").format(book.word_count) + ")"
             self.results_list.addItem(item_text)
             self.results_list.item(self.results_list.count() - 1).setData(
                 Qt.UserRole, book
@@ -152,7 +153,7 @@ class GutenbergSearchWindow(BaseWindow):
                 self.selected_books.append(book)
                 item_text = f"{book.title} - {', '.join(book.authors)}"
                 if book.word_count:
-                    item_text += f" ({book.word_count} words)"
+                    item_text += " (" + _("Words: {0}").format(book.word_count) + ")"
                 self.selection_list.addItem(item_text)
                 self.selection_list.item(self.selection_list.count() - 1).setData(
                     Qt.UserRole, book
@@ -174,8 +175,8 @@ class GutenbergSearchWindow(BaseWindow):
         if not self.selected_books:
             QMessageBox.warning(
                 self,
-                "Save Error",
-                "Please select at least one book."
+                _("Save Error"),
+                _("Please select at least one book.")
             )
             return
         

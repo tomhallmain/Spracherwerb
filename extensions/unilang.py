@@ -11,6 +11,7 @@ import os
 
 from utils.cache_paths import CachePath, resolve_cache_file
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -205,7 +206,7 @@ class UniLang:
                     self.resources = json.load(f)
                 logger.info(f"Loaded {sum(len(v) for v in self.resources.values())} cached resources")
             else:
-                logger.warning("Resources cache file not found")
+                logger.warning(_("Resources cache file not found"))
                 
             if self.FORUM_CACHE.exists():
                 logger.debug(f"Loading forum cache from {self.FORUM_CACHE}")
@@ -213,9 +214,9 @@ class UniLang:
                     self.forum_posts = json.load(f)
                 logger.info(f"Loaded {sum(len(v) for v in self.forum_posts.values())} cached forum posts")
             else:
-                logger.warning("Forum cache file not found")
+                logger.warning(_("Forum cache file not found"))
         except Exception as e:
-            logger.error(f"Error loading UniLang cache: {e}")
+            logger.error(_("Error loading UniLang cache: {0}").format(e))
             self.resources = {}
             self.forum_posts = {}
     
@@ -235,7 +236,7 @@ class UniLang:
                 json.dump(self.forum_posts, f, ensure_ascii=False, indent=2)
             logger.info(f"Saved {sum(len(v) for v in self.forum_posts.values())} forum posts to cache")
         except Exception as e:
-            logger.error(f"Error saving UniLang cache: {e}")
+            logger.error(_("Error saving UniLang cache: {0}").format(e))
     
     def _is_cache_valid(self, data: List[Dict]) -> bool:
         """Check if cached data is still valid."""
@@ -298,7 +299,7 @@ class UniLang:
             return resources
             
         except Exception as e:
-            logger.error(f"Error getting resources for {language}: {e}")
+            logger.error(_("Error getting resources for {0}: {1}").format(language, e))
             return []
     
     def get_forum_posts(
@@ -321,8 +322,8 @@ class UniLang:
             # Get forum ID for language
             forum_id = self.FORUM_IDS.get(language)
             if not forum_id:
-                logger.error(f"No forum ID found for language: {language}")
-                logger.error(f"Available forum IDs: {self.FORUM_IDS}")
+                logger.error(_("No forum ID found for language: {0}").format(language))
+                logger.error(_("Available forum IDs: {0}").format(self.FORUM_IDS))
                 return []
             
             # Fetch from website
@@ -344,13 +345,13 @@ class UniLang:
                     f.write(response.text)
                 
             except requests.exceptions.HTTPError as e:
-                logger.error(f"HTTP error occurred while fetching forum posts: {e}")
-                logger.error(f"Response status: {e.response.status_code if hasattr(e, 'response') else 'No response'}")
-                logger.error(f"Response headers: {e.response.headers if hasattr(e, 'response') else 'No headers'}")
-                logger.error(f"Response content: {e.response.text if hasattr(e, 'response') else 'No content'}")
+                logger.error(_("HTTP error occurred while fetching forum posts: {0}").format(e))
+                logger.error(_("Response status: {0}").format(e.response.status_code if hasattr(e, 'response') else 'No response'))
+                logger.error(_("Response headers: {0}").format(e.response.headers if hasattr(e, 'response') else 'No headers'))
+                logger.error(_("Response content: {0}").format(e.response.text if hasattr(e, 'response') else 'No content'))
                 return []
             except requests.exceptions.RequestException as e:
-                logger.error(f"Request error occurred while fetching forum posts: {e}")
+                logger.error(_("Request error occurred while fetching forum posts: {0}").format(e))
                 return []
             
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -368,19 +369,19 @@ class UniLang:
                     # Get the title and link
                     title_elem = post.select_one("a.topictitle")
                     if not title_elem:
-                        logger.warning("No title element found in forum post")
+                        logger.warning(_("No title element found in forum post"))
                         continue
                     
                     # Get the author from either the responsive-hide or responsive-show div
                     author_elem = post.select_one("div.responsive-hide a.username, div.responsive-show a.username")
                     if not author_elem:
-                        logger.warning("No author element found in forum post")
+                        logger.warning(_("No author element found in forum post"))
                         continue
                     
                     # Get the date from the lastpost span
                     date_elem = post.select_one("dd.lastpost span")
                     if not date_elem:
-                        logger.warning("No date element found in forum post")
+                        logger.warning(_("No date element found in forum post"))
                         continue
                     
                     # Extract the date text, which is after the last <br> tag
@@ -402,7 +403,7 @@ class UniLang:
                         break
                         
                 except Exception as e:
-                    logger.error(f"Error parsing forum post: {e}")
+                    logger.error(_("Error parsing forum post: {0}").format(e))
                     continue
             
             # Only update cache if we successfully got posts
@@ -412,16 +413,16 @@ class UniLang:
                 self._save_cache()
                 logger.info(f"Updated cache with {len(posts)} forum posts for {language}")
             else:
-                logger.warning(f"No forum posts found for {language}, cache not updated")
+                logger.warning(_("No forum posts found for {0}, cache not updated").format(language))
                 # Don't cache empty results
                 return []
             
             return posts
             
         except Exception as e:
-            logger.error(f"Error getting forum posts for {language}: {e}")
-            logger.error(f"Error type: {type(e)}")
-            logger.error(f"Error details: {str(e)}")
+            logger.error(_("Error getting forum posts for {0}: {1}").format(language, e))
+            logger.error(_("Error type: {0}").format(type(e)))
+            logger.error(_("Error details: {0}").format(str(e)))
             return []
     
     def search_resources(
@@ -461,7 +462,7 @@ class UniLang:
             return results
             
         except Exception as e:
-            logger.error(f"Error searching resources: {e}")
+            logger.error(_("Error searching resources: {0}").format(e))
             return []
     
     def get_resource_categories(self, language: str) -> List[str]:
@@ -473,5 +474,5 @@ class UniLang:
             logger.info(f"Found {len(categories)} categories for {language}")
             return sorted(list(categories))
         except Exception as e:
-            logger.error(f"Error getting categories for {language}: {e}")
+            logger.error(_("Error getting categories for {0}: {1}").format(language, e))
             return [] 

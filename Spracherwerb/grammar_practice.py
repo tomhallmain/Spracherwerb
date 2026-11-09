@@ -108,7 +108,7 @@ class GrammarPractice(BaseLearningModule):
                 query += f" If it fits naturally, use this word the learner already knows: {vocab_hint}."
             turn = ask_llm(services.llm, query, system_prompt=system_prompt, timeout=LLM_TIMEOUT)
         except Exception as e:
-            logger.warning(f"GrammarPractice failed to start: {e}")
+            logger.warning(_("GrammarPractice failed to start: {0}").format(e))
             turn = None
 
         if turn is None:

@@ -23,6 +23,7 @@ from utils.vlc_plugin_cache import ensure_vlc_plugin_cache_if_stale
 
 ensure_vlc_plugin_cache_if_stale()
 import vlc
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -186,7 +187,7 @@ class TextToSpeechRunner:
                 fail_count = 0
                 while len(files_to_delete) > 0:
                     if fail_count > 6:
-                        logger.error("Failed to delete audio files: " + str(len(files_to_delete)))
+                        logger.error(_("Failed to delete audio files: {0}").format(len(files_to_delete)))
                         break
                     try:
                         os.remove(files_to_delete[0])
@@ -253,7 +254,7 @@ class TextToSpeechRunner:
                     if os.path.exists(next_job_output_path):
                         self.play_async(next_job_output_path)
                     else:
-                        logger.error(f"Cannot find speech output path: {next_job_output_path}")
+                        logger.error(_("Cannot find speech output path: {0}").format(next_job_output_path))
                     while self.speech_queue.job_running:
                         time.sleep(.5)
             self.clean()
@@ -293,7 +294,7 @@ class TextToSpeechRunner:
             self.add_speech_file_to_queue(output_path)
         except Exception as e:
             invocation.increment_error()
-            logger.error(f"TTS generation error: {str(e)}")
+            logger.error(_("TTS generation error: {0}").format(str(e)))
             # Clean up the output file if it was created
             if os.path.exists(output_path):
                 try:
@@ -386,7 +387,7 @@ class TextToSpeechRunner:
             f.save()
             logger.info("Added metadata to %s", output_path)
         except Exception as e:
-            logger.warning("Could not add metadata: %s", e)
+            logger.warning(_("Could not add metadata: %s"), e)
 
     def get_output_path_no_unicode(self):
         output_path = os.path.join(TextToSpeechRunner.output_directory, self.output_path + '.wav')

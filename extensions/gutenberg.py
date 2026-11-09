@@ -9,6 +9,7 @@ import time
 from utils.globals import Language
 from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -90,7 +91,7 @@ class Gutenberg:
                         for book_id, book_data in data.items()
                     }
         except Exception as e:
-            logger.error(f"Error loading Gutenberg cache: {e}")
+            logger.error(_("Error loading Gutenberg cache: {0}").format(e))
             self.books = {}
     
     def _save_cache(self):
@@ -105,7 +106,7 @@ class Gutenberg:
                     indent=2
                 )
         except Exception as e:
-            logger.error(f"Error saving Gutenberg cache: {e}")
+            logger.error(_("Error saving Gutenberg cache: {0}").format(e))
     
     def _is_cache_valid(self, book: GutenbergBook) -> bool:
         """Check if cached book data is still valid.
@@ -196,7 +197,7 @@ class Gutenberg:
             return results
 
         except Exception as e:
-            logger.error(f"Error searching Gutenberg books: {e}")
+            logger.error(_("Error searching Gutenberg books: {0}").format(e))
             return []
     
     def get_book(self, book_id: int) -> Optional[GutenbergBook]:
@@ -217,7 +218,7 @@ class Gutenberg:
             return book
 
         except Exception as e:
-            logger.error(f"Error getting Gutenberg book {book_id}: {e}")
+            logger.error(_("Error getting Gutenberg book {0}: {1}").format(book_id, e))
             return None
 
     def get_book_details(self, book_id: int) -> GutenbergBook:
@@ -271,9 +272,9 @@ class Gutenberg:
                 logger.debug(f"Counted {word_count} words for book {data.get('id')} "
                              f"in {time.time() - fetch_started:.1f}s ({text_url})")
             except Exception as e:
-                logger.warning(f"Error fetching text to count words for book {data.get('id')} "
-                               f"after {time.time() - fetch_started:.1f}s ({text_url}): "
-                               f"{type(e).__name__}: {e}")
+                logger.warning(
+                    _("Error fetching text to count words for book {0} after {1:.1f}s ({2}): {3}: {4}").format(
+                        data.get('id'), time.time() - fetch_started, text_url, type(e).__name__, e))
         else:
             logger.debug(f"Book {data.get('id')} has no text/plain format in "
                          f"formats={list(formats.keys())}")
@@ -314,7 +315,7 @@ class Gutenberg:
             response.raise_for_status()
             return response.text
         except Exception as e:
-            logger.error(f"Error getting book text for {book_id}: {e}")
+            logger.error(_("Error getting book text for {0}: {1}").format(book_id, e))
             return None
     
     def get_available_languages(self) -> List[str]:
@@ -358,6 +359,6 @@ class Gutenberg:
             return results
 
         except Exception as e:
-            logger.error(f"Error getting popular books for {language}: {e}")
+            logger.error(_("Error getting popular books for {0}: {1}").format(language, e))
             return []
 

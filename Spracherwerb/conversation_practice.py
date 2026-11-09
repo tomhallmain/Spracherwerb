@@ -84,7 +84,7 @@ class ConversationPractice(BaseLearningModule):
                 timeout=LLM_TIMEOUT,
             )
         except Exception as e:
-            logger.warning(f"ConversationPractice failed to start: {e}")
+            logger.warning(_("ConversationPractice failed to start: {0}").format(e))
             turn = None
 
         if turn is None:

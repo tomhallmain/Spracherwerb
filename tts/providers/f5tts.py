@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from tts.providers import BaseTTSProvider
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -36,8 +37,7 @@ class F5TTSProvider(BaseTTSProvider):
 
         if self.reference_audio and not os.path.isfile(self.reference_audio):
             logger.warning(
-                'F5-TTS reference audio not found: "%s". '
-                "Set f5tts_reference_audio in config to a valid WAV file path.",
+                _('F5-TTS reference audio not found: "%s". Set f5tts_reference_audio in config to a valid WAV file path.'),
                 self.reference_audio,
             )
 

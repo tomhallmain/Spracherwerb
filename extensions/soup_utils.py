@@ -7,6 +7,7 @@ import io
 import re
 
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -73,7 +74,7 @@ class SoupUtils:
             for element in SoupUtils.get_elements(class_path, start_element):
                 out.append(element.text)
         except Exception as e:
-            logger.error(f"Failed to find elements of class {class_path} - {e}")
+            logger.error(_("Failed to find elements of class {0} - {1}").format(class_path, e))
         return out
 
     @staticmethod

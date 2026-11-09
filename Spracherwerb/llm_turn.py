@@ -9,6 +9,7 @@ TTS).
 
 import logging
 from typing import Any, Optional, Tuple
+from utils.translations import _
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ def ask_llm(
         result = llm.generate_response(
             query, timeout=timeout, context=context, system_prompt=system_prompt)
     except Exception as e:
-        logger.warning(f"LLM call failed: {e}")
+        logger.warning(_("LLM call failed: {0}").format(e))
         return None
     text = (result.response or "").strip()
     if not text:

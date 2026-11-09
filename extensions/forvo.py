@@ -8,6 +8,7 @@ import time
 
 from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -49,7 +50,7 @@ class Forvo:
                         for word, pron_list in data.items()
                     }
         except Exception as e:
-            logger.error(f"Error loading Forvo cache: {e}")
+            logger.error(_("Error loading Forvo cache: {0}").format(e))
             self.pronunciations = {}
     
     def _save_cache(self):
@@ -65,7 +66,7 @@ class Forvo:
                     indent=2
                 )
         except Exception as e:
-            logger.error(f"Error saving Forvo cache: {e}")
+            logger.error(_("Error saving Forvo cache: {0}").format(e))
     
     def _is_cache_valid(self, pronunciations: List[Pronunciation]) -> bool:
         """Check if cached pronunciation data is still valid."""
@@ -120,7 +121,7 @@ class Forvo:
             return pronunciations
             
         except Exception as e:
-            logger.error(f"Error getting Forvo pronunciations for {word}: {e}")
+            logger.error(_("Error getting Forvo pronunciations for {0}: {1}").format(word, e))
             return []
     
     def get_top_pronunciation(
@@ -151,7 +152,7 @@ class Forvo:
             return [lang["code"] for lang in data.get("items", [])]
             
         except Exception as e:
-            logger.error(f"Error getting available languages: {e}")
+            logger.error(_("Error getting available languages: {0}").format(e))
             return []
     
     def get_country_pronunciations(
@@ -200,5 +201,5 @@ class Forvo:
             return pronunciations
             
         except Exception as e:
-            logger.error(f"Error getting user pronunciations: {e}")
+            logger.error(_("Error getting user pronunciations: {0}").format(e))
             return [] 

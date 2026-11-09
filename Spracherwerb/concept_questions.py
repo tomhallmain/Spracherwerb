@@ -28,6 +28,7 @@ import logging
 import random
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
+from utils.translations import _
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ def _extract_json_object(text: str) -> Optional[dict]:
     try:
         data = json.loads(text[start:end + 1])
     except json.JSONDecodeError as e:
-        logger.warning(f"Concept lesson was not valid JSON: {e}")
+        logger.warning(_("Concept lesson was not valid JSON: {0}").format(e))
         return None
     return data if isinstance(data, dict) else None
 

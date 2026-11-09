@@ -12,6 +12,7 @@ import io
 
 from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -55,7 +56,7 @@ class OpenSubtitles:
                         for sub_id, sub_data_list in data.items()
                     }
         except Exception as e:
-            logger.error(f"Error loading OpenSubtitles cache: {e}")
+            logger.error(_("Error loading OpenSubtitles cache: {0}").format(e))
             self.subtitles = {}
     
     def _save_cache(self):
@@ -71,7 +72,7 @@ class OpenSubtitles:
                     indent=2
                 )
         except Exception as e:
-            logger.error(f"Error saving OpenSubtitles cache: {e}")
+            logger.error(_("Error saving OpenSubtitles cache: {0}").format(e))
     
     def _is_cache_valid(self, subtitle: List[Subtitle]) -> bool:
         """Check if cached subtitle data is still valid."""
@@ -133,7 +134,7 @@ class OpenSubtitles:
             return results[:limit]
             
         except Exception as e:
-            logger.error(f"Error searching OpenSubtitles: {e}")
+            logger.error(_("Error searching OpenSubtitles: {0}").format(e))
             return []
     
     def get_subtitle(self, subtitle_id: str) -> Optional[Subtitle]:
@@ -170,7 +171,7 @@ class OpenSubtitles:
             return subtitle
             
         except Exception as e:
-            logger.error(f"Error getting OpenSubtitles subtitle {subtitle_id}: {e}")
+            logger.error(_("Error getting OpenSubtitles subtitle {0}: {1}").format(subtitle_id, e))
             return None
     
     def _parse_subtitle_data(self, data: Dict[str, Any]) -> Subtitle:
@@ -192,7 +193,7 @@ class OpenSubtitles:
             with gzip.GzipFile(fileobj=io.BytesIO(content)) as f:
                 return f.read().decode('utf-8')
         except Exception as e:
-            logger.error(f"Error decompressing subtitle content: {e}")
+            logger.error(_("Error decompressing subtitle content: {0}").format(e))
             return ""
     
     def get_available_languages(self) -> List[str]:
@@ -206,5 +207,5 @@ class OpenSubtitles:
             data = response.json()
             return [lang["language_code"] for lang in data.get("data", [])]
         except Exception as e:
-            logger.error(f"Error getting available languages: {e}")
+            logger.error(_("Error getting available languages: {0}").format(e))
             return [] 

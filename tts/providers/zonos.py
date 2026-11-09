@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 
 from tts.providers import BaseTTSProvider
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -68,15 +69,14 @@ class ZonosTTSProvider(BaseTTSProvider):
 
         if self.model_name not in ZONOS_MODELS:
             logger.warning(
-                'Unknown Zonos model "%s". Known models: %s',
+                _('Unknown Zonos model "%s". Known models: %s'),
                 self.model_name,
                 ", ".join(ZONOS_MODELS),
             )
 
         if self.reference_audio and not os.path.isfile(self.reference_audio):
             logger.warning(
-                'Zonos reference audio not found: "%s". '
-                "Set zonos_reference_audio in config to a valid audio file.",
+                _('Zonos reference audio not found: "%s". Set zonos_reference_audio in config to a valid audio file.'),
                 self.reference_audio,
             )
 
@@ -94,7 +94,7 @@ class ZonosTTSProvider(BaseTTSProvider):
     def load(self) -> None:
         if not _espeak_available():
             logger.warning(
-                "espeak-ng not found on PATH. Zonos requires espeak-ng for phonemization."
+                _("espeak-ng not found on PATH. Zonos requires espeak-ng for phonemization.")
             )
         try:
             from zonos.model import Zonos

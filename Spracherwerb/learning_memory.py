@@ -6,6 +6,7 @@ from typing import Optional, Dict, List, Any
 from utils.cache_paths import resolve_cache_file
 from utils.logging_setup import get_logger
 from .learning_spot_profile import LearningSpot, LearningSpotProfile
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -78,7 +79,7 @@ class LearningMemory:
             LearningMemory.activity_progress = {}
             LearningMemory.session_history = []
         except Exception as e:
-            logger.error(f"Error loading learning memory: {e}")
+            logger.error(_("Error loading learning memory: {0}").format(e))
 
     @staticmethod
     def save():

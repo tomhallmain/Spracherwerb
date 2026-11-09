@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -145,7 +146,7 @@ class MediaGenerationService:
                 listener(event)
             except Exception as e:
                 # One bad listener must not stop the queue or the others.
-                logger.warning(f"Media listener failed for {event.slug!r}: {e}")
+                logger.warning(_("Media listener failed for {0!r}: {1}").format(event.slug, e))
 
     def _record_terminal(self, event: MediaEvent) -> None:
         with self._wake:
@@ -173,7 +174,7 @@ class MediaGenerationService:
                     return None
                 remaining = None if deadline is None else deadline - time.monotonic()
                 if remaining is not None and remaining <= 0:
-                    logger.warning(f"Timed out waiting for media job {job_id}")
+                    logger.warning(_("Timed out waiting for media job {0}").format(job_id))
                     return None
                 self._wake.wait(timeout=remaining if remaining is not None else 1.0)
             event = self._terminal[job_id]
@@ -324,7 +325,7 @@ class MediaGenerationService:
             try:
                 self._process(job)
             except Exception as e:
-                logger.warning(f"Media generation failed for {job.slug!r}: {e}")
+                logger.warning(_("Media generation failed for {0!r}: {1}").format(job.slug, e))
                 self._emit(MediaEvent(
                     job.job_id, job.slug, MediaState.FAILED,
                     group=job.group, error=str(e), priority=job.priority))

@@ -118,7 +118,7 @@ class ConceptualLearning(BaseLearningModule):
             saved_entries = self._saved_entries(services)
             lesson = self._request_lesson(services, saved_entries)
         except Exception as e:
-            logger.warning(f"ConceptualLearning failed to start: {e}")
+            logger.warning(_("ConceptualLearning failed to start: {0}").format(e))
 
         if lesson is None:
             self._active = False
@@ -266,7 +266,7 @@ class ConceptualLearning(BaseLearningModule):
                 try:
                     pool.record_word_result(target_language, phrase, outcome="reviewed")
                 except Exception as e:
-                    logger.warning(f"Could not record reviewed word {phrase!r}: {e}")
+                    logger.warning(_("Could not record reviewed word {0!r}: {1}").format(phrase, e))
 
     def _pick_seed_concept(self, services: ModuleServices) -> Optional[str]:
         """First seed for the level not yet covered, or None to let the LLM choose."""
@@ -291,7 +291,7 @@ class ConceptualLearning(BaseLearningModule):
             return pool.get_review_candidates(
                 source_language, target_language, limit=SAVED_PHRASES_LIMIT)
         except Exception as e:
-            logger.warning(f"Could not load saved translations: {e}")
+            logger.warning(_("Could not load saved translations: {0}").format(e))
             return []
 
     def _build_system_prompt(self, services: ModuleServices) -> str:

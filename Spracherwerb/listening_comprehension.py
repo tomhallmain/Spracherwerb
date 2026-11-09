@@ -161,7 +161,7 @@ class ListeningComprehension(BaseLearningModule):
                 f"at a {proficiency} proficiency level."
             )
         except Exception as e:
-            logger.warning(f"ListeningComprehension failed to load its activity prompt: {e}")
+            logger.warning(_("ListeningComprehension failed to load its activity prompt: {0}").format(e))
             return None
         query = (
             "Write a short passage (3-5 sentences) about an everyday topic, then "
@@ -189,7 +189,7 @@ class ListeningComprehension(BaseLearningModule):
         try:
             path = services.voice.generate_speech(self._passage, topic="listening_comprehension")
         except Exception as e:
-            logger.warning(f"ListeningComprehension TTS failed: {e}")
+            logger.warning(_("ListeningComprehension TTS failed: {0}").format(e))
             return None
         if path:
             self._audio_paths.append(path)

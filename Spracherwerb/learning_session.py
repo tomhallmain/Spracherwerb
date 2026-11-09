@@ -5,6 +5,7 @@ import logging
 from .session_config import SessionConfig
 from .learning_engine import LearningEngine
 from .session_context import SessionContext, UserAction
+from utils.translations import _
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class LearningSession:
             logger.info("Started new learning session")
             
         except Exception as e:
-            logger.error(f"Failed to start learning session: {str(e)}")
+            logger.error(_("Failed to start learning session: {0}").format(str(e)))
             if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise
@@ -69,7 +70,7 @@ class LearningSession:
             return result
             
         except Exception as e:
-            logger.error(f"Failed to start activity {activity_type}: {str(e)}")
+            logger.error(_("Failed to start activity {0}: {1}").format(activity_type, str(e)))
             if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise
@@ -88,7 +89,7 @@ class LearningSession:
             return result
             
         except Exception as e:
-            logger.error(f"Failed to process user response: {str(e)}")
+            logger.error(_("Failed to process user response: {0}").format(str(e)))
             if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise
@@ -107,7 +108,7 @@ class LearningSession:
             return media_path
             
         except Exception as e:
-            logger.error(f"Failed to generate media: {str(e)}")
+            logger.error(_("Failed to generate media: {0}").format(str(e)))
             if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             return None
@@ -126,7 +127,7 @@ class LearningSession:
             return results
             
         except Exception as e:
-            logger.error(f"Failed to complete activity: {str(e)}")
+            logger.error(_("Failed to complete activity: {0}").format(str(e)))
             if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise
@@ -141,7 +142,7 @@ class LearningSession:
             self.state.update_action(action)
                 
         except Exception as e:
-            logger.error(f"Failed to handle user action {action}: {str(e)}")
+            logger.error(_("Failed to handle user action {0}: {1}").format(action, str(e)))
             if self.callbacks.get('error_occurred'):
                 self.callbacks['error_occurred'](str(e))
             raise

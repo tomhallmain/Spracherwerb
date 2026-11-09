@@ -9,6 +9,7 @@ from utils.logging_setup import get_logger
 from .learning_spot_profile import LearningSpot, LearningSpotProfile
 from .learning_memory import LearningMemory
 from .activity_types import ActivityType
+from utils.translations import _
 
 logger = get_logger(__name__)
 @dataclass
@@ -175,7 +176,7 @@ class LearningProgression:
     def reorder_activities(self, new_order: List[int]):
         """Reorder the upcoming activities based on the provided indices."""
         if len(new_order) != len(self.upcoming_activities):
-            logger.error("Invalid reorder: length mismatch")
+            logger.error(_("Invalid reorder: length mismatch"))
             return
             
         reordered = [self.upcoming_activities[i] for i in new_order]

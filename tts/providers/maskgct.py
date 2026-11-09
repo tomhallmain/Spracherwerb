@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 
 from tts.providers import BaseTTSProvider
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -68,8 +69,7 @@ class MaskGCTProvider(BaseTTSProvider):
 
         if self.reference_audio and not os.path.isfile(self.reference_audio):
             logger.warning(
-                'MaskGCT reference audio not found: "%s". '
-                "Set maskgct_reference_audio in config to a valid WAV file path.",
+                _('MaskGCT reference audio not found: "%s". Set maskgct_reference_audio in config to a valid WAV file path.'),
                 self.reference_audio,
             )
 

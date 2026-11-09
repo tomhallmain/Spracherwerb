@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from tts.providers import BaseTTSProvider
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -75,8 +76,7 @@ class KokoroTTSProvider(BaseTTSProvider):
 
         if self.voice not in KOKORO_VOICES:
             logger.warning(
-                'Unknown Kokoro voice "%s". '
-                "Run KokoroTTSProvider().voices() for the full list.",
+                _('Unknown Kokoro voice "%s". Run KokoroTTSProvider().voices() for the full list.'),
                 self.voice,
             )
 

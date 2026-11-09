@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup, Tag
 
 from utils.cache_paths import CachePath
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -156,7 +157,7 @@ class WordReference:
         try:
             response = self.session.get(url, timeout=20)
         except requests.RequestException as exc:
-            logger.error('WordReference request failed for %s: %s', url, exc)
+            logger.error(_("WordReference request failed for %s: %s"), url, exc)
             return None
 
         # A word with no entry of its own can still be answered by the page:
@@ -165,7 +166,7 @@ class WordReference:
         sections = self._parse_html(response.text, dictionary_code)
         if not sections:
             logger.warning(
-                'WordReference returned no parseable sections for %s (HTTP %s)',
+                _("WordReference returned no parseable sections for %s (HTTP %s)"),
                 url, response.status_code)
             return None
 
@@ -644,7 +645,7 @@ class WordReference:
                     last_accessed=payload.get('last_accessed'),
                 )
         except Exception as exc:
-            logger.error('Error loading WordReference cache: %s', exc)
+            logger.error(_("Error loading WordReference cache: %s"), exc)
             self.results = {}
 
     def _save_cache(self):
@@ -670,4 +671,4 @@ class WordReference:
             with open(self.CACHE_FILE, 'w', encoding='utf-8') as handle:
                 json.dump(serializable, handle, ensure_ascii=False, indent=2)
         except Exception as exc:
-            logger.error('Error saving WordReference cache: %s', exc)
+            logger.error(_("Error saving WordReference cache: %s"), exc)

@@ -101,7 +101,7 @@ class CulturalContext(BaseLearningModule):
                 )
             turn = ask_llm(services.llm, query, system_prompt=self._system_prompt, timeout=LLM_TIMEOUT)
         except Exception as e:
-            logger.warning(f"CulturalContext failed to start: {e}")
+            logger.warning(_("CulturalContext failed to start: {0}").format(e))
             turn = None
 
         if turn is None:

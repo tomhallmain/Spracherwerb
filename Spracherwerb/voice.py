@@ -5,6 +5,7 @@ from typing import Optional
 
 from utils.config import config as app_config
 from utils.logging_setup import get_logger
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -17,7 +18,7 @@ try:
     tts_runner_imported = True
 except Exception as e:
     logger.error(str(e))
-    logger.warning("Failed to import tts_runner.")
+    logger.warning(_("Failed to import tts_runner."))
 
 
 def _resolve_provider() -> "TTSProviderType":
@@ -26,7 +27,7 @@ def _resolve_provider() -> "TTSProviderType":
     try:
         return TTSProviderType(provider_str.lower())
     except (ValueError, NameError):
-        logger.warning("Unknown tts_provider '%s', falling back to coqui.", provider_str)
+        logger.warning(_("Unknown tts_provider '%s', falling back to coqui."), provider_str)
         return TTSProviderType.COQUI
 
 
@@ -50,7 +51,7 @@ class Voice:
         self._provider = None
 
         if app_config.disable_tts:
-            logger.warning("TTS is disabled in config. Voice functionality will be limited.")
+            logger.warning(_("TTS is disabled in config. Voice functionality will be limited."))
             return
 
         if tts_runner_imported:
@@ -63,10 +64,10 @@ class Voice:
                 self._tts = TextToSpeechRunner(tts_config)
                 self.can_speak = True
             except Exception as e:
-                logger.error("Failed to initialise TTS runner: %s", e)
-                logger.warning("Voice synthesis disabled.")
+                logger.error(_("Failed to initialise TTS runner: %s"), e)
+                logger.warning(_("Voice synthesis disabled."))
         else:
-            logger.warning("TTS is not available. Voice functionality will be limited.")
+            logger.warning(_("TTS is not available. Voice functionality will be limited."))
 
     def _make_config(self, overwrite: bool = False, **extra) -> "TTSConfig":
         """Build a TTSConfig for the active provider and this persona's voice."""
@@ -90,7 +91,7 @@ class Voice:
 
     def say(self, text: str = "", topic: str = "", save_mp3: bool = False, locale=None):
         if not self.can_speak or self._tts is None:
-            logger.warning("Cannot speak.")
+            logger.warning(_("Cannot speak."))
             return
         logger.info("Saying: %s", text)
         temp_tts = TextToSpeechRunner(self._make_config(overwrite=True))
@@ -111,7 +112,7 @@ class Voice:
         locale=None,
     ):
         if not self.can_speak or self._tts is None:
-            logger.warning("Cannot speak.")
+            logger.warning(_("Cannot speak."))
             return
         logger.info("Preparing to say: %s", text)
         if save_for_last:
@@ -133,7 +134,7 @@ class Voice:
         locale=None,
     ):
         if not self.can_speak or self._tts is None:
-            logger.warning("Cannot speak.")
+            logger.warning(_("Cannot speak."))
             return
         logger.info("Speaking file: %s", filepath)
         temp_tts = TextToSpeechRunner(self._make_config(overwrite=True))
@@ -152,7 +153,7 @@ class Voice:
 
     def finish_speaking(self):
         if not self.can_speak or self._tts is None:
-            logger.warning("Cannot speak.")
+            logger.warning(_("Cannot speak."))
             return
         self._tts.await_pending_speech_jobs()
 
@@ -163,7 +164,7 @@ class Voice:
 
     def add_speech_file_to_queue(self, filepath: str):
         if not self.can_speak or self._tts is None:
-            logger.warning("Cannot speak.")
+            logger.warning(_("Cannot speak."))
             return
         self._tts.add_speech_file_to_queue(filepath)
 

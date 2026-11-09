@@ -17,6 +17,7 @@ from tts.speakers import speakers as COQUI_SPEAKERS
 from utils.config import config
 from utils.logging_setup import get_logger
 from utils.utils import Utils
+from utils.translations import _
 
 logger = get_logger(__name__)
 
@@ -77,11 +78,11 @@ class CoquiTTSProvider(BaseTTSProvider):
                 language=self.model[2],
             )
         except Exception as exc:
-            logger.error("Coqui TTS generation failed: %s", exc)
+            logger.error(_("Coqui TTS generation failed: %s"), exc)
             if not os.path.exists(output_path):
                 raise Exception("Coqui TTS failed to generate audio file") from exc
             # File was created despite the error — continue.
-            logger.info("Coqui TTS wrote file despite error, continuing...")
+            logger.info(_("Coqui TTS wrote file despite error, continuing..."))
 
     @property
     def supports_voice_cloning(self) -> bool:
@@ -119,8 +120,8 @@ class CoquiTTSProvider(BaseTTSProvider):
         for speaker in COQUI_SPEAKERS:
             if Utils.is_similar_strings(speaker, voice_name):
                 logger.warning(
-                    'Fuzzy-matched Coqui voice "%s" → "%s"', voice_name, speaker
+                    _('Fuzzy-matched Coqui voice "%s" → "%s"'), voice_name, speaker
                 )
                 return speaker
-        logger.warning('Unknown Coqui voice "%s", using as-is.', voice_name)
+        logger.warning(_('Unknown Coqui voice "%s", using as-is.'), voice_name)
         return voice_name
